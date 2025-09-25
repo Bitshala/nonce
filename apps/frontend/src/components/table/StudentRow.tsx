@@ -7,106 +7,26 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 interface StudentRowProps {
   person: TableRowData;
   week: number;
-  canEditFields: boolean;
-  canEditAttendance: boolean;
   onStudentClick: (studentName: string) => void;
-  onDataUpdate: (data: TableRowData[]) => void;
-  onEditedRowsUpdate: (rows: TableRowData[]) => void;
+  onEditStudent: (student: TableRowData) => void;
   onContextMenu: (menu: {
     visible: boolean;
     x: number;
     y: number;
     targetId: number | null;
   }) => void;
-  allData: TableRowData[];
 }
 
 export const StudentRow: React.FC<StudentRowProps> = ({
   person,
   week,
-  canEditFields,
   onStudentClick,
-  onDataUpdate,
-  onEditedRowsUpdate,
+  onEditStudent,
   onContextMenu,
-  allData,
-  canEditAttendance,
 }) => {
-  const scoreOptions = [0, 1, 2, 3, 4, 5];
-
-  const handleAttendanceChange = () => {
-    const newData = allData.map(p => {
-      if (p.id === person.id) {
-        const updatedPerson = { ...p, attendance: !p.attendance };
-        // Update edited rows
-        onEditedRowsUpdate([updatedPerson]);
-        return updatedPerson;
-      }
-      return p;
-    });
-    onDataUpdate(newData);
-  };
-
-  const handleGdScoreChange = (
-    key: keyof TableRowData['gdScore'],
-    value: string
-  ) => {
-    const newData = allData.map(p => {
-      if (p.id === person.id) {
-        const newGdScore = { ...p.gdScore, [key]: parseInt(value) || 0 };
-        const updatedPerson = {
-          ...p,
-          gdScore: newGdScore,
-          total: computeTotal({ ...p, gdScore: newGdScore }),
-        };
-        onEditedRowsUpdate([updatedPerson]);
-        return updatedPerson;
-      }
-      return p;
-    });
-    onDataUpdate(newData);
-  };
-
-  const handleBonusScoreChange = (
-    key: keyof TableRowData['bonusScore'],
-    value: string
-  ) => {
-    const newData = allData.map(p => {
-      if (p.id === person.id) {
-        const newBonusScore = { ...p.bonusScore, [key]: parseInt(value) || 0 };
-        const updatedPerson = {
-          ...p,
-          bonusScore: newBonusScore,
-          total: computeTotal({ ...p, bonusScore: newBonusScore }),
-        };
-        onEditedRowsUpdate([updatedPerson]);
-        return updatedPerson;
-      }
-      return p;
-    });
-    onDataUpdate(newData);
-  };
-
-  const handleExerciseScoreChange = (
-    key: keyof TableRowData['exerciseScore']
-  ) => {
-    const newData = allData.map(p => {
-      if (p.id === person.id) {
-        const newExerciseScore = {
-          ...p.exerciseScore,
-          [key]: !p.exerciseScore[key],
-        };
-        const updatedPerson = {
-          ...p,
-          exerciseScore: newExerciseScore,
-          total: computeTotal({ ...p, exerciseScore: newExerciseScore }),
-        };
-        onEditedRowsUpdate([updatedPerson]);
-        return updatedPerson;
-      }
-      return p;
-    });
-    onDataUpdate(newData);
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEditStudent(person);
   };
 
   const handleNameRightClick = (
@@ -144,7 +64,7 @@ export const StudentRow: React.FC<StudentRowProps> = ({
   return (
     <tr className="cursor-pointer hover:bg-zinc-50 transition-colors duration-150">
       <td
-        className="cursor-pointer px-6 py-4 whitespace-nowrap"
+        className="cursor-pointer px-8 py-6 whitespace-nowrap"
         onClick={() => onStudentClick(person.name)}
         onContextMenu={handleNameRightClick}
       >
@@ -163,48 +83,39 @@ export const StudentRow: React.FC<StudentRowProps> = ({
         </div>
       </td>
 
-      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+      <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
         <div className="text-sm text-zinc-900">{person.email || '-'}</div>
       </td>
 
       {week > 0 && (
-        <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+        <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
           <div className="text-sm text-zinc-900">{person.group}</div>
         </td>
       )}
 
-      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+      <td className="px-8 py-6 whitespace-nowrap hidden md:table-cell">
         <div className="text-sm text-zinc-500">{person.ta || '-'}</div>
       </td>
 
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 hidden lg:table-cell">
-        <input
-          type="checkbox"
-          checked={person.attendance}
-          disabled={!canEditAttendance}
-          onChange={handleAttendanceChange}
-          className="h-4 w-4 text-orange-600 border-zinc-300 rounded focus:ring-orange-500 disabled:cursor-not-allowed"
-        />
+      <td className="px-8 py-6 whitespace-nowrap text-sm text-zinc-500 hidden lg:table-cell">
+        <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
+          person.attendance
+            ? 'bg-green-100 text-green-800'
+            : 'bg-red-100 text-red-800'
+        }`}>
+          {person.attendance ? 'Present' : 'Absent'}
+        </span>
       </td>
 
       {/* GD Scores */}
       {(['fa', 'fb', 'fc', 'fd'] as const).map(key => (
         <td
           key={key}
-          className="px-3 py-4 whitespace-nowrap text-center text-sm"
+          className="px-4 py-6 whitespace-nowrap text-center text-sm"
         >
-          <select
-            value={person.gdScore[key]}
-            disabled={!canEditFields}
-            onChange={e => handleGdScoreChange(key, e.target.value)}
-            className="bg-orange-200 rounded-md shadow-sm p-1 text-sm focus:ring-orange-500 focus:border-orange-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
-          >
-            {scoreOptions.map(val => (
-              <option key={val} value={val}>
-                {val === 0 ? '-' : val}
-              </option>
-            ))}
-          </select>
+          <span className="text-sm font-medium text-zinc-900">
+            {person.gdScore[key] === 0 ? '-' : person.gdScore[key]}
+          </span>
         </td>
       ))}
 
@@ -212,38 +123,29 @@ export const StudentRow: React.FC<StudentRowProps> = ({
       {(['attempt', 'good', 'followUp'] as const).map(key => (
         <td
           key={key}
-          className="px-3 py-4 whitespace-nowrap text-center text-sm"
+          className="px-4 py-6 whitespace-nowrap text-center text-sm"
         >
-          <select
-            value={person.bonusScore[key]}
-            disabled={!canEditFields}
-            onChange={e => handleBonusScoreChange(key, e.target.value)}
-            className="bg-orange-200 rounded-md shadow-sm p-1 text-sm focus:ring-orange-500 focus:border-orange-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
-          >
-            {scoreOptions.map(val => (
-              <option key={val} value={val}>
-                {val === 0 ? '-' : val}
-              </option>
-            ))}
-          </select>
+          <span className="text-sm font-medium text-zinc-900">
+            {person.bonusScore[key] === 0 ? '-' : person.bonusScore[key]}
+          </span>
         </td>
       ))}
 
       {/* Exercise Scores */}
-      {(['Submitted', 'privateTest', 'goodStructure', 'goodDoc'] as const).map(
+      {(['Submitted', 'privateTest'] as const).map(
         key => (
           <td
             key={key}
-            className="px-3 py-4 whitespace-nowrap text-center text-sm"
+            className="px-4 py-6 whitespace-nowrap text-center text-sm"
           >
-            <div className="flex gap-2">
-              <input
-                type="checkbox"
-                checked={person.exerciseScore[key]}
-                disabled={!canEditFields}
-                onChange={() => handleExerciseScoreChange(key)}
-                className="h-4 w-4 text-orange-600 rounded focus:ring-orange-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
-              />
+            <div className="flex items-center justify-center gap-2">
+              <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
+                person.exerciseScore[key]
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {person.exerciseScore[key] ? '✓' : '✗'}
+              </span>
               {key === 'Submitted' && person.exerciseScore[key] === true && (
                 <svg
                   onClick={() => fetchStudentRepoLink(week, person.name)}
@@ -264,8 +166,18 @@ export const StudentRow: React.FC<StudentRowProps> = ({
       )}
 
       {/* Total Score */}
-      <td className="px-6 py-4 text-center text-sm font-medium text-zinc-700">
+      <td className="px-8 py-6 text-center text-sm font-medium text-zinc-700">
         {person.total}
+      </td>
+
+      {/* Edit Button */}
+      <td className="px-8 py-6 text-center text-sm">
+        <button
+          onClick={handleEditClick}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+        >
+          Edit
+        </button>
       </td>
     </tr>
   );

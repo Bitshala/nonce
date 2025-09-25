@@ -1,8 +1,19 @@
 import React from 'react';
 
+interface Week {
+  id: string;
+  week: number;
+  questions: string[];
+  bonusQuestion: string[];
+  classroomUrl: string;
+  classroomInviteLink: string;
+}
+
 interface TableHeaderProps {
   week: number;
-  onWeekChange: (week: number) => void;
+  selectedWeekId: string;
+  weeks: Week[];
+  onWeekChange: (week: number, weekId: string) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   selectedGroup: string;
@@ -15,9 +26,6 @@ interface TableHeaderProps {
   taOptions: string[];
   totalCount: number | null;
   weeklyData: { week: number; attended: number };
-  isEditing: boolean;
-  onEdit: () => void;
-  onSave: () => void;
   onAddNew: () => void;
   onDownloadCSV: () => void;
   onClearFilters: () => void;
@@ -25,6 +33,9 @@ interface TableHeaderProps {
 }
 
 export const TableHeader: React.FC<TableHeaderProps> = ({
+  week,
+  selectedWeekId,
+  weeks,
   onWeekChange,
   searchTerm,
   onSearchChange,
@@ -38,9 +49,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   taOptions,
   totalCount,
   weeklyData,
-  isEditing,
-  onEdit,
-  onSave,
   onAddNew,
   onDownloadCSV,
   onClearFilters,
@@ -50,13 +58,17 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
     <>
       {/* Week Selection Buttons */}
       <div className="flex gap-4 mb-4 items-center">
-        {[0, 1, 2, 3, 4, 5, 6].map(i => (
+        {weeks.map(weekData => (
           <button
-            key={i}
-            onClick={() => onWeekChange(i)}
-            className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+            key={weekData.id}
+            onClick={() => onWeekChange(weekData.week, weekData.id)}
+            className={`cursor-pointer font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200 ${
+              selectedWeekId === weekData.id
+                ? 'bg-orange-600 text-white'
+                : 'bg-orange-400 hover:bg-orange-500 text-white'
+            }`}
           >
-            Week {i}
+            Week {weekData.week}
           </button>
         ))}
         <button
@@ -148,20 +160,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
           >
             Add New Row
-          </button>
-          <button
-            onClick={onEdit}
-            disabled={isEditing}
-            className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded disabled:opacity-50"
-          >
-            Edit
-          </button>
-          <button
-            onClick={onSave}
-            disabled={!isEditing}
-            className="cursor-pointer px-4 py-2 text-white rounded bg-green-600 hover:bg-green-500 disabled:bg-green-200"
-          >
-            Save
           </button>
           <button
             onClick={onDownloadCSV}

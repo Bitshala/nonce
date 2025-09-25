@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
 import { AddStudentModal } from '../components/table/AddStudentModal';
+import { ScoreEditModal } from '../components/table/ScoreEditModal';
 import { TableContextMenu } from '../components/table/TableContextMenu';
 
 import { computeTotal } from '../utils/calculations';
@@ -39,9 +40,8 @@ interface ApiStudentEntry {
 const TableView: React.FC = () => {
   // --- STATE MANAGEMENT ---
   const [data, setData] = useState<TableRowData[]>([]);
-  const [editedRows, setEditedRows] = useState<TableRowData[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
   const [week, setWeek] = useState(0);
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('');
   
   // Get cohort name from localStorage
   const cohort_name = localStorage.getItem('selected_cohort_db_path') || 'lbtcl_cohort.db';
@@ -56,6 +56,8 @@ const TableView: React.FC = () => {
     'All' | 'Present' | 'Absent'
   >('All');
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showScoreEditModal, setShowScoreEditModal] = useState(false);
+  const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<TableRowData | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -73,76 +75,94 @@ const TableView: React.FC = () => {
     () => ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'],
     []
   );
-  const canEditFields = isEditing && week !== 0;
-  const canEditAttendance = isEditing;
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
   // --- DATA FETCHING ---
-  const fetchWeeklyData = useCallback((selectedWeek: number) => {
-    fetch(`${baseUrl}/weekly_data/${cohort_name}/${selectedWeek}`, {
-      headers: { Authorization: `${AUTH_TOKEN}` },
+
+  const cohortData = JSON.parse(localStorage.getItem('selected_cohort_full') || '{}');
+  const weeks = useMemo(() => cohortData.weeks || [], [cohortData.weeks]);
+  const currentWeekId = selectedWeekId || (weeks.length > 0 ? weeks[0].id : '');
+  const token = localStorage.getItem('user_session_token');
+
+  // Initialize selectedWeekId if not set
+  useEffect(() => {
+    if (!selectedWeekId && weeks.length > 0) {
+      setSelectedWeekId(weeks[0].id);
+    }
+  }, [selectedWeekId, weeks]);
+
+  const fetchWeeklyData = useCallback(() => {
+    fetch(`http://localhost:3000/scores/cohort/${cohortData.id}/week/${currentWeekId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`, // IMPORTANT: Bearer prefix
+          Accept: 'application/json',
+        },
     })
-      .then(response => {
-        if (!response.ok) {
-          return response.text().then(text => {
-            let errorDetail = text;
-            try {
-              const jsonError = JSON.parse(text);
-              errorDetail = jsonError.message || text;
-            } catch {
-              /* ignore */
-            }
-            throw new Error(
-              `Server error: ${response.status} - ${errorDetail}`
-            );
-          });
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Error fetching data: ${res.statusText}`);
         }
-        return response.json();
+        return res.json();
       })
-      .then((apiData: ApiStudentEntry[]) => {
-        const formattedData = apiData.map((person, index) => {
-          const gdScore = {
-            fa: person.fa || 0,
-            fb: person.fb || 0,
-            fc: person.fc || 0,
-            fd: person.fd || 0,
-          };
-          const bonusScore = {
-            attempt: person.bonus_attempt || 0,
-            good: person.bonus_answer_quality || 0,
-            followUp: person.bonus_follow_up || 0,
-          };
-          const exerciseScore = {
-            Submitted: person.exercise_submitted === 'yes',
-            privateTest: person.exercise_test_passing === 'yes',
-            goodStructure: person.exercise_good_structure === 'yes',
-            goodDoc: person.exercise_good_documentation === 'yes',
-          };
-          const rowDataShape: Omit<TableRowData, 'id' | 'total'> = {
-            name: person.name,
-            email: person.mail || '',
-            group: person.group_id,
-            ta: person.ta || 'N/A',
-            attendance: person.attendance === 'yes',
-            gdScore,
-            bonusScore,
-            exerciseScore,
-            week: selectedWeek,
-          };
-          const rowData: TableRowData = {
-            id: index + 1,
-            ...rowDataShape,
-            total: computeTotal(rowDataShape),
-          };
-          return rowData;
-        });
-        setData(formattedData);
+      .then(apiResponse => {
+        if (apiResponse.scores && Array.isArray(apiResponse.scores)) {
+          const transformedData: TableRowData[] = apiResponse.scores.map((score: {
+            weekId: string;
+            groupDiscussionScores?: {
+              attendance?: boolean;
+              communicationScore?: number;
+              depthOfAnswerScore?: number;
+              technicalBitcoinFluencyScore?: number;
+              engagementScore?: number;
+              isBonusAttempted?: boolean;
+              bonusAnswerScore?: number;
+              bonusFollowupScore?: number;
+            };
+            exerciseScores?: {
+              isSubmitted?: boolean;
+              isPassing?: boolean;
+              hasGoodDocumentation?: boolean;
+              hasGoodStructure?: boolean;
+            };
+            totalScore?: number;
+            name?: string;
+            discordGlobalName?: string;
+            discordUsername?: string;
+          }, index: number) => ({
+            id: apiResponse.scores[0].userId || index, // Fallback to index if userId is missing
+            name: score.name || score.discordGlobalName || score.discordUsername || 'Unknown',
+            email: '', // Not provided in API response
+            group: 'Group 0', // Default, would need to come from another field
+            ta: 'N/A', // Not provided in API response
+            attendance: score.groupDiscussionScores?.attendance || false,
+            gdScore: {
+              fa: score.groupDiscussionScores?.communicationScore || 0,
+              fb: score.groupDiscussionScores?.depthOfAnswerScore || 0,
+              fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore || 0,
+              fd: score.groupDiscussionScores?.engagementScore || 0,
+            },
+            bonusScore: {
+              attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
+              good: score.groupDiscussionScores?.bonusAnswerScore || 0,
+              followUp: score.groupDiscussionScores?.bonusFollowupScore || 0,
+            },
+            exerciseScore: {
+              Submitted: score.exerciseScores?.isSubmitted || false,
+              privateTest: score.exerciseScores?.isPassing || false,
+              goodDoc: score.exerciseScores?.hasGoodDocumentation || false,
+              goodStructure: score.exerciseScores?.hasGoodStructure || false,
+            },
+            week: week,
+            total: score.totalScore || 0,
+          }));
+          setData(transformedData);
+        }
       })
-      .catch(error => {
-        console.error(`Error fetching data for week ${selectedWeek}:`, error);
+      .catch(err => {
+        console.error('Error fetching weekly data:', err);
         setData([]);
       });
-  }, []);
+  }, [cohortData.id, currentWeekId, token, week]);
 
   const getWeeklyData = useCallback((week: number) => {
     fetch(`${baseUrl}/attendance/weekly_counts/${week}`)
@@ -165,10 +185,10 @@ const TableView: React.FC = () => {
         console.error('Error fetching weekly attendance:', err);
         setWeeklyData({ week: week, attended: 0 });
       });
-  }, []);
+  }, [baseUrl]);
 
   useEffect(() => {
-    fetchWeeklyData(week);
+    fetchWeeklyData();
     getWeeklyData(week);
   }, [fetchWeeklyData, getWeeklyData, week]);
 
@@ -243,11 +263,10 @@ const TableView: React.FC = () => {
   ]);
 
   // --- EVENT HANDLERS ---
-  const handleWeekChange = (newWeek: number) => {
+  const handleWeekChange = (newWeek: number, weekId: string) => {
     setWeek(newWeek);
-    setIsEditing(false);
+    setSelectedWeekId(weekId);
     setContextMenu({ visible: false, x: 0, y: 0, targetId: null });
-    setEditedRows([]);
   };
 
   const handleStudentClick = (studentName: string) => {
@@ -255,67 +274,59 @@ const TableView: React.FC = () => {
     navigate(`/detailPage?student=${encodeURIComponent(studentName)}`);
   };
 
-  const handleDataUpdate = (updatedData: TableRowData[]) => {
-    setData(updatedData);
+  const handleEditStudent = (student: TableRowData) => {
+    setSelectedStudentForEdit(student);
+    setShowScoreEditModal(true);
   };
 
-  const handleEditedRowsUpdate = (updatedRows: TableRowData[]) => {
-    setEditedRows(prevEditedRows => {
-      const existingIds = new Set(prevEditedRows.map(row => row.id));
-      const newRows = updatedRows.filter(row => !existingIds.has(row.id));
-      const updatedExistingRows = prevEditedRows.map(existingRow => {
-        const updatedRow = updatedRows.find(row => row.id === existingRow.id);
-        return updatedRow || existingRow;
-      });
-      return [...updatedExistingRows, ...newRows];
-    });
-    setIsEditing(true);
-  };
+  const handleScoreUpdate = (updatedStudent: TableRowData) => {
+    if (!selectedStudentForEdit) return;
 
-  const handleSave = () => {
-    const payload = editedRows.map(p => ({
-      name: p.name,
-      mail: p.email,
-      attendance: p.attendance ? 'yes' : 'no',
-      week: p.week ?? week,
-      group_id: p.group,
-      ta: p.ta === 'N/A' ? undefined : p.ta,
-      fa: p.gdScore.fa,
-      fb: p.gdScore.fb,
-      fc: p.gdScore.fc,
-      fd: p.gdScore.fd,
-      bonus_attempt: p.bonusScore.attempt,
-      bonus_answer_quality: p.bonusScore.good,
-      bonus_follow_up: p.bonusScore.followUp,
-      exercise_submitted: p.exerciseScore.Submitted ? 'yes' : 'no',
-      exercise_test_passing: p.exerciseScore.privateTest ? 'yes' : 'no',
-      exercise_good_documentation: p.exerciseScore.goodDoc ? 'yes' : 'no',
-      exercise_good_structure: p.exerciseScore.goodStructure ? 'yes' : 'no',
-      total: computeTotal(p),
-    }));
+    const payload = {
+      attendance: updatedStudent.attendance,
+      communicationScore: updatedStudent.gdScore.fa,
+      depthOfAnswerScore: updatedStudent.gdScore.fb,
+      technicalBitcoinFluencyScore: updatedStudent.gdScore.fc,
+      engagementScore: updatedStudent.gdScore.fd,
+      isBonusAttempted: updatedStudent.bonusScore.attempt > 0,
+      bonusAnswerScore: updatedStudent.bonusScore.good,
+      bonusFollowupScore: updatedStudent.bonusScore.followUp,
+      isSubmitted: updatedStudent.exerciseScore.Submitted,
+      isPassing: updatedStudent.exerciseScore.privateTest,
+    };
 
-    fetch(`${baseUrl}/weekly_data/${cohort_name}/${week}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    // Extract userId from the selected student data
+    const userId = selectedStudentForEdit.id; // This should be the actual userId from the API
+
+    fetch(`http://localhost:3000/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(payload),
     })
       .then(r => {
-        if (!r.ok) {
+        if (r.status === 200) {
+          // Success - update local data
+          setData(prevData =>
+            prevData.map(p =>
+              p.id === updatedStudent.id ? { ...updatedStudent, total: computeTotal(updatedStudent) } : p
+            )
+          );
+          setShowScoreEditModal(false);
+          setSelectedStudentForEdit(null);
+    
+        } else {
+          // Error - show error message
           return r.text().then(text => {
-            throw new Error(text || r.statusText);
+            throw new Error(text || `Error ${r.status}: ${r.statusText}`);
           });
         }
-        setIsEditing(false);
-        setEditedRows([]);
-        getWeeklyData(week);
-        return r.json();
       })
       .catch(e => {
-        console.error('Save failed', e);
-        if (e.message && e.message.includes('No student data provided')) {
-          console.log('No changes to save.');
-          setIsEditing(false);
-        }
+        console.error('Score update failed', e);
+        alert(`Failed to update scores: ${e.message}`);
       });
   };
 
@@ -340,12 +351,6 @@ const TableView: React.FC = () => {
       exercise_test_passing: studentData.exerciseScore.privateTest
         ? 'yes'
         : 'no',
-      exercise_good_documentation: studentData.exerciseScore.goodDoc
-        ? 'yes'
-        : 'no',
-      exercise_good_structure: studentData.exerciseScore.goodStructure
-        ? 'yes'
-        : 'no',
       total: computeTotal(studentData),
     };
 
@@ -356,9 +361,8 @@ const TableView: React.FC = () => {
     })
       .then(r => {
         if (!r.ok) throw new Error(r.statusText);
-        fetchWeeklyData(week);
+        fetchWeeklyData();
         setShowAddStudentModal(false);
-        setIsEditing(false);
         getWeeklyData(week);
         return r.text();
       })
@@ -388,12 +392,6 @@ const TableView: React.FC = () => {
       bonus_follow_up: rowToDelete.bonusScore.followUp,
       exercise_submitted: rowToDelete.exerciseScore.Submitted ? 'yes' : 'no',
       exercise_test_passing: rowToDelete.exerciseScore.privateTest
-        ? 'yes'
-        : 'no',
-      exercise_good_documentation: rowToDelete.exerciseScore.goodDoc
-        ? 'yes'
-        : 'no',
-      exercise_good_structure: rowToDelete.exerciseScore.goodStructure
         ? 'yes'
         : 'no',
       total: computeTotal(rowToDelete),
@@ -492,6 +490,8 @@ const TableView: React.FC = () => {
 
         <TableHeader
           week={week}
+          selectedWeekId={selectedWeekId}
+          weeks={weeks}
           onWeekChange={handleWeekChange}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -505,9 +505,6 @@ const TableView: React.FC = () => {
           taOptions={taOptions}
           totalCount={totalCount}
           weeklyData={weeklyData}
-          isEditing={isEditing}
-          onEdit={() => setIsEditing(true)}
-          onSave={handleSave}
           onAddNew={() => setShowAddStudentModal(true)}
           onDownloadCSV={handleDownloadCSV}
           onClearFilters={() => {
@@ -522,13 +519,10 @@ const TableView: React.FC = () => {
         <StudentTableGrid
           data={processedData}
           week={week}
-          canEditFields={canEditFields}
-          canEditAttendance={canEditAttendance}
           sortConfig={sortConfig}
           onSort={setSortConfig}
           onStudentClick={handleStudentClick}
-          onDataUpdate={handleDataUpdate}
-          onEditedRowsUpdate={handleEditedRowsUpdate}
+          onEditStudent={handleEditStudent}
           onContextMenu={setContextMenu}
         />
 
@@ -538,6 +532,19 @@ const TableView: React.FC = () => {
             week={week}
             onSubmit={handleAddStudent}
             onClose={() => setShowAddStudentModal(false)}
+          />
+        )}
+
+        {showScoreEditModal && selectedStudentForEdit && (
+          <ScoreEditModal
+            student={selectedStudentForEdit}
+            cohortId={cohortData.id}
+            weekId={currentWeekId}
+            onSubmit={handleScoreUpdate}
+            onClose={() => {
+              setShowScoreEditModal(false);
+              setSelectedStudentForEdit(null);
+            }}
           />
         )}
 

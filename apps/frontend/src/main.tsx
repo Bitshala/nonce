@@ -3,11 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 import Login from './pages/Login.tsx';
+import OAuthCallback from './pages/OAuthCallback.tsx';
 import TableView from './pages/TableView.tsx';
 import { CohortSelection } from './pages/CohortSelection.tsx';
 import { ResultPage } from './pages/ResultPage.tsx';
 // import StudentDetailPage from './StudentsPage.tsx';
-import ProtectedRoute from './components/ProtectedRoute.tsx';
 import StudentDetailPage from './pages/StudentDetailPage.tsx';
 
 import Instructions from './pages/Students/Instructions.tsx';
@@ -24,6 +24,7 @@ import InstructionsWeekTwo from './pages/Students/InstructionsWeekTwo.tsx';
 import InstructionsWeekThree from './pages/Students/InstructionsWeekThree.tsx';
 import InstructionsWeekFour from './pages/Students/InstructionsWeekFour.tsx';
 import InstructionsWeekFive from './pages/Students/InstructionsWeekFive.tsx';
+import StudentProfileData from './components/student/StudentProfileData.tsx';
 
 const router = createBrowserRouter([
   {
@@ -31,12 +32,16 @@ const router = createBrowserRouter([
     element: <Login />,
   },
   {
+    path: '/callback',
+    element: <OAuthCallback />,
+  },
+  {
     path: '/select',
-    element: <ProtectedRoute element={<CohortSelection />} />,
+    element: <CohortSelection />,
   },
   {
     path: '/admin',
-    element: <ProtectedRoute element={<TableView />} />,
+    element: <TableView />,
   },
   {
     path: '/detailPage',
@@ -44,11 +49,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/result',
-    element: <ProtectedRoute element={<ResultPage />} />,
+    element: <ResultPage />,
   },
     {
     path: '/feedback',
-    element: <ProtectedRoute element={<FeedbackTable />} />,
+    element: <FeedbackTable />,
   },
      {
     path: '/instructions',
@@ -74,7 +79,10 @@ const router = createBrowserRouter([
     path: '/instructions/5',
     element: <InstructionsWeekFive />,
   },
-  
+  {
+    path:'/me',
+    element:<StudentProfileData/>
+  },
   {
     path: '/participants',
     element: <CohortParticipantLogin />,

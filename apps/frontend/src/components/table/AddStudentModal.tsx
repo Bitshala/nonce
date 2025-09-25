@@ -76,9 +76,9 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className="bg-white border-zinc-300 text-zinc-800 rounded-lg shadow-xl flex flex-col w-full max-w-2xl max-h-90vh">
-        <div className="flex justify-between items-center p-4 border-b border-zinc-200">
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 p-4">
+      <div className="bg-white border-zinc-300 text-zinc-800 rounded-xl shadow-2xl flex flex-col w-full max-w-4xl max-h-[90vh] mx-4">
+        <div className="flex justify-between items-center p-6 border-b border-zinc-200">
           <h3 className="text-xl font-semibold">
             Add New Student (Week {week})
           </h3>
@@ -91,7 +91,7 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
           </button>
         </div>
         
-        <div className="p-6 space-y-4 overflow-y-auto">
+        <div className="p-8 space-y-6 overflow-y-auto">
           {/* Basic Info */}
           <div>
             <label htmlFor="form-name" className="block text-sm font-medium text-zinc-700">
@@ -238,8 +238,8 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
             <legend className="text-sm font-medium text-zinc-700 px-1">
               Exercise Scores
             </legend>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 mt-2">
-              {(Object.keys(newStudent.exerciseScore) as Array<keyof TableRowData['exerciseScore']>).map(key => (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+              {(['Submitted', 'privateTest'] as const).map(key => (
                 <div key={key} className="flex items-center">
                   <input
                     type="checkbox"
@@ -251,9 +251,10 @@ export const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   />
                   <label
                     htmlFor={`form-exerciseScore.${key}`}
-                    className="ml-2 block text-sm text-zinc-900 capitalize"
+                    className="ml-2 block text-sm text-zinc-900"
                   >
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                    {key === 'Submitted' && 'Submitted'}
+                    {key === 'privateTest' && 'Tests Passing'}
                   </label>
                 </div>
               ))}
