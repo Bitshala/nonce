@@ -11,8 +11,6 @@ interface ScoreEditModalProps {
 
 export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
   student,
-  cohortId,
-  weekId,
   onSubmit,
   onClose,
 }) => {

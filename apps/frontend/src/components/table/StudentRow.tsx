@@ -1,5 +1,5 @@
 import React from 'react';
-import { computeTotal } from '../../utils/calculations';
+
 import type { TableRowData } from '../../types/student';
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 

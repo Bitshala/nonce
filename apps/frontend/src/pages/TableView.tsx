@@ -10,32 +10,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 import { computeTotal } from '../utils/calculations';
 import type { TableRowData } from '../types/student';
 
-const AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN;
 
-// Function to get cohort name from database path
-
-
-// API interface for the table view
-interface ApiStudentEntry {
-  name: string;
-  mail?: string;
-  group_id: string;
-  ta?: string;
-  attendance?: string;
-  fa?: number;
-  fb?: number;
-  fc?: number;
-  fd?: number;
-  bonus_attempt?: number;
-  bonus_answer_quality?: number;
-  bonus_follow_up?: number;
-  exercise_submitted?: string;
-  exercise_test_passing?: string;
-  exercise_good_documentation?: string;
-  exercise_good_structure?: string;
-  week: number;
-  total?: number;
-}
 
 const TableView: React.FC = () => {
   // --- STATE MANAGEMENT ---

@@ -33,7 +33,6 @@ interface TableHeaderProps {
 }
 
 export const TableHeader: React.FC<TableHeaderProps> = ({
-  week,
   selectedWeekId,
   weeks,
   onWeekChange,
