@@ -44,10 +44,11 @@ export const getRedirectPathForToken = async (token: string) => {
     const userData = await response.json();
     console.log('User Data:', userData);
     console.log('User Data:', userData.role);
-    if(userData.role === 'TEACHING_ASSISTANT') {
-      return '/admin';
+    if(userData.role === 'TEACHING_ASSISTANT' || userData.role === 'ADMIN'
+    ) {
+      return '/select';
     } else if (userData.role === '') {
-      return '/admin';
+      return '/me';
     }
 
   } catch (error) {
