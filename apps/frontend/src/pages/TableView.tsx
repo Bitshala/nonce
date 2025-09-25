@@ -67,7 +67,7 @@ const TableView: React.FC = () => {
   }, [selectedWeekId, weeks]);
 
   const fetchWeeklyData = useCallback(() => {
-    fetch(`http://localhost:3000/scores/cohort/${cohortData.id}/week/${currentWeekId}`, {
+    fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/scores/cohort/${cohortData.id}/week/${currentWeekId}`, {
         headers: {
           Authorization: `Bearer ${token}`, // IMPORTANT: Bearer prefix
           Accept: 'application/json',
@@ -273,7 +273,7 @@ const TableView: React.FC = () => {
     // Extract userId from the selected student data
     const userId = selectedStudentForEdit.id; // This should be the actual userId from the API
 
-    fetch(`http://localhost:3000/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, {
+    fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

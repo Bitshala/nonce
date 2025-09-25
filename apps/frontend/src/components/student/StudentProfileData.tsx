@@ -75,7 +75,7 @@ const StudentProfileData: React.FC = () => {
 
   const fetchCohorts = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:3000/cohorts`, {
+      const response = await fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/cohorts`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ const StudentProfileData: React.FC = () => {
   const handleJoinCohort = async (cohortId: string) => {
     setIsJoining(cohortId);
     try {
-      const response = await fetch(`http://localhost:3000/cohorts/${cohortId}/join`, {
+      const response = await fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/cohorts/${cohortId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -61,7 +61,7 @@ export const CohortSelection = () => {
     setError(null);
     console.log('Fetching cohorts with token:', token);
     try {
-      const url = 'http://localhost:3000/cohorts';
+      const url = 'https://undedicated-clarine-peskily.ngrok-free.dev/cohorts';
       const response = await fetch(url, {
         method: 'GET',
         headers: {
