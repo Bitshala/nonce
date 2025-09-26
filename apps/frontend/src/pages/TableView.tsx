@@ -9,6 +9,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 
 import { computeTotal } from '../utils/calculations';
 import type { TableRowData } from '../types/student';
+import apiClient from '../services/api';
 
 
 
@@ -57,7 +58,7 @@ const TableView: React.FC = () => {
   const cohortData = JSON.parse(localStorage.getItem('selected_cohort_full') || '{}');
   const weeks = useMemo(() => cohortData.weeks || [], [cohortData.weeks]);
   const currentWeekId = selectedWeekId || (weeks.length > 0 ? weeks[0].id : '');
-  const token = localStorage.getItem('user_session_token');
+
 
   // Initialize selectedWeekId if not set
   useEffect(() => {
@@ -66,78 +67,68 @@ const TableView: React.FC = () => {
     }
   }, [selectedWeekId, weeks]);
 
-  const fetchWeeklyData = useCallback(() => {
-    fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/scores/cohort/${cohortData.id}/week/${currentWeekId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`, // IMPORTANT: Bearer prefix
-          Accept: 'application/json',
-        },
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Error fetching data: ${res.statusText}`);
-        }
-        return res.json();
-      })
-      .then(apiResponse => {
-        if (apiResponse.scores && Array.isArray(apiResponse.scores)) {
-          const transformedData: TableRowData[] = apiResponse.scores.map((score: {
-            weekId: string;
-            groupDiscussionScores?: {
-              attendance?: boolean;
-              communicationScore?: number;
-              depthOfAnswerScore?: number;
-              technicalBitcoinFluencyScore?: number;
-              engagementScore?: number;
-              isBonusAttempted?: boolean;
-              bonusAnswerScore?: number;
-              bonusFollowupScore?: number;
-            };
-            exerciseScores?: {
-              isSubmitted?: boolean;
-              isPassing?: boolean;
-              hasGoodDocumentation?: boolean;
-              hasGoodStructure?: boolean;
-            };
-            totalScore?: number;
-            name?: string;
-            discordGlobalName?: string;
-            discordUsername?: string;
-          }, index: number) => ({
-            id: apiResponse.scores[0].userId || index, // Fallback to index if userId is missing
-            name: score.name || score.discordGlobalName || score.discordUsername || 'Unknown',
-            email: '', // Not provided in API response
-            group: 'Group 0', // Default, would need to come from another field
-            ta: 'N/A', // Not provided in API response
-            attendance: score.groupDiscussionScores?.attendance || false,
-            gdScore: {
-              fa: score.groupDiscussionScores?.communicationScore || 0,
-              fb: score.groupDiscussionScores?.depthOfAnswerScore || 0,
-              fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore || 0,
-              fd: score.groupDiscussionScores?.engagementScore || 0,
-            },
-            bonusScore: {
-              attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
-              good: score.groupDiscussionScores?.bonusAnswerScore || 0,
-              followUp: score.groupDiscussionScores?.bonusFollowupScore || 0,
-            },
-            exerciseScore: {
-              Submitted: score.exerciseScores?.isSubmitted || false,
-              privateTest: score.exerciseScores?.isPassing || false,
-              goodDoc: score.exerciseScores?.hasGoodDocumentation || false,
-              goodStructure: score.exerciseScores?.hasGoodStructure || false,
-            },
-            week: week,
-            total: score.totalScore || 0,
-          }));
-          setData(transformedData);
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching weekly data:', err);
-        setData([]);
-      });
-  }, [cohortData.id, currentWeekId, token, week]);
+  const fetchWeeklyData = useCallback(async () => {
+    try {
+      const response = await apiClient.get(`/scores/cohort/${cohortData.id}/week/${currentWeekId}`);
+      const apiResponse = response.data;
+
+      if (apiResponse.scores && Array.isArray(apiResponse.scores)) {
+        const transformedData: TableRowData[] = apiResponse.scores.map((score: {
+          weekId: string;
+          groupDiscussionScores?: {
+            attendance?: boolean;
+            communicationScore?: number;
+            depthOfAnswerScore?: number;
+            technicalBitcoinFluencyScore?: number;
+            engagementScore?: number;
+            isBonusAttempted?: boolean;
+            bonusAnswerScore?: number;
+            bonusFollowupScore?: number;
+          };
+          exerciseScores?: {
+            isSubmitted?: boolean;
+            isPassing?: boolean;
+            hasGoodDocumentation?: boolean;
+            hasGoodStructure?: boolean;
+          };
+          totalScore?: number;
+          name?: string;
+          discordGlobalName?: string;
+          discordUsername?: string;
+        }, index: number) => ({
+          id: apiResponse.scores[0].userId || index, // Fallback to index if userId is missing
+          name: score.name || score.discordGlobalName || score.discordUsername || 'Unknown',
+          email: '', // Not provided in API response
+          group: 'Group 0', // Default, would need to come from another field
+          ta: 'N/A', // Not provided in API response
+          attendance: score.groupDiscussionScores?.attendance || false,
+          gdScore: {
+            fa: score.groupDiscussionScores?.communicationScore || 0,
+            fb: score.groupDiscussionScores?.depthOfAnswerScore || 0,
+            fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore || 0,
+            fd: score.groupDiscussionScores?.engagementScore || 0,
+          },
+          bonusScore: {
+            attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
+            good: score.groupDiscussionScores?.bonusAnswerScore || 0,
+            followUp: score.groupDiscussionScores?.bonusFollowupScore || 0,
+          },
+          exerciseScore: {
+            Submitted: score.exerciseScores?.isSubmitted || false,
+            privateTest: score.exerciseScores?.isPassing || false,
+            goodDoc: score.exerciseScores?.hasGoodDocumentation || false,
+            goodStructure: score.exerciseScores?.hasGoodStructure || false,
+          },
+          week: week,
+          total: score.totalScore || 0,
+        }));
+        setData(transformedData);
+      }
+    } catch (err) {
+      console.error('Error fetching weekly data:', err);
+      setData([]);
+    }
+  }, [cohortData.id, currentWeekId, week]);
 
   const getWeeklyData = useCallback((week: number) => {
     fetch(`${baseUrl}/attendance/weekly_counts/${week}`)
@@ -273,14 +264,7 @@ const TableView: React.FC = () => {
     // Extract userId from the selected student data
     const userId = selectedStudentForEdit.id; // This should be the actual userId from the API
 
-    fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    })
+    apiClient.patch(`/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, payload)
       .then(r => {
         if (r.status === 200) {
           // Success - update local data
@@ -294,8 +278,8 @@ const TableView: React.FC = () => {
     
         } else {
           // Error - show error message
-          return r.text().then(text => {
-            throw new Error(text || `Error ${r.status}: ${r.statusText}`);
+          return Promise.resolve(r.data).then(data => {
+            throw new Error(data?.message || `Error ${r.status}: ${r.statusText}`);
           });
         }
       })

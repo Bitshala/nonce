@@ -1,5 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+import apiClient from './api';
+
 export const redirectToDiscordAuth = (role?: string) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://undedicated-clarine-peskily.ngrok-free.dev';
   const authPath = role ? `/auth/discord/${role}` : '/auth/discord';
@@ -28,20 +30,13 @@ export const handleDiscordCallback = async (
 
 export const getRedirectPathForToken = async (token: string) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
+    const response = await apiClient.get('/users/me', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true'
+        'Authorization': `Bearer ${token}`
       }
     });
 
-    if (!response.ok) {
-      console.error('Failed to fetch user data:', response.status, response.statusText);
-      return '/login';
-    }
-
-    const userData = await response.json();
+    const userData = response.data;
     console.log('User Data:', userData);
     console.log('User Data:', userData.role);
     if(userData.role === 'TEACHING_ASSISTANT' || userData.role === 'ADMIN'

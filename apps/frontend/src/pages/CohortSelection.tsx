@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CohortCard from '../components/CohortCard';
+import apiClient from '../services/api';
 
 type ApiCohort = {
   id: string;
@@ -61,21 +62,8 @@ export const CohortSelection = () => {
     setError(null);
     console.log('Fetching cohorts with token:', token);
     try {
-      const url = 'https://undedicated-clarine-peskily.ngrok-free.dev/cohorts';
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`, // IMPORTANT: Bearer prefix
-          Accept: 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(`HTTP ${response.status} ${response.statusText} ${text}`);
-      }
-
-      const result = await response.json();
+      const response = await apiClient.get('/cohorts');
+      const result = response.data;
 
       // Accept either { records: [...] } or { success: true, cohorts: [...] }
       const list: ApiCohort[] = Array.isArray(result?.records)

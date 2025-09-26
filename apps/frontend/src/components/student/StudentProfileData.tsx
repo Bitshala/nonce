@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import CohortCard from '../CohortCard';
-import { getApiBaseUrl } from '../../services/auth';
+import apiClient from '../../services/api';
 
 interface UserProfile {
   id: string;
@@ -37,10 +37,6 @@ interface Cohort {
   }>;
 }
 
-interface CohortsResponse {
-  totalRecords: number;
-  records: Cohort[];
-}
 
 const StudentProfileData: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -49,48 +45,29 @@ const StudentProfileData: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isJoining, setIsJoining] = useState<string | null>(null);
 
-  const token = localStorage.getItem('user_session_token');
-  const apiBaseUrl = getApiBaseUrl();
+ 
 
   const fetchProfileData = useCallback(async () => {
     try {
-      const response = await fetch(`${apiBaseUrl}/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      const response = await apiClient.get('/users/me');
 
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data);
-      }
+      setProfile(response.data);
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [apiBaseUrl, token]);
+  }, []);
 
   const fetchCohorts = useCallback(async () => {
     try {
-      const response = await fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/cohorts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      const response = await apiClient.get('/cohorts');
       console.log(response);
-      if (response.ok) {
-        const data: CohortsResponse = await response.json();
-        setCohorts(data.records);
-      }
+      setCohorts(response.data.records);
     } catch (error) {
       console.error('Error fetching cohorts:', error);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchProfileData();
@@ -143,26 +120,10 @@ const StudentProfileData: React.FC = () => {
 
       console.log('Sending update payload:', updatePayload);
 
-      const response = await fetch(`${apiBaseUrl}/users/me`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify(updatePayload)
-      });
-
-      if (response.ok) {
-        const updatedData = await response.json();
-        console.log('Received updated data:', updatedData);
-        setProfile(updatedData);
-        alert('Profile updated successfully!');
-      } else {
-        const errorData = await response.text();
-        console.error('Update failed:', response.status, errorData);
-        alert('Failed to update profile');
-      }
+      const response = await apiClient.patch('/users/me', updatePayload);
+      console.log('Received updated data:', response.data);
+      setProfile(response.data);
+      alert('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Error updating profile');
@@ -174,21 +135,9 @@ const StudentProfileData: React.FC = () => {
   const handleJoinCohort = async (cohortId: string) => {
     setIsJoining(cohortId);
     try {
-      const response = await fetch(`https://undedicated-clarine-peskily.ngrok-free.dev/cohorts/${cohortId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
-
-      if (response.ok) {
-        alert('Successfully joined cohort!');
-        fetchCohorts();
-      } else {
-        alert('Failed to join cohort');
-      }
+      await apiClient.post(`/cohorts/${cohortId}/join`);
+      alert('Successfully joined cohort!');
+      fetchCohorts();
     } catch (error) {
       console.error('Error joining cohort:', error);
       alert('Error joining cohort');
