@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CohortCard from '../components/CohortCard';
 import apiClient from '../services/api';
@@ -47,6 +47,11 @@ export const CohortSelection = () => {
   const [error, setError] = useState<string | null>(null);
 
   // strip ?token from URL if present (kept from your original)
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get('session_id');
+  localStorage.setItem('user_session_token', token ?? '');
+  console.log('Current URL:', url.href);
+  console.log('Session token:', token);
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has('token')) {
@@ -55,7 +60,6 @@ export const CohortSelection = () => {
     }
   }, []);
 
-  const token = useMemo(() => localStorage.getItem('user_session_token') ?? '', []);
 
   const getCohortsFromApi = async () => {
     setLoading(true);

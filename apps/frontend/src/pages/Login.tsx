@@ -1,20 +1,8 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import {
   redirectToDiscordAuth,
-  handleDiscordCallback,
 } from '../services/auth';
 
 function Login() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Handle redirect from Discord with token
-  useEffect(() => {
-    handleDiscordCallback(location, navigate);
-  }, [location, navigate]);
-
-
   return (
     <div className="min-h-screen bg-zinc-900 flex items-center justify-center font-mono">
       <div className="w-full max-w-md bg-zinc-800 rounded-2xl border border-zinc-700 overflow-hidden shadow-2xl">

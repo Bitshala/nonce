@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { handleDiscordCallback } from '../services/auth';
+// import { handleDiscordCallback } from '../services/auth';
 
 function OAuthCallback() {
   const navigate = useNavigate();
@@ -8,12 +8,13 @@ function OAuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const success = await handleDiscordCallback(location, navigate);
+      console.log("stop")
+      // const success = await handleDiscordCallback(location, navigate);
 
-      if (!success) {
-        console.error('Failed to handle Discord callback');
-        navigate('/', { replace: true });
-      }
+      // if (!success) {
+      //   console.error('Failed to handle Discord callback');
+      //   navigate('/', { replace: true });
+      // }
     };
 
     handleCallback();
