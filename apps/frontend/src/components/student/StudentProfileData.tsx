@@ -44,7 +44,7 @@ const StudentProfileData: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isJoining, setIsJoining] = useState<string | null>(null);
-
+  const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
  
 
   const fetchProfileData = useCallback(async () => {
@@ -59,6 +59,8 @@ const StudentProfileData: React.FC = () => {
     }
   }, []);
 
+  
+
   const fetchCohorts = useCallback(async () => {
     try {
       const response = await apiClient.get('/cohorts');
@@ -69,10 +71,27 @@ const StudentProfileData: React.FC = () => {
     }
   }, []);
 
+ 
+   const fetchJoinedCohorts = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/scores/me');
+
+
+      const joinedCohortIds = response.data.cohorts.map((record: any) => record.cohortId);     
+      setJoinedCohorts(joinedCohortIds);
+      console.log('Joined cohorts state:', joinedCohortIds);
+
+    } catch (error) {
+      console.error('Error fetching joined cohorts:', error);
+    }
+  }, []);
+
+  console.log('Joined cohorts:', joinedCohorts);
   useEffect(() => {
     fetchProfileData();
     fetchCohorts();
-  }, [fetchProfileData, fetchCohorts]);
+    fetchJoinedCohorts();
+  }, [fetchProfileData, fetchCohorts, fetchJoinedCohorts]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -138,6 +157,7 @@ const StudentProfileData: React.FC = () => {
       await apiClient.post(`/cohorts/${cohortId}/join`);
       alert('Successfully joined cohort!');
       fetchCohorts();
+      fetchJoinedCohorts();
     } catch (error) {
       console.error('Error joining cohort:', error);
       alert('Error joining cohort');
@@ -382,14 +402,22 @@ const StudentProfileData: React.FC = () => {
         </form>
 
         {/* Cohorts Section */}
+        
         <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center lg:text-left">Join a Cohort</h2>
           {cohorts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {cohorts.map((cohort) => {
                 const isRegistrationOpen = new Date() < new Date(cohort.registrationDeadline);
+                const isAlreadyJoined = joinedCohorts.includes(cohort.id);
                 const cohortTitle = `${cohort.type.replace('_', ' ')} - Season ${cohort.season}`;
-                const status = isRegistrationOpen ? 'Registration Open' : 'Registration Closed';
+
+                let status = 'Registration Open';
+                if (isAlreadyJoined) {
+                  status = 'Already Joined';
+                } else if (!isRegistrationOpen) {
+                  status = 'Registration Closed';
+                }
 
                 return (
                   <div key={cohort.id} className="relative transform transition-all duration-300 hover:scale-[1.02]">
@@ -397,7 +425,7 @@ const StudentProfileData: React.FC = () => {
                       title={cohortTitle}
                       students={cohort.weeks.length}
                       status={status}
-                      onClick={() => handleJoinCohort(cohort.id)}
+                      onClick={isAlreadyJoined ? () => {} : () => { handleJoinCohort(cohort.id); }}
                     />
                     {isJoining === cohort.id && (
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
