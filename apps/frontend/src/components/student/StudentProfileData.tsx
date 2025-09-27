@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CohortCard from '../CohortCard';
 import apiClient from '../../services/api';
 
@@ -39,12 +40,14 @@ interface Cohort {
 
 
 const StudentProfileData: React.FC = () => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isJoining, setIsJoining] = useState<string | null>(null);
   const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
+  const [hasMasteringBitcoin, setHasMasteringBitcoin] = useState(false);
  
 
   const fetchProfileData = useCallback(async () => {
@@ -76,10 +79,15 @@ const StudentProfileData: React.FC = () => {
     try {
       const response = await apiClient.get('/scores/me');
 
-
-      const joinedCohortIds = response.data.cohorts.map((record: any) => record.cohortId);     
+      const joinedCohortIds = response.data.cohorts.map((record: any) => record.cohortId);
       setJoinedCohorts(joinedCohortIds);
+
+      // Check if user has joined MASTERING_BITCOIN cohort
+      const hasMB = response.data.cohorts.some((record: any) => record.cohortType === 'MASTERING_BITCOIN');
+      setHasMasteringBitcoin(hasMB);
+
       console.log('Joined cohorts state:', joinedCohortIds);
+      console.log('Has Mastering Bitcoin:', hasMB);
 
     } catch (error) {
       console.error('Error fetching joined cohorts:', error);
@@ -188,6 +196,34 @@ const StudentProfileData: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Mastering Bitcoin Access Bar */}
+        {hasMasteringBitcoin && (
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 border border-orange-500/50 rounded-xl p-4 mb-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-orange-400 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-orange-900" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold text-lg">Mastering Bitcoin Cohort</h3>
+                  <p className="text-orange-100 text-sm">You have access to exclusive Mastering Bitcoin instructions</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/mb-instructions')}
+                className="bg-white text-orange-700 font-semibold px-6 py-2 rounded-lg hover:bg-orange-50 transition-colors duration-200 flex items-center space-x-2"
+              >
+                <span>View Instructions</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-8 text-center lg:text-left">Profile Settings</h1>
 
         <form onSubmit={handleSubmit} className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 mb-8 shadow-2xl">

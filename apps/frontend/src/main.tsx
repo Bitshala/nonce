@@ -24,6 +24,7 @@ import InstructionsWeekTwo from './pages/Students/InstructionsWeekTwo.tsx';
 import InstructionsWeekThree from './pages/Students/InstructionsWeekThree.tsx';
 import InstructionsWeekFour from './pages/Students/InstructionsWeekFour.tsx';
 import InstructionsWeekFive from './pages/Students/InstructionsWeekFive.tsx';
+import MBInstructions from './pages/Students/MBInstructions.tsx';
 import StudentProfileData from './components/student/StudentProfileData.tsx';
 
 const router = createBrowserRouter([
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
   {
     path: '/instructions/5',
     element: <InstructionsWeekFive />,
+  },
+  {
+    path: '/mb-instructions',
+    element: <MBInstructions />,
   },
   {
     path:'/me',
