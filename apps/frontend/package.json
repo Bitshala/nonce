@@ -12,6 +12,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.62.8",
     "axios": "^1.12.2",
     "browserlist": "^1.0.1",
     "lucide-react": "^0.522.0",
