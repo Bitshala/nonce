@@ -1,6 +1,6 @@
 import apiService from '../services/apiService.ts';
 import { createUseMutation, createUseQuery } from '../http';
-import { GetUserResponse, UpdateUserRequest, UpdateUserRoleRequest } from '../types/api.ts';
+import type { GetUserResponse, UpdateUserRequest, UpdateUserRoleRequest } from '../types/api.ts';
 
 // ===============
 // Queries

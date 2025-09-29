@@ -1,16 +1,16 @@
 import {
-    PlaceholderDataFunction,
-    QueryFunction,
-    QueryKey,
-    QueryObserverOptions,
-    UseQueryResult,
+    type PlaceholderDataFunction,
+    type QueryFunction,
+    type QueryKey,
+    type QueryObserverOptions,
+    type UseQueryResult,
     useQuery,
 } from '@tanstack/react-query';
 import isEqual from 'fast-deep-equal';
 import { useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { queryClient } from './queryClient.ts';
-import { FnResolverMetadata, OptionsMetadata } from './queryMutation.types.ts';
+import type { FnResolverMetadata, OptionsMetadata } from './queryMutation.types.ts';
 import { useAuth } from '../hooks/useAuth.ts';
 import { isAxiosError } from 'axios';
 

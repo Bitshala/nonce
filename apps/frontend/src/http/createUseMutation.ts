@@ -1,14 +1,14 @@
-import {
+import  {
     QueryClient,
-    UseMutationOptions,
-    UseMutationResult,
+    type UseMutationOptions,
+    type UseMutationResult,
     useMutation,
     useQueryClient,
 } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FnResolverMetadata, OptionsMetadata } from './queryMutation.types.ts';
+import  type { FnResolverMetadata, OptionsMetadata } from './queryMutation.types.ts';
 import { useAuth } from '../hooks/useAuth.ts';
 
 export interface CustomMutationResult<TPayload = unknown> {
@@ -100,7 +100,7 @@ export const createUseMutation = <TData = unknown, TPayload = void>(
                 callback?: () => void
             ) => {
                 if (debounceTimeoutRef.current !== undefined) {
-                    clearTimeout(<number>debounceTimeoutRef.current);
+                    clearTimeout(Number(debounceTimeoutRef.current));
                 }
 
                 debounceTimeoutRef.current = window.setTimeout(() => {

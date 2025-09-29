@@ -1,4 +1,4 @@
-import { MutationMeta, QueryClient, QueryMeta } from '@tanstack/react-query';
+import { type MutationMeta, QueryClient, type QueryMeta } from '@tanstack/react-query';
 
 type Metadata = MutationMeta & QueryMeta;
 

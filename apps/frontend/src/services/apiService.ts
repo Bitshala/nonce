@@ -1,6 +1,8 @@
-import axios, { AxiosHeaders, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { getAuthTokenFromStorage } from './authService.ts';
-import {
+import type // Users
+{
+  // Users
   // Users
   GetUserResponse,
   UpdateUserRequest,
@@ -17,7 +19,7 @@ import {
   // Scores
   GetUsersScoresResponseDto,
   ListScoresForCohortAndWeekResponseDto,
-  UpdateScoresRequestDto,
+  UpdateScoresRequestDto
 } from '../types/api.ts';
 
 const COMMON_REQUEST_HEADERS = {

@@ -1,6 +1,6 @@
 import apiService from '../services/apiService.ts';
 import { createUseMutation, createUseQuery } from '../http';
-import {
+import type {
   GetUsersScoresResponseDto,
   ListScoresForCohortAndWeekResponseDto,
   UpdateScoresRequestDto,
