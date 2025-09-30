@@ -1,7 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useCohorts } from '../hooks/cohortHooks';
+
 import CohortCard from '../components/CohortCard';
 import apiClient from '../services/api';
+
 
 type ApiCohort = {
   id: string;
@@ -41,46 +46,20 @@ const computeStatus = (startISO: string, endISO: string): ViewCohort['status'] =
 
 export const CohortSelection = () => {
   const navigate = useNavigate();
-
   const [loading, setLoading] = useState(false);
   const [cohorts, setCohorts] = useState<ViewCohort[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // strip ?token from URL if present (kept from your original)
-  const url = new URL(window.location.href);
-  const token = url.searchParams.get('session_id');
-  localStorage.setItem('user_session_token', token ?? '');
-  console.log('Current URL:', url.href);
-  console.log('Session token:', token);
+  const {token} = useAuth();
+  console.log(token);
+
+  const { data } = useCohorts({ page: 0, pageSize: 100 });
+
+  console.log(data);
+
   useEffect(() => {
-    const url = new URL(window.location.href);
-    if (url.searchParams.has('token')) {
-      url.searchParams.delete('token');
-      window.history.replaceState({}, document.title, url.pathname);
-    }
-  }, []);
-
-
-  const getCohortsFromApi = async () => {
-    setLoading(true);
-    setError(null);
-    console.log('Fetching cohorts with token:', token);
-    try {
-      const response = await apiClient.get('/cohorts');
-      const result = response.data;
-
-      // Accept either { records: [...] } or { success: true, cohorts: [...] }
-      const list: ApiCohort[] = Array.isArray(result?.records)
-        ? result.records
-        : Array.isArray(result?.cohorts)
-        ? result.cohorts
-        : [];
-
-      if (!Array.isArray(list)) {
-        throw new Error('Unexpected response shape.');
-      }
-
-      const mapped: ViewCohort[] = list.map((c) => ({
+    if (data?.records) {
+      const mapped: ViewCohort[] = data.records.map((c: ApiCohort) => ({
         id: c.id,
         title: `${prettifyType(c.type)} • S${c.season}`,
         students: undefined, // or 0 if CohortCard requires a number
@@ -91,22 +70,12 @@ export const CohortSelection = () => {
       }));
 
       setCohorts(mapped);
-    } catch (e: unknown) {
-      console.error('Error fetching cohorts:', e);
-      if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError('Failed to fetch cohorts.');
-      }
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [data]);
 
   useEffect(() => {
-    getCohortsFromApi();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setLoading(false);
+  }, [cohorts]);
 
   const handleSelect = (cohort: ViewCohort) => {
     // Store a compact object for quick reads
@@ -121,10 +90,7 @@ export const CohortSelection = () => {
     };
 
     localStorage.setItem('selected_cohort', JSON.stringify(compact));
-    // Optionally store the full API cohort for richer admin use
     localStorage.setItem('selected_cohort_full', JSON.stringify(cohort.raw));
-
-    // Navigate to /admin (you can also pass state if you prefer)
     navigate('/admin');
   };
 

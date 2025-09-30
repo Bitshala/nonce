@@ -1,24 +1,29 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-// import { handleDiscordCallback } from '../services/auth';
+import { useUser } from '../hooks/userHooks';
 
-function OAuthCallback() {
+
+function Home() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { data: user } = useUser();
+
+  console.log("user", user);
+  
   useEffect(() => {
     const handleCallback = async () => {
-      console.log("stop")
-      // const success = await handleDiscordCallback(location, navigate);
-
-      // if (!success) {
-      //   console.error('Failed to handle Discord callback');
-      //   navigate('/', { replace: true });
-      // }
+      if( user?.role === "TEACHING_ASSISTANT" || user?.role ==="ADMIN"){
+        navigate("/select")
+      }
+      else if (user?.role === "STUDENT") {
+        navigate("/student");
+      }
+    
     };
 
     handleCallback();
-  }, [location, navigate]);
+  }, [location, navigate, user?.role]);
 
   return (
     <div className="min-h-screen bg-zinc-900 flex items-center justify-center font-mono">
@@ -30,4 +35,4 @@ function OAuthCallback() {
   );
 }
 
-export default OAuthCallback;
+export default Home;

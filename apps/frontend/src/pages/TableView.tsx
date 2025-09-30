@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +10,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 
 import { computeTotal } from '../utils/calculations';
 import type { TableRowData } from '../types/student';
-import apiClient from '../services/api';
+import { useScoresForCohortAndWeek, useUpdateScoresForUserCohortAndWeek } from '../hooks/scoreHooks';
 
 
 
@@ -67,68 +68,52 @@ const TableView: React.FC = () => {
     }
   }, [selectedWeekId, weeks]);
 
-  const fetchWeeklyData = useCallback(async () => {
-    try {
-      const response = await apiClient.get(`/scores/cohort/${cohortData.id}/week/${currentWeekId}`);
-      const apiResponse = response.data;
+  // Use the hook to fetch scores
+  const { data: scoresData, error: scoresError } = useScoresForCohortAndWeek({
+    cohortId: cohortData.id,
+    weekId: currentWeekId,
+  });
 
-      if (apiResponse.scores && Array.isArray(apiResponse.scores)) {
-        const transformedData: TableRowData[] = apiResponse.scores.map((score: {
-          weekId: string;
-          groupDiscussionScores?: {
-            attendance?: boolean;
-            communicationScore?: number;
-            depthOfAnswerScore?: number;
-            technicalBitcoinFluencyScore?: number;
-            engagementScore?: number;
-            isBonusAttempted?: boolean;
-            bonusAnswerScore?: number;
-            bonusFollowupScore?: number;
-          };
-          exerciseScores?: {
-            isSubmitted?: boolean;
-            isPassing?: boolean;
-            hasGoodDocumentation?: boolean;
-            hasGoodStructure?: boolean;
-          };
-          totalScore?: number;
-          name?: string;
-          discordGlobalName?: string;
-          discordUsername?: string;
-        }, index: number) => ({
-          id: apiResponse.scores[0].userId || index, // Fallback to index if userId is missing
-          name: score.name || score.discordGlobalName || score.discordUsername || 'Unknown',
-          email: '', // Not provided in API response
-          group: 'Group 0', // Default, would need to come from another field
-          ta: 'N/A', // Not provided in API response
-          attendance: score.groupDiscussionScores?.attendance || false,
-          gdScore: {
-            fa: score.groupDiscussionScores?.communicationScore || 0,
-            fb: score.groupDiscussionScores?.depthOfAnswerScore || 0,
-            fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore || 0,
-            fd: score.groupDiscussionScores?.engagementScore || 0,
-          },
-          bonusScore: {
-            attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
-            good: score.groupDiscussionScores?.bonusAnswerScore || 0,
-            followUp: score.groupDiscussionScores?.bonusFollowupScore || 0,
-          },
-          exerciseScore: {
-            Submitted: score.exerciseScores?.isSubmitted || false,
-            privateTest: score.exerciseScores?.isPassing || false,
-            goodDoc: score.exerciseScores?.hasGoodDocumentation || false,
-            goodStructure: score.exerciseScores?.hasGoodStructure || false,
-          },
-          week: week,
-          total: score.totalScore || 0,
-        }));
-        setData(transformedData);
-      }
-    } catch (err) {
-      console.error('Error fetching weekly data:', err);
+  // Use the mutation hook for updating scores
+  const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
+
+  // Transform API data to table format
+  useEffect(() => {
+    if (scoresData?.scores && Array.isArray(scoresData.scores)) {
+      const transformedData: TableRowData[] = scoresData.scores.map((score, index: number) => ({
+        id: typeof score.userId === 'number' ? score.userId : index,
+        userId: score.userId, // Store the actual UUID for API calls
+        name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
+        email: '', // Not provided in API response
+        group: 'Group 0', // Default, would need to come from another field
+        ta: 'N/A', // Not provided in API response
+        attendance: score.groupDiscussionScores?.attendance || false,
+        gdScore: {
+          fa: score.groupDiscussionScores?.communicationScore || 0,
+          fb: score.groupDiscussionScores?.depthOfAnswerScore || 0,
+          fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore || 0,
+          fd: score.groupDiscussionScores?.engagementScore || 0,
+        },
+        bonusScore: {
+          attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
+          good: score.groupDiscussionScores?.bonusAnswerScore || 0,
+          followUp: score.groupDiscussionScores?.bonusFollowupScore || 0,
+        },
+        exerciseScore: {
+          Submitted: score.exerciseScores?.isSubmitted || false,
+          privateTest: score.exerciseScores?.isPassing || false,
+          goodDoc: score.exerciseScores?.hasGoodDocumentation || false,
+          goodStructure: score.exerciseScores?.hasGoodStructure || false,
+        },
+        week: week,
+        total: score.totalScore || 0,
+      }));
+      setData(transformedData);
+    } else if (scoresError) {
+      console.error('Error fetching weekly data:', scoresError);
       setData([]);
     }
-  }, [cohortData.id, currentWeekId, week]);
+  }, [scoresData, scoresError, week]);
 
   const getWeeklyData = useCallback((week: number) => {
     fetch(`${baseUrl}/attendance/weekly_counts/${week}`)
@@ -154,9 +139,8 @@ const TableView: React.FC = () => {
   }, [baseUrl]);
 
   useEffect(() => {
-    fetchWeeklyData();
     getWeeklyData(week);
-  }, [fetchWeeklyData, getWeeklyData, week]);
+  }, [getWeeklyData, week]);
 
   useEffect(() => {
     fetch(`${baseUrl}/count/students`)
@@ -248,7 +232,7 @@ const TableView: React.FC = () => {
   const handleScoreUpdate = (updatedStudent: TableRowData) => {
     if (!selectedStudentForEdit) return;
 
-    const payload = {
+    const body = {
       attendance: updatedStudent.attendance,
       communicationScore: updatedStudent.gdScore.fa,
       depthOfAnswerScore: updatedStudent.gdScore.fb,
@@ -261,13 +245,18 @@ const TableView: React.FC = () => {
       isPassing: updatedStudent.exerciseScore.privateTest,
     };
 
-    // Extract userId from the selected student data
-    const userId = selectedStudentForEdit.id; // This should be the actual userId from the API
+    // Use the stored UUID from the student record
+    const userId = (selectedStudentForEdit as any).userId || String(selectedStudentForEdit.id);
 
-    apiClient.patch(`/scores/user/${userId}/cohort/${cohortData.id}/week/${currentWeekId}`, payload)
-      .then(r => {
-        if (r.status === 200) {
-          // Success - update local data
+    updateScoresMutation.mutate(
+      {
+        userId,
+        cohortId: cohortData.id,
+        weekId: currentWeekId,
+        body,
+      },
+      {
+        onSuccess: () => {
           setData(prevData =>
             prevData.map(p =>
               p.id === updatedStudent.id ? { ...updatedStudent, total: computeTotal(updatedStudent) } : p
@@ -275,18 +264,14 @@ const TableView: React.FC = () => {
           );
           setShowScoreEditModal(false);
           setSelectedStudentForEdit(null);
-    
-        } else {
-          // Error - show error message
-          return Promise.resolve(r.data).then(data => {
-            throw new Error(data?.message || `Error ${r.status}: ${r.statusText}`);
-          });
-        }
-      })
-      .catch(e => {
-        console.error('Score update failed', e);
-        alert(`Failed to update scores: ${e.message}`);
-      });
+        },
+        onError: (error: unknown) => {
+          console.error('Score update failed', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          alert(`Failed to update scores: ${errorMessage}`);
+        },
+      }
+    );
   };
 
   const handleAddStudent = (
@@ -320,7 +305,6 @@ const TableView: React.FC = () => {
     })
       .then(r => {
         if (!r.ok) throw new Error(r.statusText);
-        fetchWeeklyData();
         setShowAddStudentModal(false);
         getWeeklyData(week);
         return r.text();
