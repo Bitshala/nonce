@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCohorts } from '../hooks/cohortHooks';
 
 import CohortCard from '../components/CohortCard';
-import apiClient from '../services/api';
+
 
 
 type ApiCohort = {
@@ -46,14 +46,13 @@ const computeStatus = (startISO: string, endISO: string): ViewCohort['status'] =
 
 export const CohortSelection = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [cohorts, setCohorts] = useState<ViewCohort[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   const {token} = useAuth();
   console.log(token);
 
-  const { data } = useCohorts({ page: 0, pageSize: 100 });
+  const { data, isLoading } = useCohorts({ page: 0, pageSize: 100 });
 
   console.log(data);
 
@@ -74,7 +73,6 @@ export const CohortSelection = () => {
   }, [data]);
 
   useEffect(() => {
-    setLoading(false);
   }, [cohorts]);
 
   const handleSelect = (cohort: ViewCohort) => {
@@ -121,7 +119,7 @@ export const CohortSelection = () => {
         ))}
       </div>
 
-      {loading && (
+      {isLoading && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
           <div className="bg-zinc-800 p-6 rounded-2xl text-gray-200 shadow-xl">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-200 mx-auto mb-4"></div>
