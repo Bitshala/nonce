@@ -75,20 +75,8 @@ export const CohortSelection = () => {
   useEffect(() => {
   }, [cohorts]);
 
-  const handleSelect = (cohort: ViewCohort) => {
-    // Store a compact object for quick reads
-    const compact = {
-      id: cohort.id,
-      title: cohort.title,
-      type: cohort.raw.type,
-      season: cohort.raw.season,
-      startDate: cohort.startDate,
-      endDate: cohort.endDate,
-      status: cohort.status,
-    };
-
-    localStorage.setItem('selected_cohort', JSON.stringify(compact));
-    localStorage.setItem('selected_cohort_full', JSON.stringify(cohort.raw));
+  const handleSelect = () => {
+  
     navigate('/admin');
   };
 
@@ -114,7 +102,7 @@ export const CohortSelection = () => {
             status={cohort.status}
             title={cohort.title}
             students={cohort.students ?? 0}
-            onClick={() => handleSelect(cohort)}
+            onClick={() => handleSelect()}
           />
         ))}
       </div>
