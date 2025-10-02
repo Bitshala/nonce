@@ -1,49 +1,75 @@
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
-
+import { UserRole } from '../types/enums.ts';
 
 function Home() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
+
   const { login, token: storedToken } = useAuth();
+  const { data: user, isLoading, isPending } = useUser(undefined, { enabled: !!storedToken });
 
+  // Read once and memoize so the effect only cares about the sessionId value
+  const sessionId = useMemo(() => searchParams.get('session_id'), [searchParams]);
 
-  const { data: user } = useUser();
+  // Prevent double navigations if effects re-run
+  const hasRedirected = useRef(false);
 
-  console.log("user", user);
-
+  // If session_id exists, perform login and then strip it from the URL
   useEffect(() => {
-    const handleCallback = async () => {
-      // Extract session_id from URL query params
-      const searchParams = new URLSearchParams(location.search);
-      const sessionId = searchParams.get('session_id');
+    if (!sessionId) return;
 
-      // If session_id exists in URL
-      if (sessionId) {
-        // Check if it's different from stored token
-        if (storedToken !== sessionId) {
-          // Replace token in localStorage and authenticate
-          login(sessionId);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        login(sessionId); // if login is sync, this still works
+      } finally {
+        if (!cancelled) {
+          // Replace current entry to avoid back-button re-login
+          navigate(
+            { pathname: location.pathname },
+            { replace: true }
+          );
         }
-      } else if (!storedToken || !user) {
-        // No token in URL, no stored token, or user undefined - redirect to login
-        navigate("/login");
-        return;
       }
+    })();
 
-      if( user?.role === "TEACHING_ASSISTANT" || user?.role ==="ADMIN"){
-        navigate("/select")
-      }
-      else if (user?.role === "STUDENT") {
-        navigate("/student");
-      }
-
+    return () => {
+      cancelled = true;
     };
+  }, [sessionId, login, navigate, searchParams, location.pathname]);
 
-    handleCallback();
-  }, [location, navigate, user, login, storedToken]);
+  // Once user finished loading, route by auth + role
+  useEffect(() => {
+    console.log(isLoading, isPending, sessionId, storedToken, user, hasRedirected.current);
+    if (hasRedirected.current) return;
+    if (isLoading) return; // wait until we actually know user/null
+
+    if ((!storedToken && !sessionId) || (!user && !isPending)) {
+      navigate('/login', { replace: true });
+      hasRedirected.current = true;
+      return;
+    }
+
+    if (!user) return; // still loading or pending
+
+    const role = user.role;
+
+    if ([UserRole.TEACHING_ASSISTANT, UserRole.ADMIN].includes(role)) {
+      navigate('/select', { replace: true });
+    } else if (role === UserRole.STUDENT) {
+      navigate('/student', { replace: true });
+    } else {
+      // Fallback if role is unknown
+      navigate('/login', { replace: true });
+    }
+
+    hasRedirected.current = true;
+  }, [isLoading, storedToken, user, navigate]);
 
   return (
     <div className="min-h-screen bg-zinc-900 flex items-center justify-center font-mono">

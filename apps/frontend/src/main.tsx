@@ -43,7 +43,7 @@ const router = createBrowserRouter([
     element: <CohortSelection />,
   },
   {
-    path: '/admin',
+    path: '/admin/cohort/:id',
     element: <TableView />,
   },
   {

@@ -48,8 +48,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   taOptions,
   totalCount,
   weeklyData,
-  onAddNew,
-  onDownloadCSV,
   onClearFilters,
   navigate,
 }) => {
@@ -70,18 +68,18 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             Week {weekData.week}
           </button>
         ))}
-        <button
-          onClick={() => navigate('/result')}
-          className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-        >
-          Result
-        </button>
-                <button
-          onClick={() => navigate('/feedback')}
-          className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
-        >
-          Feedback
-        </button>
+        {/*<button*/}
+        {/*  onClick={() => navigate('/result')}*/}
+        {/*  className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"*/}
+        {/*>*/}
+        {/*  Result*/}
+        {/*</button>*/}
+        {/*        <button*/}
+        {/*  onClick={() => navigate('/feedback')}*/}
+        {/*  className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"*/}
+        {/*>*/}
+        {/*  Feedback*/}
+        {/*</button>*/}
       </div>
 
       {/* Filters */}
@@ -153,20 +151,20 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={onAddNew}
-            className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
-          >
-            Add New Row
-          </button>
-          <button
-            onClick={onDownloadCSV}
-            className="cursor-pointer px-4 py-2 bg-red-600 text-white rounded"
-          >
-            Download CSV
-          </button>
-        </div>
+        {/*<div className="flex gap-2">*/}
+        {/*  <button*/}
+        {/*    onClick={onAddNew}*/}
+        {/*    className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"*/}
+        {/*  >*/}
+        {/*    Add New Row*/}
+        {/*  </button>*/}
+        {/*  <button*/}
+        {/*    onClick={onDownloadCSV}*/}
+        {/*    className="cursor-pointer px-4 py-2 bg-red-600 text-white rounded"*/}
+        {/*  >*/}
+        {/*    Download CSV*/}
+        {/*  </button>*/}
+        {/*</div>*/}
       </div>
     </>
   );

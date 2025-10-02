@@ -1,12 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useState } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { useCohorts } from '../hooks/cohortHooks';
-
 import CohortCard from '../components/CohortCard';
-
-
 
 type ApiCohort = {
   id: string;
@@ -25,7 +20,7 @@ type ViewCohort = {
   status: 'Active' | 'Inactive' | 'Upcoming';
   startDate: string;
   endDate: string;
-  raw: ApiCohort; // keep the full API record for storage/use later
+  raw: ApiCohort;
 };
 
 const prettifyType = (t: string) =>
@@ -36,49 +31,52 @@ const prettifyType = (t: string) =>
     .join(' ');
 
 const computeStatus = (startISO: string, endISO: string): ViewCohort['status'] => {
-  const now = new Date();
   const start = new Date(startISO);
   const end = new Date(endISO);
+  const now = new Date();
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'Inactive';
   if (now < start) return 'Upcoming';
   if (now > end) return 'Inactive';
   return 'Active';
 };
 
+// Optional: sort by status then start date
+const statusRank: Record<ViewCohort['status'], number> = {
+  Active: 0,
+  Upcoming: 1,
+  Inactive: 2,
+};
+
 export const CohortSelection = () => {
   const navigate = useNavigate();
-  const [cohorts, setCohorts] = useState<ViewCohort[]>([]);
-  const [error] = useState<string | null>(null);
+  const { data, isLoading, error } = useCohorts({ page: 0, pageSize: 100 });
 
-  const {token} = useAuth();
-  console.log(token);
-
-  const { data, isLoading } = useCohorts({ page: 0, pageSize: 100 });
-
-  console.log(data);
-
-  useEffect(() => {
-    if (data?.records) {
-      const mapped: ViewCohort[] = data.records.map((c: ApiCohort) => ({
+  const cohorts: ViewCohort[] = useMemo(() => {
+    const records: ApiCohort[] = data?.records ?? [];
+    return records
+      .map((c) => ({
         id: c.id,
         title: `${prettifyType(c.type)} • S${c.season}`,
-        students: undefined, // or 0 if CohortCard requires a number
+        students: undefined, // or derive from API if available
         status: computeStatus(c.startDate, c.endDate),
         startDate: c.startDate,
         endDate: c.endDate,
         raw: c,
-      }));
-
-      setCohorts(mapped);
-    }
+      }))
+      .sort((a, b) => {
+        const sr = statusRank[a.status] - statusRank[b.status];
+        if (sr !== 0) return sr;
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      });
   }, [data]);
 
-  useEffect(() => {
-  }, [cohorts]);
+  const handleSelect = useCallback((cohort: ViewCohort) => {
+    // Pass the cohort along (param + state for convenience)
+    navigate(`/admin/cohort/${cohort.id}`, { state: { cohort: cohort.raw } });
+  }, [navigate]);
 
-  const handleSelect = () => {
-  
-    navigate('/admin');
-  };
+  const showEmpty = !isLoading && !error && cohorts.length === 0;
 
   return (
     <div className="min-h-screen bg-zinc-900 font-mono flex flex-col items-center justify-center p-6">
@@ -91,8 +89,12 @@ export const CohortSelection = () => {
 
       {error && (
         <div className="mb-6 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3 text-red-200">
-          {error}
+          {(error as Error)?.message ?? 'Failed to load cohorts.'}
         </div>
+      )}
+
+      {showEmpty && (
+        <div className="text-gray-400">No cohorts found.</div>
       )}
 
       <div className="flex flex-wrap justify-center gap-4">
@@ -102,15 +104,19 @@ export const CohortSelection = () => {
             status={cohort.status}
             title={cohort.title}
             students={cohort.students ?? 0}
-            onClick={() => handleSelect()}
+            onClick={() => handleSelect(cohort)}
           />
         ))}
       </div>
 
       {isLoading && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center"
+          aria-busy="true"
+          aria-live="polite"
+        >
           <div className="bg-zinc-800 p-6 rounded-2xl text-gray-200 shadow-xl">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-200 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-200 mx-auto mb-4" />
             <p>Loading cohorts…</p>
           </div>
         </div>
