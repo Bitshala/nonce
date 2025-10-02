@@ -324,7 +324,6 @@ const TableView: React.FC = () => {
             setAttendanceFilter('All');
           }}
           navigate={navigate}
-          isLoadingRows={isScoresLoading || isScoresPending}
         />
 
         <StudentTableGrid
@@ -335,7 +334,6 @@ const TableView: React.FC = () => {
           onStudentClick={handleStudentClick}
           onEditStudent={handleEditStudent}
           onContextMenu={setContextMenu}
-          isLoading={isScoresLoading || isScoresPending}
         />
 
         {showScoreEditModal && selectedStudentForEdit && (

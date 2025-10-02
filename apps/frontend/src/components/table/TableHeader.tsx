@@ -49,7 +49,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   totalCount,
   weeklyData,
   onClearFilters,
-  navigate,
 }) => {
   return (
     <>
