@@ -1,4 +1,4 @@
-export const AUTH_TOKEN_KEY = 'auth_session_token'
+export const AUTH_TOKEN_KEY = 'user_session_token'
 
 export const getAuthTokenFromStorage = (): string | null => {
       return localStorage.getItem(AUTH_TOKEN_KEY);
