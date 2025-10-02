@@ -1,28 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../services/api';
-
-interface UserProfile {
-  id: string;
-  email: string;
-  discordUsername: string;
-  discordGlobalName: string;
-  name: string | null;
-  role: string;
-}
-
-interface CohortRecord {
-  cohortId: string;
-  cohortType: string;
-  seasonNumber: number;
-  weeklyScores: any[];
-  totalScore: number;
-  maxTotalScore: number;
-}
-
-interface ScoresResponse {
-  cohorts: CohortRecord[];
-}
+import { useUser } from '../../hooks/userHooks';
+import { useMyScores } from '../../hooks/scoreHooks';
 
 interface WeekContent {
   week: number;
@@ -33,45 +12,20 @@ interface WeekContent {
 
 const MBInstructions: React.FC = () => {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasAccessToMB, setHasAccessToMB] = useState(false);
   const [activeWeek, setActiveWeek] = useState(1);
   const [weeklyContent, setWeeklyContent] = useState<WeekContent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const checkMasteringBitcoinAccess = useCallback(async () => {
-    try {
-      const scoresResponse = await apiClient.get<ScoresResponse>('/scores/me');
-      console.log('Scores response:', scoresResponse.data);
-      const joinedCohorts = scoresResponse.data.cohorts;
+  // Use hooks for data fetching
+  const { data: userData, isLoading: isLoadingUser } = useUser();
+  const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
 
+  // Derive hasAccessToMB from scoresData
+  const hasAccessToMB = scoresData?.cohorts.some(
+    (record) => record.cohortType === 'MASTERING_BITCOIN'
+  ) ?? false;
 
-      const hasMasteringBitcoin = joinedCohorts.some(
-        (record) => record.cohortType === 'MASTERING_BITCOIN'
-      ); 
-
-      setHasAccessToMB(hasMasteringBitcoin);
-
-      if (!hasMasteringBitcoin) {
-        setError('You need to be enrolled in a MASTERING_BITCOIN cohort to access these instructions.');
-      }
-
-    } catch (error) {
-      console.error('Error checking cohort enrollment:', error);
-      setError('Failed to verify cohort enrollment. Please try again.');
-    }
-  }, []);
-
-  const fetchProfile = useCallback(async () => {
-    try {
-      const response = await apiClient.get<UserProfile>('/users/me');
-      setProfile(response.data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setError('Failed to load user profile.');
-    }
-  }, []);
+  const isLoading = isLoadingUser || isLoadingScores;
 
   const loadInstructionContent = useCallback(async () => {
     try {
@@ -259,19 +213,14 @@ const MBInstructions: React.FC = () => {
     }
   }, []);
 
+  // Set error if user doesn't have access
   useEffect(() => {
-    const initialize = async () => {
-      setIsLoading(true);
-      try {
-        await Promise.all([fetchProfile(), checkMasteringBitcoinAccess()]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!isLoading && scoresData && !hasAccessToMB) {
+      setError('You need to be enrolled in a MASTERING_BITCOIN cohort to access these instructions.');
+    }
+  }, [isLoading, scoresData, hasAccessToMB]);
 
-    initialize();
-  }, [fetchProfile, checkMasteringBitcoinAccess]);
-
+  // Load instruction content when user has access
   useEffect(() => {
     if (hasAccessToMB) {
       loadInstructionContent();
@@ -344,13 +293,13 @@ const MBInstructions: React.FC = () => {
             Mastering Bitcoin Instructions
           </h1>
 
-          {profile && (
+          {userData && (
             <div className="bg-green-900/30 border border-green-700/50 rounded-xl p-4 mb-6">
               <div className="flex items-center space-x-3">
                 <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                 <div>
                   <p className="text-green-300 font-semibold">
-                    Welcome, {profile.name || profile.discordGlobalName}!
+                    Welcome, {userData.name || userData.discordGlobalName}!
                   </p>
                   <p className="text-green-400/80 text-sm">
                     You have access to MASTERING_BITCOIN cohort instructions

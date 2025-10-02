@@ -52,7 +52,14 @@ export const useUpdateScoresForUserCohortAndWeek = createUseMutation<
 
 export const useAssignGroupsForCohortWeek = createUseMutation<
   void,
-  { weekId: string }
+  { weekId: string; cohortId?: string }
 >(
   ({ weekId }) => apiService.assignGroupsForCohortWeek(weekId),
+  {
+    queryInvalidation: async ({variables: {weekId, cohortId}}) => {
+      if (cohortId) {
+        await useScoresForCohortAndWeek.invalidate({cohortId, weekId});
+      }
+    },
+  }
 );

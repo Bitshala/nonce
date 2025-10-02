@@ -13,6 +13,7 @@ import type { TableRowData } from '../types/student';
 import {
   useScoresForCohortAndWeek,
   useUpdateScoresForUserCohortAndWeek,
+  useAssignGroupsForCohortWeek,
 } from '../hooks/scoreHooks';
 import { useCohort } from '../hooks/cohortHooks';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
@@ -84,6 +85,8 @@ const TableView: React.FC = () => {
 
   // === Mutation ===
   const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
+  const assignGroupsMutation = useAssignGroupsForCohortWeek();
+
 
   // === Transform API scores to table rows ===
   useEffect(() => {
@@ -129,6 +132,14 @@ const TableView: React.FC = () => {
     setWeeklyData({week: weekIndex, attended: transformed.filter(s => s.attendance).length});
   }, [scoresData, scoresError, weekIndex]);
 
+  // === Assign groups for each week ===
+  useEffect(() => {
+    if (selectedWeekId && cohortIdParam) {
+      console.log("weekID", selectedWeekId)
+      assignGroupsMutation.mutate({ weekId: selectedWeekId, cohortId: cohortIdParam });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeekId]);
 
   // === Derived options ===
   const taOptions = useMemo(() => {

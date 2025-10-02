@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CohortCard from '../CohortCard';
-import apiClient from '../../services/api';
+import { useUser, useUpdateUser } from '../../hooks/userHooks';
+import { useCohorts, useJoinCohort } from '../../hooks/cohortHooks';
+import { useMyScores } from '../../hooks/scoreHooks';
 
 interface UserProfile {
   id: string;
@@ -42,64 +44,38 @@ interface Cohort {
 const StudentProfileData: React.FC = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isJoining, setIsJoining] = useState<string | null>(null);
-  const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
   const [hasMasteringBitcoin, setHasMasteringBitcoin] = useState(false);
- 
+  const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
+  const [joiningCohortId, setJoiningCohortId] = useState<string | null>(null);
 
-  const fetchProfileData = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/users/me');
+  // Use hooks for data fetching
+  const { data: userData, isLoading: isLoadingUser } = useUser();
+  const { data: cohortsData } = useCohorts({ page: 0, limit: 100 });
+  const { data: scoresData } = useMyScores();
+  const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
+  const { mutate: joinCohort } = useJoinCohort();
 
-      setProfile(response.data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setIsLoading(false);
+  // Set profile when userData loads
+  useEffect(() => {
+    if (userData) {
+      setProfile(userData);
     }
-  }, []);
+  }, [userData]);
 
-  
-
-  const fetchCohorts = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/cohorts');
-      console.log(response);
-      setCohorts(response.data.records);
-    } catch (error) {
-      console.error('Error fetching cohorts:', error);
-    }
-  }, []);
-
- 
-   const fetchJoinedCohorts = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/scores/me');
-
-      const joinedCohortIds = response.data.cohorts.map((record: any) => record.cohortId);
+  // Set joined cohorts and mastering bitcoin status when scoresData loads
+  useEffect(() => {
+    if (scoresData) {
+      const joinedCohortIds = scoresData.cohorts.map((record: any) => record.cohortId);
+      
       setJoinedCohorts(joinedCohortIds);
 
       // Check if user has joined MASTERING_BITCOIN cohort
-      const hasMB = response.data.cohorts.some((record: any) => record.cohortType === 'MASTERING_BITCOIN');
+      const hasMB = scoresData.cohorts.some((record: any) => record.cohortType === 'MASTERING_BITCOIN');
       setHasMasteringBitcoin(hasMB);
-
-      console.log('Joined cohorts state:', joinedCohortIds);
-      console.log('Has Mastering Bitcoin:', hasMB);
-
-    } catch (error) {
-      console.error('Error fetching joined cohorts:', error);
     }
-  }, []);
+  }, [scoresData]);
 
-  console.log('Joined cohorts:', joinedCohorts);
-  useEffect(() => {
-    fetchProfileData();
-    fetchCohorts();
-    fetchJoinedCohorts();
-  }, [fetchProfileData, fetchCohorts, fetchJoinedCohorts]);
+  const cohorts = cohortsData?.records || [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -129,52 +105,48 @@ const StudentProfileData: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
 
-    setIsUpdating(true);
-    try {
-      // Prepare the update payload with only the fields the backend supports
-      const updatePayload = {
-        name: profile.name,
-        description: profile.description,
-        background: profile.background,
-        githubProfileUrl: profile.githubProfileUrl,
-        skills: profile.skills,
-        firstHeardAboutBitcoinOn: profile.firstHeardAboutBitcoinOn,
-        bitcoinBooksRead: profile.bitcoinBooksRead,
-        whyBitcoin: profile.whyBitcoin,
-        weeklyCohortCommitmentHours: profile.weeklyCohortCommitmentHours,
-        location: profile.location
-      };
+    // Prepare the update payload with only the fields the backend supports
+    const updatePayload = {
+      name: profile.name,
+      description: profile.description,
+      background: profile.background,
+      githubProfileUrl: profile.githubProfileUrl,
+      skills: profile.skills,
+      firstHeardAboutBitcoinOn: profile.firstHeardAboutBitcoinOn,
+      bitcoinBooksRead: profile.bitcoinBooksRead,
+      whyBitcoin: profile.whyBitcoin,
+      weeklyCohortCommitmentHours: profile.weeklyCohortCommitmentHours,
+      location: profile.location
+    };
 
-      console.log('Sending update payload:', updatePayload);
-
-      const response = await apiClient.patch('/users/me', updatePayload);
-      console.log('Received updated data:', response.data);
-      setProfile(response.data);
-      alert('Profile updated successfully!');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('Error updating profile');
-    } finally {
-      setIsUpdating(false);
-    }
+    updateUser(updatePayload, {
+      onSuccess: (data) => {
+        setProfile(data);
+        alert('Profile updated successfully!');
+      },
+      onError: (error) => {
+        console.error('Error updating profile:', error);
+        alert('Error updating profile');
+      }
+    });
   };
 
   const handleJoinCohort = async (cohortId: string) => {
-    setIsJoining(cohortId);
-    try {
-      await apiClient.post(`/cohorts/${cohortId}/join`);
-      alert('Successfully joined cohort!');
-      fetchCohorts();
-      fetchJoinedCohorts();
-    } catch (error) {
-      console.error('Error joining cohort:', error);
-      alert('Error joining cohort');
-    } finally {
-      setIsJoining(null);
-    }
+    setJoiningCohortId(cohortId);
+    joinCohort({ cohortId }, {
+      onSuccess: () => {
+        alert('Successfully joined cohort!');
+        setJoiningCohortId(null);
+      },
+      onError: (error) => {
+        console.error('Error joining cohort:', error);
+        alert('Error joining cohort');
+        setJoiningCohortId(null);
+      }
+    });
   };
 
-  if (isLoading) {
+  if (isLoadingUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
         <div className="flex items-center space-x-3">
@@ -463,7 +435,7 @@ const StudentProfileData: React.FC = () => {
                       status={status}
                       onClick={isAlreadyJoined ? () => {} : () => { handleJoinCohort(cohort.id); }}
                     />
-                    {isJoining === cohort.id && (
+                    {joiningCohortId === cohort.id && (
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
                         <div className="flex items-center space-x-3 text-white">
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

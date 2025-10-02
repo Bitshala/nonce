@@ -3,7 +3,7 @@ import apiClient from './api';
 
 export const redirectToDiscordAuth = (role?: string) => {
   const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || 'https://undedicated-clarine-peskily.ngrok-free.dev';
+    import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
   const authPath = role ? `/auth/discord/${role}` : '/auth/discord';
   window.location.href = `${backendUrl}${authPath}`;
 };
