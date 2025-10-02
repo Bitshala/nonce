@@ -13,6 +13,7 @@ import type { TableRowData } from '../types/student';
 import {
   useScoresForCohortAndWeek,
   useUpdateScoresForUserCohortAndWeek,
+  useAssignGroupsForCohortWeek,
 } from '../hooks/scoreHooks';
 import { useCohort } from '../hooks/cohortHooks';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
@@ -85,6 +86,7 @@ const TableView: React.FC = () => {
 
   // === Mutation ===
   const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
+  const assignGroupsMutation = useAssignGroupsForCohortWeek();
 
   // === Transform API scores to table rows ===
   useEffect(() => {
@@ -195,9 +197,10 @@ const TableView: React.FC = () => {
     []
   );
 
-  const handleStudentClick = useCallback(() => {
-    // TODO: implement redirect to student detail page if available
-  }, [navigate]);
+  const handleStudentClick = useCallback((student: TableRowData) => {
+    const studentId = student.userId ?? student.id;
+    navigate(`/demoAPI?studentId=${studentId}&weekId=${selectedWeekId}&cohortId=${cohortIdParam}`);
+  }, [navigate, selectedWeekId, cohortIdParam]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {
     setSelectedStudentForEdit(student);
@@ -258,6 +261,32 @@ const TableView: React.FC = () => {
   const handleDownloadCSV = useCallback(() => {
     // TODO: add support later
   }, [sortedFilteredData, cohortData?.type, weekIndex, weeks]);
+
+  const handleAssignGroups = useCallback(() => {
+    const participantsPerWeek = 8
+    const groupsAvailable = 3
+
+    if (isNaN(participantsPerWeek) || isNaN(groupsAvailable) || participantsPerWeek <= 0 || groupsAvailable <= 0) {
+      alert('Please enter valid positive numbers');
+      return;
+    }
+
+    if (confirm('Are you sure you want to assign groups for this week?')) {
+      assignGroupsMutation.mutate(
+        { weekId: selectedWeekId, cohortId: cohortIdParam, participantsPerWeek, groupsAvailable },
+        {
+          onSuccess: () => {
+            alert('Groups assigned successfully!');
+          },
+          onError: (error: unknown) => {
+            console.error('Group assignment failed', error);
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Failed to assign groups: ${message}`);
+          },
+        }
+      );
+    }
+  }, [selectedWeekId, cohortIdParam, assignGroupsMutation]);
 
   // === Cohort Header (dynamic title) ===
   const cohortTitleBlock = useMemo(() => {
@@ -320,6 +349,7 @@ const TableView: React.FC = () => {
             /* Implement when backend supports create */
           }}
           onDownloadCSV={handleDownloadCSV}
+          onAssignGroups={handleAssignGroups}
           onClearFilters={() => {
             setSearchTerm('');
             setSelectedGroup('All Groups');

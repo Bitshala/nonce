@@ -102,23 +102,72 @@ export const fetchStudentRepoLink = async (week: number, studentName: string, co
 };
 
 
-  export const fetchGithubUsername =  async(name:string): Promise<string | null> => {
-    try {
-      // Assuming your backend endpoint looks like /api/student-repo/week/name
-      // Adjust the URL if your actual API endpoint is different
-      const response = await fetch(`${baseUrl}/student/github/${encodeURIComponent(name)}`);
+export const fetchGithubUsername = async(name:string): Promise<string | null> => {
+  try {
+    // Assuming your backend endpoint looks like /api/student-repo/week/name
+    // Adjust the URL if your actual API endpoint is different
+    const response = await fetch(`${baseUrl}/student/github/${encodeURIComponent(name)}`);
 
-      if (!response.ok) {
-        console.error(`Server Error ${response.status} fetching github for student ${name}`);
-        return null;
-      }
-
-      const data = await response.json();
-      const username = data.split('/').pop();
-      return username || null; 
-    } catch (err) {
-      console.error("fetchStudentRepoLink error:", err);
+    if (!response.ok) {
+      console.error(`Server Error ${response.status} fetching github for student ${name}`);
       return null;
     }
+
+    const data = await response.json();
+    const username = data.split('/').pop();
+    return username || null;
+  } catch (err) {
+    console.error("fetchStudentRepoLink error:", err);
+    return null;
+  }
 }
-  
+
+export interface UpdateScoresPayload {
+  gdScore?: {
+    fa?: number;
+    fb?: number;
+    fc?: number;
+    fd?: number;
+  };
+  exerciseScore?: {
+    Submitted?: boolean;
+    privateTest?: boolean;
+    goodStructure?: boolean;
+    goodDoc?: boolean;
+  };
+  bonusScore?: {
+    attempt?: number;
+    good?: number;
+    followUp?: number;
+  };
+}
+
+export const updateStudentScores = async (
+  userId: string,
+  cohortId: string,
+  weekId: string,
+  scores: UpdateScoresPayload
+): Promise<any> => {
+  try {
+    const response = await fetch(
+      `${baseUrl}/scores/user/${encodeURIComponent(userId)}/cohort/${encodeURIComponent(cohortId)}/week/${encodeURIComponent(weekId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scores)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update scores: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating student scores:', error);
+    throw error;
+  }
+};

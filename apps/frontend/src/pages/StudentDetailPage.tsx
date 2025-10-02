@@ -96,7 +96,7 @@ const StudentDetailPage = () => {
       setError('No student name provided');
       setLoading(false);
     }
-  }, [paramStudentName,getStudentName]);
+  }, [getStudentName]);
 
   const handleGoBack = () => {
     navigate(-1);

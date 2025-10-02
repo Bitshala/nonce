@@ -46,6 +46,7 @@ export interface ExerciseScore {
 
 // Table/UI Types
 export interface TableRowData {
+  userId: number;
   id: number;
   name: string;
   email: string;

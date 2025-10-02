@@ -10,7 +10,7 @@ interface StudentTableGridProps {
     direction: 'ascending' | 'descending';
   };
   onSort: (config: { key: keyof TableRowData | null; direction: 'ascending' | 'descending' }) => void;
-  onStudentClick: (studentName: string) => void;
+  onStudentClick: (student: TableRowData) => void;
   onEditStudent: (student: TableRowData) => void;
   onContextMenu: (menu: { visible: boolean; x: number; y: number; targetId: number | null }) => void;
 }

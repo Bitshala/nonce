@@ -28,6 +28,7 @@ interface TableHeaderProps {
   weeklyData: { week: number; attended: number };
   onAddNew: () => void;
   onDownloadCSV: () => void;
+  onAssignGroups: () => void;
   onClearFilters: () => void;
   navigate: (path: string) => void;
 }
@@ -48,6 +49,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   taOptions,
   totalCount,
   weeklyData,
+  onAssignGroups,
   onClearFilters,
 }) => {
   return (
@@ -150,20 +152,26 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           </div>
         </div>
 
-        {/*<div className="flex gap-2">*/}
-        {/*  <button*/}
-        {/*    onClick={onAddNew}*/}
-        {/*    className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"*/}
-        {/*  >*/}
-        {/*    Add New Row*/}
-        {/*  </button>*/}
-        {/*  <button*/}
-        {/*    onClick={onDownloadCSV}*/}
-        {/*    className="cursor-pointer px-4 py-2 bg-red-600 text-white rounded"*/}
-        {/*  >*/}
-        {/*    Download CSV*/}
-        {/*  </button>*/}
-        {/*</div>*/}
+        <div className="flex gap-2">
+          <button
+            onClick={onAssignGroups}
+            className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
+          >
+            Assign Groups
+          </button>
+          {/*<button*/}
+          {/*  onClick={onAddNew}*/}
+          {/*  className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"*/}
+          {/*  >*/}
+          {/*    Add New Row*/}
+          {/*  </button>*/}
+          {/*  <button*/}
+          {/*    onClick={onDownloadCSV}*/}
+          {/*    className="cursor-pointer px-4 py-2 bg-red-600 text-white rounded"*/}
+          {/*  >*/}
+          {/*    Download CSV*/}
+          {/*  </button>*/}
+        </div>
       </div>
     </>
   );

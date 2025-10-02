@@ -233,11 +233,12 @@ class ApiService {
     return data;
   };
 
-  public assignGroupsForCohortWeek = async (weekId: string): Promise<void> => {
+  public assignGroupsForCohortWeek = async (weekId: string, body: { participantsPerWeek: number; groupsAvailable: number }): Promise<void> => {
     await this.request<void>({
       headers: this.getRequestHeaders(),
       method: 'POST',
       url: `/scores/week/${weekId}/assign-groups`,
+      data: body,
     });
   };
 }
