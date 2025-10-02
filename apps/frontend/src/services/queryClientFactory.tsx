@@ -2,7 +2,7 @@ import {
   MutationCache,
   QueryCache,
   QueryClient,
-  QueryClientConfig,
+  type QueryClientConfig,
 } from '@tanstack/react-query';
 import axios, { AxiosError } from 'axios';
 import { getAxiosRequestHostname, isNetworkError } from '../utils/errorUtils.ts';

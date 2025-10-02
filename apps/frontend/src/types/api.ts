@@ -47,7 +47,7 @@ export interface GetCohortWeekResponseDto {
 
 export interface GetCohortResponseDto {
   id: string;
-  type: string;
+  type: CohortType;
   season: number;
   startDate: string;
   endDate: string;
@@ -165,7 +165,7 @@ export interface GetUserResponse {
   discordUsername: string;
   discordGlobalName: string | null;
   name: string | null;
-  role: string;
+  role: UserRole;
   description: string | null;
   background: string | null;
   githubProfileUrl: string | null;

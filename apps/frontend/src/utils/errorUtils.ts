@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 
 export const getAxiosRequestHostname = (
   config: AxiosRequestConfig | undefined
