@@ -100,7 +100,7 @@ const TableView: React.FC = () => {
       userId: score.userId, // maintain for API calls
       name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
       email: '', // not provided in response
-      group: score.group ?? 'Group 0', // prefer backend field if available
+      group: `Group ${score.groupDiscussionScores?.groupNumber ?? 0}`, // prefer backend field if available
       ta: score.ta ?? 'N/A', // prefer backend field if available
       attendance: Boolean(score.groupDiscussionScores?.attendance),
       gdScore: {
