@@ -17,6 +17,7 @@ import {
 } from '../hooks/scoreHooks';
 import { useCohort } from '../hooks/cohortHooks';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
+import { getTAForGroup } from '../helpers/taHelpers.ts';
 
 const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'];
 
@@ -98,34 +99,37 @@ const TableView: React.FC = () => {
       return;
     }
 
-    const transformed: TableRowData[] = scoresData.scores.map((score: any, idx: number) => ({
-      id: typeof score.userId === 'number' ? score.userId : idx,
-      userId: score.userId, // maintain for API calls
-      name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
-      email: '', // not provided in response
-      group: `Group ${score.groupDiscussionScores?.groupNumber ?? 0}`, // prefer backend field if available
-      ta: score.ta ?? 'N/A', // prefer backend field if available
-      attendance: Boolean(score.groupDiscussionScores?.attendance),
-      gdScore: {
-        fa: score.groupDiscussionScores?.communicationScore ?? 0,
-        fb: score.groupDiscussionScores?.depthOfAnswerScore ?? 0,
-        fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore ?? 0,
-        fd: score.groupDiscussionScores?.engagementScore ?? 0,
-      },
-      bonusScore: {
-        attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
-        good: score.groupDiscussionScores?.bonusAnswerScore ?? 0,
-        followUp: score.groupDiscussionScores?.bonusFollowupScore ?? 0,
-      },
-      exerciseScore: {
-        Submitted: Boolean(score.exerciseScores?.isSubmitted),
-        privateTest: Boolean(score.exerciseScores?.isPassing),
-        goodDoc: Boolean(score.exerciseScores?.hasGoodDocumentation),
-        goodStructure: Boolean(score.exerciseScores?.hasGoodStructure),
-      },
-      week: weekIndex,
-      total: score.totalScore ?? 0,
-    }));
+    const transformed: TableRowData[] = scoresData.scores.map((score: any, idx: number) => {
+      const groupNumber = score.groupDiscussionScores?.groupNumber ?? 0;
+      return {
+        id: typeof score.userId === 'number' ? score.userId : idx,
+        userId: score.userId, // maintain for API calls
+        name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
+        email: '', // not provided in response
+        group: `Group ${groupNumber}`,
+        ta: getTAForGroup(groupNumber), // assign TA based on group number
+        attendance: Boolean(score.groupDiscussionScores?.attendance),
+        gdScore: {
+          fa: score.groupDiscussionScores?.communicationScore ?? 0,
+          fb: score.groupDiscussionScores?.depthOfAnswerScore ?? 0,
+          fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore ?? 0,
+          fd: score.groupDiscussionScores?.engagementScore ?? 0,
+        },
+        bonusScore: {
+          attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
+          good: score.groupDiscussionScores?.bonusAnswerScore ?? 0,
+          followUp: score.groupDiscussionScores?.bonusFollowupScore ?? 0,
+        },
+        exerciseScore: {
+          Submitted: Boolean(score.exerciseScores?.isSubmitted),
+          privateTest: Boolean(score.exerciseScores?.isPassing),
+          goodDoc: Boolean(score.exerciseScores?.hasGoodDocumentation),
+          goodStructure: Boolean(score.exerciseScores?.hasGoodStructure),
+        },
+        week: weekIndex,
+        total: score.totalScore ?? 0,
+      };
+    });
 
     setData(transformed);
     setTotalCount(scoresData.scores.length);
