@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, AlertCircle, ArrowLeft, Download, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 import { StudentBackground } from '../components/student/StudentBackground';
@@ -8,178 +8,138 @@ import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
-import { fetchGithubUsername, fetchStudentData, fetchStudentBackgroundData } from '../services/studentService';
-import { getStudentNameFromUrl, exportStudentData } from '../utils/studentUtils';
-import { calculateStudentStats } from '../utils/calculations';
-import { decodeUsername, validateUserAccess } from '../utils/tokenUtils';
 import type { StudentData, StudentBackground as StudentBgType } from '../types/student';
+import apiClient from '../services/api';
+
+interface GroupDiscussionScores {
+  id: string;
+  attendance: boolean;
+  communicationScore: number;
+  maxCommunicationScore: number;
+  depthOfAnswerScore: number;
+  maxDepthOfAnswerScore: number;
+  technicalBitcoinFluencyScore: number;
+  maxTechnicalBitcoinFluencyScore: number;
+  engagementScore: number;
+  maxEngagementScore: number;
+  isBonusAttempted: boolean;
+  bonusAnswerScore: number;
+  maxBonusAnswerScore: number;
+  bonusFollowupScore: number;
+  maxBonusFollowupScore: number;
+  totalScore: number;
+  maxTotalScore: number;
+  groupNumber: number;
+}
+
+interface ExerciseScores {
+  id: string;
+  isSubmitted: boolean;
+  isPassing: boolean;
+  hasGoodDocumentation: boolean;
+  hasGoodStructure: boolean;
+  totalScore: number;
+  maxTotalScore: number;
+}
+
+interface WeeklyScore {
+  weekId: string;
+  groupDiscussionScores: GroupDiscussionScores;
+  exerciseScores: ExerciseScores;
+  totalScore: number;
+  maxTotalScore: number;
+}
+
+interface Cohort {
+  cohortId: string;
+  cohortType: string;
+  seasonNumber: number;
+  weeklyScores: WeeklyScore[];
+  totalScore: number;
+  maxTotalScore: number;
+}
+
+interface ScoresData {
+  cohorts: Cohort[];
+  totalScore: number;
+  maxTotalScore: number;
+}
 
 const StudentDetailPage = () => {
-  const navigate = useNavigate();
-  const { studentName: paramStudentName } = useParams();
   const [searchParams] = useSearchParams();
-  const [student, setStudent] = useState<StudentData | null>(null);
-  const [studentBackground, setStudentBackground] = useState<StudentBgType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Get student name from URL params, search params, or secure token
-  const getStudentName = useCallback((): string | null => {
-    // Try to get from URL params first (legacy support)
-    if (paramStudentName) return decodeURIComponent(paramStudentName);
-
-    // Check for secure token parameter
-    const token = searchParams.get('token');
-    if (token) {
-      const decodedUsername = decodeUsername(token);
-      if (decodedUsername && validateUserAccess(decodedUsername)) {
-        return decodedUsername;
-      } else {
-        // Token validation failed
-        setError('Access denied: Invalid or expired session token');
-        return null;
-      }
-    }
-
-    // Fallback to legacy student parameter
-    const fromParams = searchParams.get('student');
-    if (fromParams) {
-      // Validate against authenticated user for legacy URLs
-      if (!validateUserAccess(fromParams)) {
-        setError('Access denied: Unauthorized user access attempt');
-        return null;
-      }
-      return fromParams;
-    }
-
-    return getStudentNameFromUrl();
-  }, [paramStudentName, searchParams]);
-
-  // Load student data
-  const loadStudentData = async (name: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const studentData = await fetchStudentData(name);
-      setStudent(studentData);
-
-      // Fetch background data if student has email
-      if (studentData?.email) {
-        try {
-          const backgroundData = await fetchStudentBackgroundData(studentData.email);
-          setStudentBackground(backgroundData);
-        } catch (bgErr) {
-          console.warn('Failed to fetch background data:', bgErr);
-          // Don't set error for background data failure
-        }
-      }
-    } catch (err) {
-      console.error('Error loading student data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load student data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getGithubUsername = async (name: string) => {
-    const githubUsername = await fetchGithubUsername(name);
-    console.log("gith",githubUsername);
-    window.open(`https://ghstats.bitcoinsearch.xyz/result?username=${githubUsername}`, '_blank')
-  }
+  const [scoresData, setScoresData] = useState<ScoresData | null>(null);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
   useEffect(() => {
-    const name = getStudentName();
-    if (name) {
-      loadStudentData(name);
-    } else {
-      setError('No student name provided');
-      setLoading(false);
+    const studentId = searchParams.get('studentId');
+
+    if (studentId) {
+      apiClient.get(`/scores/user/${studentId}`)
+        .then(response => {
+          console.log('Scores data:', response.data);
+          setScoresData(response.data);
+        })
+        .catch(error => {
+          console.error('Error fetching scores:', error);
+        });
     }
-  }, [paramStudentName,getStudentName]);
+  }, [searchParams]);
 
-  const handleGoBack = () => {
-    navigate(-1);
+  const student: StudentData | null = null;
+  const studentBackground: StudentBgType | null = null;
+
+  // Calculate stats
+  const totalWeeks = scoresData?.cohorts[0]?.weeklyScores?.length || 0;
+  const attendedWeeks = scoresData?.cohorts[0]?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
+
+  const stats = {
+    totalScore: scoresData?.totalScore || 0,
+    maxPossibleScore: scoresData?.maxTotalScore || 0,
+    avgScore: totalWeeks > 0 ? (scoresData?.totalScore || 0) / totalWeeks : 0,
+    attendanceRate: totalWeeks > 0 ? (attendedWeeks / totalWeeks) * 100 : 0,
+    overallPercentage: (scoresData?.maxTotalScore || 0) > 0 ? ((scoresData?.totalScore || 0) / (scoresData?.maxTotalScore || 0)) * 100 : 0,
+    attendedWeeks: attendedWeeks,
   };
 
-  const handleExport = () => {
-    exportStudentData(student);
-  };
+  // Prepare weekly data for WeeklyBreakdownCard
+  const validWeeks = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+    week: index,
+    weekId: weekScore.weekId,
+    totalScore: weekScore.totalScore,
+    maxTotalScore: weekScore.maxTotalScore,
+    groupDiscussionScores: weekScore.groupDiscussionScores,
+    exerciseScores: weekScore.exerciseScores,
+    attendance: weekScore.groupDiscussionScores.attendance,
+  })) || [];
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
-        <div className="flex items-center space-x-3">
-          <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-          <span className="text-xl">Loading student data...</span>
-        </div>
-      </div>
-    );
-  }
+  // Prepare weekly data for WeeklyProgressChart (old format)
+  const chartWeeklyData = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+    week: index,
+    attendance: weekScore.groupDiscussionScores.attendance,
+    gdScore: {
+      fa: weekScore.groupDiscussionScores.communicationScore,
+      fb: weekScore.groupDiscussionScores.depthOfAnswerScore,
+      fc: weekScore.groupDiscussionScores.technicalBitcoinFluencyScore,
+      fd: weekScore.groupDiscussionScores.engagementScore,
+    },
+    bonusScore: {
+      attempt: weekScore.groupDiscussionScores.bonusAnswerScore,
+      good: weekScore.groupDiscussionScores.bonusAnswerScore,
+      followUp: weekScore.groupDiscussionScores.bonusFollowupScore,
+    },
+    exerciseScore: {
+      Submitted: weekScore.exerciseScores.isSubmitted,
+      privateTest: weekScore.exerciseScores.isPassing,
+      goodDoc: weekScore.exerciseScores.hasGoodDocumentation,
+      goodStructure: weekScore.exerciseScores.hasGoodStructure,
+    },
+    total: weekScore.totalScore / weekScore.maxTotalScore,
+    totalScore: weekScore.totalScore,
+    maxTotalScore: weekScore.maxTotalScore,
+    group: weekScore.groupDiscussionScores.groupNumber.toString(),
+    ta: 'TBD',
+  })) || [];
 
-  // Error state
-  if (error) {
-    const isSecurityError = error.includes('Access denied');
-    
-    return (
-      <div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto" />
-          <h2 className="text-2xl font-bold text-red-400">
-            {isSecurityError ? 'Access Denied' : 'Error Loading Student Data'}
-          </h2>
-          <p className="text-zinc-400">{error}</p>
-          {isSecurityError && (
-            <p className="text-yellow-400 text-sm">
-              Please log in again or select a cohort from the main page.
-            </p>
-          )}
-          <div className="space-x-4">
-            <button 
-              onClick={() => navigate('/cohortSelector')}
-              className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-md transition-colors"
-            >
-              {isSecurityError ? 'Go to Login' : 'Select Cohort'}
-            </button>
-            {!isSecurityError && (
-              <button 
-                onClick={() => {
-                  const name = getStudentName();
-                  if (name) loadStudentData(name);
-                }}
-                className="bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-md transition-colors"
-              >
-                Try Again
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // No student data
-  if (!student) {
-    return (
-      <div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="h-16 w-16 text-amber-400 mx-auto" />
-          <h2 className="text-2xl font-bold">No Student Data</h2>
-          <p className="text-zinc-400">Student data could not be loaded.</p>
-          <button 
-            onClick={handleGoBack}
-            className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-md transition-colors"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const stats = calculateStudentStats(student.weeklyData);
-  const validWeeks = student.weeklyData.filter(week => week.week > 0);
 
   return (
     <div className="min-h-screen bg-zinc-800 text-zinc-100">
@@ -204,33 +164,33 @@ const StudentDetailPage = () => {
 
             {/* Navigation and Actions */}
             <div className="flex items-center justify-between mb-6">
-              <button 
-                onClick={handleGoBack}
+              <button
+                onClick={() => {}}
                 className="b-0 rounded-md flex items-center space-x-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-300 hover:border-orange-400 p-2 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to Students</span>
               </button>
-              
+
               <div className="flex items-center space-x-4">
-                <button 
-                  onClick={() => navigate('/instructions')}
+                <button
+                  onClick={() => {}}
                   className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
                 >
                   <span className="text-orange-400">►</span>
                   <span>General Instructions</span>
                 </button>
-                
-                <button 
-                  onClick={() => navigate('/result')}
+
+                <button
+                  onClick={() => {}}
                   className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
                 >
                   <span className="text-orange-400">►</span>
                   <span>View Leaderboard</span>
                 </button>
-                
-                <button 
-                  onClick={handleExport}
+
+                <button
+                  onClick={() => {}}
                   className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-orange-400 text-zinc-900 hover:bg-orange-500 border border-orange-300 transition-colors"
                 >
                   <Download className="h-4 w-4" />
@@ -243,10 +203,10 @@ const StudentDetailPage = () => {
             <div className="mb-6 pb-4 border-b border-orange-400">
               <div className="flex items-center space-x-6">
                 <div>
-                  <h1 className="text-3xl font-bold text-orange-300 cursor-pointer hover:text-orange-400 transition-colors" onClick={() => getGithubUsername(student.name)}>{student.name}</h1>
+                  <h1 className="text-3xl font-bold text-orange-300 cursor-pointer hover:text-orange-400 transition-colors" onClick={() => {}}>{student?.name}</h1>
                   <div className="flex items-center space-x-6 text-orange-200 mt-2">
                     <span className="text-orange-400">[EMAIL]</span>
-                    <span>{student.email}</span>
+                    <span>{student?.email}</span>
                   </div>
                 </div>
               </div>
@@ -265,28 +225,52 @@ const StudentDetailPage = () => {
             </div>
             
             {/* Progress Chart */}
-            <WeeklyProgressChart weeklyData={validWeeks} />
+            <WeeklyProgressChart weeklyData={chartWeeklyData} />
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Weekly Breakdown */}
         <div>
-          <h2 className="text-lg font-semibold text-zinc-100 mb-6 flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
-            Detailed Weekly Breakdown
-          </h2>
-          <div className="space-y-6">
-            {validWeeks.slice(0, 5).map((week) => (
-              <WeeklyBreakdownCard 
-                key={week.week} 
-                week={week} 
-                studentName={student.name}
-              />
-            ))}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-zinc-100 flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              Detailed Weekly Breakdown
+            </h2>
+
+            {validWeeks.length > 0 && (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentWeekIndex(prev => Math.max(0, prev - 1))}
+                  disabled={currentWeekIndex === 0}
+                  className="p-2 bg-orange-400 text-white hover:bg-orange-500 border-none rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <span className="text-orange-300 font-mono">
+                  Week {currentWeekIndex} of {validWeeks.length - 1}
+                </span>
+
+                <button
+                  onClick={() => setCurrentWeekIndex(prev => Math.min(validWeeks.length - 1, prev + 1))}
+                  disabled={currentWeekIndex === validWeeks.length - 1}
+                  className="p-2 bg-orange-400 text-white hover:bg-orange-500  border-none  rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
+
+          {validWeeks.length > 0 && validWeeks[currentWeekIndex] && (
+            <WeeklyBreakdownCard
+              week={validWeeks[currentWeekIndex]}
+              studentName={student?.name || ''}
+            />
+          )}
         </div>
       </div>
     </div>

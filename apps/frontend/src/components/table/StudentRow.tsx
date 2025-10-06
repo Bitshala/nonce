@@ -7,7 +7,7 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 interface StudentRowProps {
   person: TableRowData;
   week: number;
-  onStudentClick: (studentName: string) => void;
+  onStudentClick: (student: TableRowData) => void;
   onEditStudent: (student: TableRowData) => void;
   onContextMenu: (menu: {
     visible: boolean;
@@ -65,7 +65,7 @@ export const StudentRow: React.FC<StudentRowProps> = ({
     <tr className="cursor-pointer hover:bg-zinc-50 transition-colors duration-150">
       <td
         className="cursor-pointer px-8 py-6 whitespace-nowrap"
-        onClick={() => onStudentClick(person.name)}
+        onClick={() => onStudentClick(person)}
         onContextMenu={handleNameRightClick}
       >
         <div className="flex items-center">
