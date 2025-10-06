@@ -358,6 +358,7 @@ const TableView: React.FC = () => {
             setAttendanceFilter('All');
           }}
           navigate={navigate}
+          cohortType={cohortData?.type}
         />
 
         <StudentTableGrid

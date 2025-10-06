@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 
@@ -70,6 +70,7 @@ interface StudentInfo {
 
 const StudentDetailPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [scoresData, setScoresData] = useState<ScoresData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(1);
@@ -213,6 +214,16 @@ const StudentDetailPage = () => {
                     </div>
                   )}
                 </div>
+                {selectedCohort && selectedCohort.cohortType === "MASTERING_BITCOIN" && (
+                  <div className="mt-4 pt-3 border-t border-zinc-700">
+                    <button
+                      onClick={() => navigate('/mb-instructions')}
+                      className="px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      View MB Instructions
+                    </button>
+                  </div>
+                )}
               </div>
             )} 
 

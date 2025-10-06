@@ -31,6 +31,7 @@ interface TableHeaderProps {
   onAssignGroups: () => void;
   onClearFilters: () => void;
   navigate: (path: string) => void;
+  cohortType?: string;
 }
 
 export const TableHeader: React.FC<TableHeaderProps> = ({
@@ -51,6 +52,8 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   weeklyData,
   onAssignGroups,
   onClearFilters,
+  navigate,
+  cohortType,
 }) => {
   return (
     <>
@@ -153,6 +156,14 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
         </div>
 
         <div className="flex gap-2">
+          {cohortType === 'MASTERING_BITCOIN' && (
+            <button
+              onClick={() => navigate('/mb-instructions')}
+              className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
+            >
+              MB Instructions
+            </button>
+          )}
           <button
             onClick={onAssignGroups}
             className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"

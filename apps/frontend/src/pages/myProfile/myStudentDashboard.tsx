@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyCohorts, useJoinCohortWaitlist, useMyWaitlistStatus } from '../../hooks/cohortHooks';
+import { useUser } from '../../hooks/userHooks';
 import { CohortType } from '../../types/enums';
 
 const getCohortImage = (cohortType: string): string => {
@@ -18,6 +19,7 @@ const MyStudentDashboard = () => {
     const { data, isLoading } = useMyCohorts({ page: 0, pageSize: 100 });
     const { mutate: joinWaitlist } = useJoinCohortWaitlist();
     const { data: waitlistData } = useMyWaitlistStatus();
+    const { data: userData } = useUser();
 
     const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
         show: false,
@@ -40,6 +42,13 @@ const MyStudentDashboard = () => {
         if (isWaitlisted(cohortType)) {
             return; // Already waitlisted, do nothing
         }
+
+        // Check if user email exists
+        if (!userData?.email) {
+            navigate('/me', { state: { showEmailPopup: true } });
+            return;
+        }
+
         joinWaitlist(
             { type: cohortType },
             {
@@ -150,8 +159,18 @@ const MyStudentDashboard = () => {
                                 key={cohort.id}
                                 className="h-[180px] w-[320px] rounded-sm overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                                 onClick={() => {
-                                    if (cohort.type === 'MASTERING_BITCOIN') {
-                                        navigate('/mb-instructions');
+                                    if (userData?.id) {
+                                        const params = new URLSearchParams({
+                                            studentId: userData.id,
+                                            cohortId: cohort.id,
+                                        });
+                                        if (userData.name) {
+                                            params.append('studentName', userData.name);
+                                        }
+                                        if (userData.email) {
+                                            params.append('studentEmail', userData.email);
+                                        }
+                                        navigate(`/detailPage?${params.toString()}`);
                                     }
                                 }}
                             >

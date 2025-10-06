@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUser, useUpdateUser } from '../../hooks/userHooks';
 
 interface UserProfile {
@@ -42,9 +43,11 @@ const BITCOIN_BOOKS_OPTIONS = [
 ];
 
 const StudentProfileData: React.FC = () => {
+  const location = useLocation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
   const [booksDropdownOpen, setBooksDropdownOpen] = useState(false);
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
 
   // Use hooks for data fetching
   const { data: userData, isLoading: isLoadingUser } = useUser();
@@ -57,6 +60,13 @@ const StudentProfileData: React.FC = () => {
       setProfile(userData);
     }
   }, [userData]);
+
+  // Check for navigation state to show email popup
+  useEffect(() => {
+    if (location.state?.showEmailPopup) {
+      setShowEmailPopup(true);
+    }
+  }, [location]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -166,9 +176,9 @@ const StudentProfileData: React.FC = () => {
                   type="email"
                   id="email"
                   name="email"
-                  value={profile.email}
-                  disabled
-                  className="w-96 px-4 py-3 bg-zinc-600/60 border border-zinc-600/30 rounded-xl text-zinc-400 cursor-not-allowed"
+                  value={profile.email || ''}
+                  onChange={handleInputChange}
+                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
                 />
               </div>
 
@@ -429,6 +439,31 @@ const StudentProfileData: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Email Required Popup */}
+      {showEmailPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+          <div className="bg-zinc-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-100">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-zinc-100 mb-2">
+                Email Required
+              </h3>
+              <p className="text-zinc-300 mb-6">Please fill in your email to join a cohort</p>
+              <button
+                onClick={() => setShowEmailPopup(false)}
+                className="border-none bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-semibold px-8 py-3 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
