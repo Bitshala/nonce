@@ -83,7 +83,7 @@ const router = createBrowserRouter([
       element: <MyError />,
     },
       {
-      path: '/:cohortId/me',
+      path: '/myDashboard',
       element: <MyStudentDashboard />,
     },
     {

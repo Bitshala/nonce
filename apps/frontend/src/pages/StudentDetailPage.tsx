@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 
-import { StudentBackground } from '../components/student/StudentBackground';
 import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
-import type { StudentData, StudentBackground as StudentBgType } from '../types/student';
 import apiClient from '../services/api';
 
 interface GroupDiscussionScores {
@@ -65,15 +63,32 @@ interface ScoresData {
   maxTotalScore: number;
 }
 
+interface StudentInfo {
+  name: string;
+  email: string;
+}
+
 const StudentDetailPage = () => {
   const [searchParams] = useSearchParams();
   const [scoresData, setScoresData] = useState<ScoresData | null>(null);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(1);
 
   useEffect(() => {
     const studentId = searchParams.get('studentId');
+    const studentName = searchParams.get('studentName');
+    const studentEmail = searchParams.get('studentEmail');
 
     if (studentId) {
+      // Set student info from URL params if available
+      if (studentName || studentEmail) {
+        setStudentInfo({
+          name: studentName || 'Unknown',
+          email: studentEmail || 'N/A',
+        });
+      }
+
+      // Fetch scores data
       apiClient.get(`/scores/user/${studentId}`)
         .then(response => {
           console.log('Scores data:', response.data);
@@ -84,9 +99,6 @@ const StudentDetailPage = () => {
         });
     }
   }, [searchParams]);
-
-  const student: StudentData | null = null;
-  const studentBackground: StudentBgType | null = null;
 
   // Get cohortId from URL params or cohortType to find the right cohort
   const cohortIdParam = searchParams.get('cohortId');
@@ -153,7 +165,7 @@ const StudentDetailPage = () => {
     maxTotalScore: weekScore.maxTotalScore,
     group: weekScore.groupDiscussionScores.groupNumber?.toString() || null,
     ta: 'TBD',
-  })) || [];
+  })).filter((weekData) => weekData.week !== 0) || [];
 
 
   return (
@@ -175,64 +187,38 @@ const StudentDetailPage = () => {
 
           {/* Terminal Content */}
           <div className="p-6 bg-zinc-900">
-            {/* Terminal command header */} 
-
-            {/* Navigation and Actions */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={() => {}}
-                className="b-0 rounded-md flex items-center space-x-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-300 hover:border-orange-400 p-2 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Back to Students</span>
-              </button>
-
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
-                >
-                  <span className="text-orange-400">►</span>
-                  <span>General Instructions</span>
-                </button>
-
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
-                >
-                  <span className="text-orange-400">►</span>
-                  <span>View Leaderboard</span>
-                </button>
-
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-orange-400 text-zinc-900 hover:bg-orange-500 border border-orange-300 transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Export Data</span>
-                </button>
-              </div>
-            </div>
-            
-            {/* Student Info */}
-            <div className="mb-6 pb-4 border-b border-orange-400">
-              <div className="flex items-center space-x-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-orange-300 cursor-pointer hover:text-orange-400 transition-colors" onClick={() => {}}>{student?.name}</h1>
-                  <div className="flex items-center space-x-6 text-orange-200 mt-2">
-                    <span className="text-orange-400">[EMAIL]</span>
-                    <span>{student?.email}</span>
+            {/* Terminal command header */}
+            {studentInfo && (
+              <div className="mb-4 pb-3 border-b border-zinc-700">
+                <div className="flex items-center space-x-2 text-orange-300 font-mono text-sm">
+                  <span className="text-green-400">$</span>
+                  <span className="text-zinc-400">cat</span>
+                  <span>student_info.txt</span>
+                </div>
+                <div className="mt-2 space-y-1 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-orange-400 font-semibold">NAME:</span>
+                    <span className="text-zinc-300">{studentInfo.name}</span>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-orange-400 font-semibold">EMAIL:</span>
+                    <span className="text-zinc-300">{studentInfo.email}</span>
+                  </div>
+                  {selectedCohort && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-orange-400 font-semibold">COHORT:</span>
+                      <span className="text-zinc-300">
+                        {selectedCohort.cohortType} - Season {selectedCohort.seasonNumber}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )} 
 
-            {/* Student Background */}
-            {studentBackground && (
-              <div className="mb-6">
-                <StudentBackground background={studentBackground} />
-              </div>
-            )}
+            {/* Navigation and Actions */}
+
+
 
             {/* Summary Stats */}
             <div className="mb-6">
@@ -283,7 +269,7 @@ const StudentDetailPage = () => {
           {validWeeks.length > 0 && validWeeks[currentWeekIndex] && (
             <WeeklyBreakdownCard
               week={validWeeks[currentWeekIndex]}
-              studentName={student?.name || ''}
+              studentName={studentInfo?.name || ''}
             />
           )}
         </div>
