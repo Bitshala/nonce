@@ -350,13 +350,13 @@ const StudentProfileData: React.FC = () => {
                   </button>
 
                   {skillsDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-2 bg-zinc-700 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                    <div className="absolute z-10 w-full mt-2 bg-zinc-800 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
                       {SKILLS_OPTIONS.filter(s => !profile.skills.includes(s)).map((skill) => (
                         <button
                           key={skill}
                           type="button"
                           onClick={() => addSkill(skill)}
-                          className="w-full px-4 py-2 text-left text-white hover:bg-orange-600 transition-colors border-none"
+                          className="w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors border-none"
                         >
                           {skill}
                         </button>
@@ -403,13 +403,13 @@ const StudentProfileData: React.FC = () => {
                   </button>
 
                   {booksDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-2 bg-zinc-700 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                    <div className="absolute z-10 w-full mt-2 bg-zinc-800 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
                       {BITCOIN_BOOKS_OPTIONS.filter(b => !profile.bitcoinBooksRead.includes(b)).map((book) => (
                         <button
                           key={book}
                           type="button"
                           onClick={() => addBook(book)}
-                          className="w-full px-4 py-2 text-left text-white hover:bg-orange-600 transition-colors border-none"
+                          className="w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors border-none"
                         >
                           {book}
                         </button>
