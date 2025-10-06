@@ -23,6 +23,11 @@ import StudentCohortSelector from './pages/Students/studentCohortSelector.tsx';
 import MBInstructions from './pages/Students/MBInstructions.tsx';
 import StudentProfileData from './components/student/StudentProfileData.tsx';
 
+import MyError from './pages/404error.tsx';
+import MyStudentDashboard from './pages/myProfile/myStudentDashboard.tsx';
+import ProfilePage from './pages/myProfile/profilePage.tsx';
+import MyCohortInstructions from './pages/myProfile/myCohortInstructions.tsx';
+
 const router = createBrowserRouter([
   {
     path: '/login',
@@ -72,6 +77,22 @@ const router = createBrowserRouter([
         {
       path: '/cohortSelector',
       element: <StudentCohortSelector />,
+    },
+    {
+      path: '/*',
+      element: <MyError />,
+    },
+      {
+      path: '/myDashboard',
+      element: <MyStudentDashboard />,
+    },
+    {
+      path: '/:userId/aboutMe',
+      element: <ProfilePage />,
+    },
+    {
+      path: '/:cohortId/instructions',
+      element: <MyCohortInstructions />,
     },
     {
       path: '/unauthorized',

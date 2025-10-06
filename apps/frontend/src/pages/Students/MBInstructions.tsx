@@ -17,7 +17,7 @@ const MBInstructions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Use hooks for data fetching
-  const { data: userData, isLoading: isLoadingUser } = useUser();
+  const { isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
 
   // Derive hasAccessToMB from scoresData
@@ -240,8 +240,8 @@ const MBInstructions: React.FC = () => {
 
   if (error || !hasAccessToMB) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 px-4 py-6">
+        <div className="max-w-[1400px] mx-auto">
           <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
             <div className="text-center space-y-4">
               <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
@@ -275,51 +275,39 @@ const MBInstructions: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 px-4 py-6">
+      <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-orange-300 hover:text-orange-400 mb-6 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Back</span>
-          </button>
+          <div className='flex flex-row-reverse justify-between mx-auto mb-12 items-baseline'>
+            <button
+              onClick={() => navigate(-1)}
+              className="h-[30px] flex items-center border-none bg-transparent space-x-2 text-orange-300 hover:text-orange-400  transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Back</span>
+            </button>
 
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Mastering Bitcoin Instructions
-          </h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Mastering Bitcoin Group Discussion Questions
+            </h1>
+          </div>
 
-          {userData && (
-            <div className="bg-green-900/30 border border-green-700/50 rounded-xl p-4 mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                <div>
-                  <p className="text-green-300 font-semibold">
-                    Welcome, {userData.name || userData.discordGlobalName}!
-                  </p>
-                  <p className="text-green-400/80 text-sm">
-                    You have access to MASTERING_BITCOIN cohort instructions
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Week Tabs */}
-        <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl shadow-2xl overflow-hidden">
+        <div className=" bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl shadow-2xl overflow-hidden">
           {/* Tab Navigation */}
-          <div className="border-b border-zinc-700/50">
-            <div className="flex overflow-x-auto scrollbar-hide">
+          <div className="border-zinc-700/50">
+            <div className="flex w-full">
               {weeklyContent.map((week) => (
                 <button
                   key={week.week}
                   onClick={() => setActiveWeek(week.week)}
-                  className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
+                  className={`flex-1 border-none px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
                     activeWeek === week.week
                       ? 'border-orange-500 text-orange-300 bg-zinc-700/50'
                       : 'border-transparent text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700/30'
@@ -353,13 +341,10 @@ const MBInstructions: React.FC = () => {
                     </svg>
                     Discussion Questions
                   </h3>
-                  <div className="space-y-4">
+                  <div className="">
                     {weeklyContent.find(week => week.week === activeWeek)?.questions.map((question, index) => (
-                      <div key={index} className="bg-zinc-700/40 border border-zinc-600/50 rounded-lg p-4">
-                        <div className="flex items-start space-x-3">
-                          <span className="flex-shrink-0 w-6 h-6 bg-orange-500 text-white text-sm font-semibold rounded-full flex items-center justify-center">
-                            {index + 1}
-                          </span>
+                      <div key={index} className=" ">
+                        <div className="flex items-center space-x-1">
                           <p className="text-zinc-200 leading-relaxed">{question}</p>
                         </div>
                       </div>

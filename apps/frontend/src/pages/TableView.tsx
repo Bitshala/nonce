@@ -199,8 +199,9 @@ const TableView: React.FC = () => {
 
   const handleStudentClick = useCallback((student: TableRowData) => {
     const studentId = student.userId ?? student.id;
-    navigate(`/detailPage?studentId=${studentId}`);
-  }, [navigate]);
+    const cohortType = cohortData?.type;
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}`);
+  }, [navigate, cohortData?.type]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {
     setSelectedStudentForEdit(student);
@@ -357,6 +358,7 @@ const TableView: React.FC = () => {
             setAttendanceFilter('All');
           }}
           navigate={navigate}
+          cohortType={cohortData?.type}
         />
 
         <StudentTableGrid

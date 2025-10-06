@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 
-import { StudentBackground } from '../components/student/StudentBackground';
 import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
-import type { StudentData, StudentBackground as StudentBgType } from '../types/student';
 import apiClient from '../services/api';
 
 interface GroupDiscussionScores {
@@ -29,7 +27,7 @@ interface GroupDiscussionScores {
   maxBonusFollowupScore: number;
   totalScore: number;
   maxTotalScore: number;
-  groupNumber: number;
+  groupNumber: number | null;
 }
 
 interface ExerciseScores {
@@ -65,15 +63,33 @@ interface ScoresData {
   maxTotalScore: number;
 }
 
+interface StudentInfo {
+  name: string;
+  email: string;
+}
+
 const StudentDetailPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [scoresData, setScoresData] = useState<ScoresData | null>(null);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(1);
 
   useEffect(() => {
     const studentId = searchParams.get('studentId');
+    const studentName = searchParams.get('studentName');
+    const studentEmail = searchParams.get('studentEmail');
 
     if (studentId) {
+      // Set student info from URL params if available
+      if (studentName || studentEmail) {
+        setStudentInfo({
+          name: studentName || 'Unknown',
+          email: studentEmail || 'N/A',
+        });
+      }
+
+      // Fetch scores data
       apiClient.get(`/scores/user/${studentId}`)
         .then(response => {
           console.log('Scores data:', response.data);
@@ -85,12 +101,24 @@ const StudentDetailPage = () => {
     }
   }, [searchParams]);
 
-  const student: StudentData | null = null;
-  const studentBackground: StudentBgType | null = null;
+  // Get cohortId from URL params or cohortType to find the right cohort
+  const cohortIdParam = searchParams.get('cohortId');
+  const cohortTypeParam = searchParams.get('cohortType');
+
+  // Find the selected cohort
+  const selectedCohort = scoresData?.cohorts.find(cohort => {
+    if (cohortIdParam) {
+      return cohort.cohortId === cohortIdParam;
+    }
+    if (cohortTypeParam) {
+      return cohort.cohortType === cohortTypeParam;
+    }
+    return false;
+  }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
 
   // Calculate stats
-  const totalWeeks = scoresData?.cohorts[0]?.weeklyScores?.length || 0;
-  const attendedWeeks = scoresData?.cohorts[0]?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
+  const totalWeeks = selectedCohort?.weeklyScores?.length || 0;
+  const attendedWeeks = selectedCohort?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
 
   const stats = {
     totalScore: scoresData?.totalScore || 0,
@@ -102,7 +130,7 @@ const StudentDetailPage = () => {
   };
 
   // Prepare weekly data for WeeklyBreakdownCard
-  const validWeeks = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+  const validWeeks = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
     week: index,
     weekId: weekScore.weekId,
     totalScore: weekScore.totalScore,
@@ -113,7 +141,7 @@ const StudentDetailPage = () => {
   })) || [];
 
   // Prepare weekly data for WeeklyProgressChart (old format)
-  const chartWeeklyData = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+  const chartWeeklyData = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
     week: index,
     attendance: weekScore.groupDiscussionScores.attendance,
     gdScore: {
@@ -136,9 +164,9 @@ const StudentDetailPage = () => {
     total: weekScore.totalScore / weekScore.maxTotalScore,
     totalScore: weekScore.totalScore,
     maxTotalScore: weekScore.maxTotalScore,
-    group: weekScore.groupDiscussionScores.groupNumber.toString(),
+    group: weekScore.groupDiscussionScores.groupNumber?.toString() || null,
     ta: 'TBD',
-  })) || [];
+  })).filter((weekData) => weekData.week !== 0) || [];
 
 
   return (
@@ -160,64 +188,48 @@ const StudentDetailPage = () => {
 
           {/* Terminal Content */}
           <div className="p-6 bg-zinc-900">
-            {/* Terminal command header */} 
+            {/* Terminal command header */}
+            {studentInfo && (
+              <div className="mb-4 pb-3 border-b border-zinc-700">
+                <div className="flex items-center space-x-2 text-orange-300 font-mono text-sm">
+                  <span className="text-green-400">$</span>
+                  <span className="text-zinc-400">cat</span>
+                  <span>student_info.txt</span>
+                </div>
+                <div className="mt-2 space-y-1 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-orange-400 font-semibold">NAME:</span>
+                    <span className="text-zinc-300">{studentInfo.name}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-orange-400 font-semibold">EMAIL:</span>
+                    <span className="text-zinc-300">{studentInfo.email}</span>
+                  </div>
+                  {selectedCohort && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-orange-400 font-semibold">COHORT:</span>
+                      <span className="text-zinc-300">
+                        {selectedCohort.cohortType} - Season {selectedCohort.seasonNumber}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {selectedCohort && selectedCohort.cohortType === "MASTERING_BITCOIN" && (
+                  <div className="mt-4 pt-3 border-t border-zinc-700">
+                    <button
+                      onClick={() => navigate('/mb-instructions')}
+                      className="px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      View MB Instructions
+                    </button>
+                  </div>
+                )}
+              </div>
+            )} 
 
             {/* Navigation and Actions */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={() => {}}
-                className="b-0 rounded-md flex items-center space-x-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-300 hover:border-orange-400 p-2 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Back to Students</span>
-              </button>
 
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
-                >
-                  <span className="text-orange-400">►</span>
-                  <span>General Instructions</span>
-                </button>
 
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-zinc-700 text-orange-300 hover:bg-zinc-600 border border-orange-400 transition-colors font-mono"
-                >
-                  <span className="text-orange-400">►</span>
-                  <span>View Leaderboard</span>
-                </button>
-
-                <button
-                  onClick={() => {}}
-                  className="b-0 rounded-md flex items-center space-x-2 px-4 py-2 bg-orange-400 text-zinc-900 hover:bg-orange-500 border border-orange-300 transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Export Data</span>
-                </button>
-              </div>
-            </div>
-            
-            {/* Student Info */}
-            <div className="mb-6 pb-4 border-b border-orange-400">
-              <div className="flex items-center space-x-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-orange-300 cursor-pointer hover:text-orange-400 transition-colors" onClick={() => {}}>{student?.name}</h1>
-                  <div className="flex items-center space-x-6 text-orange-200 mt-2">
-                    <span className="text-orange-400">[EMAIL]</span>
-                    <span>{student?.email}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Student Background */}
-            {studentBackground && (
-              <div className="mb-6">
-                <StudentBackground background={studentBackground} />
-              </div>
-            )}
 
             {/* Summary Stats */}
             <div className="mb-6">
@@ -268,7 +280,7 @@ const StudentDetailPage = () => {
           {validWeeks.length > 0 && validWeeks[currentWeekIndex] && (
             <WeeklyBreakdownCard
               week={validWeeks[currentWeekIndex]}
-              studentName={student?.name || ''}
+              studentName={studentInfo?.name || ''}
             />
           )}
         </div>

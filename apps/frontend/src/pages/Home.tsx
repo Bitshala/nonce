@@ -62,7 +62,7 @@ function Home() {
     if ([UserRole.TEACHING_ASSISTANT, UserRole.ADMIN].includes(role)) {
       navigate('/select', { replace: true });
     } else if (role === UserRole.STUDENT) {
-      navigate('/me', { replace: true });
+      navigate('/myDashboard', { replace: true });
     } else {
       // Fallback if role is unknown
       navigate('/login', { replace: true });
