@@ -23,23 +23,27 @@ interface UserProfile {
   location: string | null;
 }
 
-interface Cohort {
-  id: string;
-  type: string;
-  season: number;
-  startDate: string;
-  endDate: string;
-  registrationDeadline: string;
-  weeks: Array<{
-    id: string;
-    week: number;
-    questions: string[];
-    bonusQuestion: string[];
-    classroomUrl: string;
-    classroomInviteLink: string;
-  }>;
-}
 
+
+// Predefined options
+const SKILLS_OPTIONS = [
+  'JavaScript', 'TypeScript', 'Python', 'Rust', 'Go', 'C++', 'React', 'Node.js',
+  'Bitcoin Core', 'Lightning Network', 'Cryptography', 'Backend Development',
+  'Frontend Development', 'Smart Contracts', 'Security', 'DevOps'
+];
+
+const BITCOIN_BOOKS_OPTIONS = [
+  'Mastering Bitcoin',
+  'The Bitcoin Standard',
+  'Programming Bitcoin',
+  'Inventing Bitcoin',
+  'The Blocksize War',
+  'Layered Money',
+  '21 Lessons',
+  'Grokking Bitcoin',
+  'The Book of Satoshi',
+  'Bitcoin Money'
+];
 
 const StudentProfileData: React.FC = () => {
   const navigate = useNavigate();
@@ -47,6 +51,8 @@ const StudentProfileData: React.FC = () => {
   const [hasMasteringBitcoin, setHasMasteringBitcoin] = useState(false);
   const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
   const [joiningCohortId, setJoiningCohortId] = useState<string | null>(null);
+  const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
+  const [booksDropdownOpen, setBooksDropdownOpen] = useState(false);
 
   // Use hooks for data fetching
   const { data: userData, isLoading: isLoadingUser } = useUser();
@@ -58,6 +64,7 @@ const StudentProfileData: React.FC = () => {
   // Set profile when userData loads
   useEffect(() => {
     if (userData) {
+      console.log('userData changed, updating profile:', userData);
       setProfile(userData);
     }
   }, [userData]);
@@ -85,14 +92,6 @@ const StudentProfileData: React.FC = () => {
     setProfile(prev => {
       if (!prev) return prev;
 
-      if (name === 'skills') {
-        return { ...prev, skills: value.split(',').map(s => s.trim()).filter(s => s) };
-      }
-
-      if (name === 'bitcoinBooksRead') {
-        return { ...prev, bitcoinBooksRead: value.split(',').map(s => s.trim()).filter(s => s) };
-      }
-
       if (name === 'weeklyCohortCommitmentHours') {
         return { ...prev, [name]: value ? parseInt(value) : null };
       }
@@ -101,27 +100,39 @@ const StudentProfileData: React.FC = () => {
     });
   };
 
+  const addSkill = (skill: string) => {
+    if (!profile || profile.skills.includes(skill)) return;
+    setProfile({ ...profile, skills: [...profile.skills, skill] });
+    setSkillsDropdownOpen(false);
+  };
+
+  const removeSkill = (skill: string) => {
+    if (!profile) return;
+    setProfile({ ...profile, skills: profile.skills.filter(s => s !== skill) });
+  };
+
+  const addBook = (book: string) => {
+    if (!profile || profile.bitcoinBooksRead.includes(book)) return;
+    setProfile({ ...profile, bitcoinBooksRead: [...profile.bitcoinBooksRead, book] });
+    setBooksDropdownOpen(false);
+  };
+
+  const removeBook = (book: string) => {
+    if (!profile) return;
+    setProfile({ ...profile, bitcoinBooksRead: profile.bitcoinBooksRead.filter(b => b !== book) });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
 
-    // Prepare the update payload with only the fields the backend supports
-    const updatePayload = {
-      name: profile.name,
-      description: profile.description,
-      background: profile.background,
-      githubProfileUrl: profile.githubProfileUrl,
-      skills: profile.skills,
-      firstHeardAboutBitcoinOn: profile.firstHeardAboutBitcoinOn,
-      bitcoinBooksRead: profile.bitcoinBooksRead,
-      whyBitcoin: profile.whyBitcoin,
-      weeklyCohortCommitmentHours: profile.weeklyCohortCommitmentHours,
-      location: profile.location
-    };
+    console.log('Submitting profile update:', profile);
 
-    updateUser(updatePayload, {
+    
+    updateUser(profile, {
       onSuccess: (data) => {
-        setProfile(data);
+        console.log('Update successful, received data:', data);
+        // Don't set profile here - let the query invalidation handle it
         alert('Profile updated successfully!');
       },
       onError: (error) => {
@@ -173,19 +184,13 @@ const StudentProfileData: React.FC = () => {
           <div className="bg-gradient-to-r from-orange-600 to-orange-700 border border-orange-500/50 rounded-xl p-4 mb-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-orange-400 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-orange-900" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Mastering Bitcoin Cohort</h3>
-                  <p className="text-orange-100 text-sm">You have access to exclusive Mastering Bitcoin instructions</p>
+                <div className='flex flex-col gap-2'>
+                  <p className="text-white font-semibold text-3xl">Mastering Bitcoin Cohort</p>
                 </div>
               </div>
               <button
                 onClick={() => navigate('/mb-instructions')}
-                className="bg-white text-orange-700 font-semibold px-6 py-2 rounded-lg hover:bg-orange-50 transition-colors duration-200 flex items-center space-x-2"
+                className="bg-white text-orange-700 font-semibold px-6 py-2 rounded-lg hover:bg-orange-50 transition-colors duration-200 flex items-center space-x-2 border-none"
               >
                 <span>View Instructions</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,31 +368,109 @@ const StudentProfileData: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="skills" className="block text-sm font-semibold text-zinc-300 mb-3">
-                Skills (comma-separated)
+              <label className="block text-sm font-semibold text-zinc-300 mb-3">
+                Skills
               </label>
-              <input
-                type="text"
-                id="skills"
-                name="skills"
-                value={profile.skills.join(', ')}
-                onChange={handleInputChange}
-                className="w-[820px] px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
-              />
+              <div className="w-[820px]">
+                {/* Selected Skills Tags */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {profile.skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
+                    >
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill)}
+                        className="hover:text-orange-200 border-none bg-transparent"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
+                    className="w-full px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                  >
+                    <span>Add a skill...</span>
+                    <span className="text-orange-400">{skillsDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+
+                  {skillsDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-2 bg-zinc-700 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                      {SKILLS_OPTIONS.filter(s => !profile.skills.includes(s)).map((skill) => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => addSkill(skill)}
+                          className="w-full px-4 py-2 text-left text-white hover:bg-orange-600 transition-colors border-none"
+                        >
+                          {skill}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div>
-              <label htmlFor="bitcoinBooksRead" className="block text-sm font-semibold text-zinc-300 mb-3">
-                Bitcoin Books Read (comma-separated)
+              <label className="block text-sm font-semibold text-zinc-300 mb-3">
+                Bitcoin Books Read
               </label>
-              <input
-                type="text"
-                id="bitcoinBooksRead"
-                name="bitcoinBooksRead"
-                value={profile.bitcoinBooksRead.join(', ')}
-                onChange={handleInputChange}
-                className="w-[820px] px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
-              />
+              <div className="w-[820px]">
+                {/* Selected Books Tags */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {profile.bitcoinBooksRead.map((book) => (
+                    <span
+                      key={book}
+                      className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
+                    >
+                      <span>{book}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeBook(book)}
+                        className="hover:text-orange-200 border-none bg-transparent"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setBooksDropdownOpen(!booksDropdownOpen)}
+                    className="w-full px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                  >
+                    <span>Add a book...</span>
+                    <span className="text-orange-400">{booksDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+
+                  {booksDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-2 bg-zinc-700 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                      {BITCOIN_BOOKS_OPTIONS.filter(b => !profile.bitcoinBooksRead.includes(b)).map((book) => (
+                        <button
+                          key={book}
+                          type="button"
+                          onClick={() => addBook(book)}
+                          className="w-full px-4 py-2 text-left text-white hover:bg-orange-600 transition-colors border-none"
+                        >
+                          {book}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -395,7 +478,7 @@ const StudentProfileData: React.FC = () => {
             <button
               type="submit"
               disabled={isUpdating}
-              className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-orange-800 focus:ring-2 focus:ring-orange-500/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] disabled:hover:scale-100"
+              className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-orange-800 focus:ring-2 focus:ring-orange-500/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] disabled:hover:scale-100 border-none"
             >
               {isUpdating ? (
                 <div className="flex items-center space-x-2">
