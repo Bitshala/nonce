@@ -29,7 +29,7 @@ interface GroupDiscussionScores {
   maxBonusFollowupScore: number;
   totalScore: number;
   maxTotalScore: number;
-  groupNumber: number;
+  groupNumber: number | null;
 }
 
 interface ExerciseScores {
@@ -88,9 +88,24 @@ const StudentDetailPage = () => {
   const student: StudentData | null = null;
   const studentBackground: StudentBgType | null = null;
 
+  // Get cohortId from URL params or cohortType to find the right cohort
+  const cohortIdParam = searchParams.get('cohortId');
+  const cohortTypeParam = searchParams.get('cohortType');
+
+  // Find the selected cohort
+  const selectedCohort = scoresData?.cohorts.find(cohort => {
+    if (cohortIdParam) {
+      return cohort.cohortId === cohortIdParam;
+    }
+    if (cohortTypeParam) {
+      return cohort.cohortType === cohortTypeParam;
+    }
+    return false;
+  }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
+
   // Calculate stats
-  const totalWeeks = scoresData?.cohorts[0]?.weeklyScores?.length || 0;
-  const attendedWeeks = scoresData?.cohorts[0]?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
+  const totalWeeks = selectedCohort?.weeklyScores?.length || 0;
+  const attendedWeeks = selectedCohort?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
 
   const stats = {
     totalScore: scoresData?.totalScore || 0,
@@ -102,7 +117,7 @@ const StudentDetailPage = () => {
   };
 
   // Prepare weekly data for WeeklyBreakdownCard
-  const validWeeks = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+  const validWeeks = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
     week: index,
     weekId: weekScore.weekId,
     totalScore: weekScore.totalScore,
@@ -113,7 +128,7 @@ const StudentDetailPage = () => {
   })) || [];
 
   // Prepare weekly data for WeeklyProgressChart (old format)
-  const chartWeeklyData = scoresData?.cohorts[0]?.weeklyScores?.map((weekScore, index) => ({
+  const chartWeeklyData = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
     week: index,
     attendance: weekScore.groupDiscussionScores.attendance,
     gdScore: {
@@ -136,7 +151,7 @@ const StudentDetailPage = () => {
     total: weekScore.totalScore / weekScore.maxTotalScore,
     totalScore: weekScore.totalScore,
     maxTotalScore: weekScore.maxTotalScore,
-    group: weekScore.groupDiscussionScores.groupNumber.toString(),
+    group: weekScore.groupDiscussionScores.groupNumber?.toString() || null,
     ta: 'TBD',
   })) || [];
 

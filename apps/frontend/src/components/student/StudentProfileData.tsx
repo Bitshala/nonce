@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import CohortCard from '../CohortCard';
 import { useUser, useUpdateUser } from '../../hooks/userHooks';
-import { useCohorts, useJoinCohort } from '../../hooks/cohortHooks';
-import { useMyScores } from '../../hooks/scoreHooks';
 
 interface UserProfile {
   id: string;
@@ -46,20 +42,13 @@ const BITCOIN_BOOKS_OPTIONS = [
 ];
 
 const StudentProfileData: React.FC = () => {
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [hasMasteringBitcoin, setHasMasteringBitcoin] = useState(false);
-  const [joinedCohorts, setJoinedCohorts] = useState<string[]>([]);
-  const [joiningCohortId, setJoiningCohortId] = useState<string | null>(null);
   const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
   const [booksDropdownOpen, setBooksDropdownOpen] = useState(false);
 
   // Use hooks for data fetching
   const { data: userData, isLoading: isLoadingUser } = useUser();
-  const { data: cohortsData } = useCohorts({ page: 0, limit: 100 });
-  const { data: scoresData } = useMyScores();
   const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
-  const { mutate: joinCohort } = useJoinCohort();
 
   // Set profile when userData loads
   useEffect(() => {
@@ -68,21 +57,6 @@ const StudentProfileData: React.FC = () => {
       setProfile(userData);
     }
   }, [userData]);
-
-  // Set joined cohorts and mastering bitcoin status when scoresData loads
-  useEffect(() => {
-    if (scoresData) {
-      const joinedCohortIds = scoresData.cohorts.map((record: any) => record.cohortId);
-      
-      setJoinedCohorts(joinedCohortIds);
-
-      // Check if user has joined MASTERING_BITCOIN cohort
-      const hasMB = scoresData.cohorts.some((record: any) => record.cohortType === 'MASTERING_BITCOIN');
-      setHasMasteringBitcoin(hasMB);
-    }
-  }, [scoresData]);
-
-  const cohorts = cohortsData?.records || [];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -142,21 +116,6 @@ const StudentProfileData: React.FC = () => {
     });
   };
 
-  const handleJoinCohort = async (cohortId: string) => {
-    setJoiningCohortId(cohortId);
-    joinCohort({ cohortId }, {
-      onSuccess: () => {
-        alert('Successfully joined cohort!');
-        setJoiningCohortId(null);
-      },
-      onError: (error) => {
-        console.error('Error joining cohort:', error);
-        alert('Error joining cohort');
-        setJoiningCohortId(null);
-      }
-    });
-  };
-
   if (isLoadingUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
@@ -179,28 +138,6 @@ const StudentProfileData: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
-        {/* Mastering Bitcoin Access Bar */}
-        {hasMasteringBitcoin && (
-          <div className="bg-gradient-to-r from-orange-600 to-orange-700 border border-orange-500/50 rounded-xl p-4 mb-6 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className='flex flex-col gap-2'>
-                  <p className="text-white font-semibold text-3xl">Mastering Bitcoin Cohort</p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/mb-instructions')}
-                className="bg-white text-orange-700 font-semibold px-6 py-2 rounded-lg hover:bg-orange-50 transition-colors duration-200 flex items-center space-x-2 border-none"
-              >
-                <span>View Instructions</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-8 text-center lg:text-left">Profile Settings</h1>
 
         <form onSubmit={handleSubmit} className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 mb-8 shadow-2xl">
@@ -491,51 +428,6 @@ const StudentProfileData: React.FC = () => {
             </button>
           </div>
         </form>
-
-        {/* Cohorts Section */}
-        
-        <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center lg:text-left">Join a Cohort</h2>
-          {cohorts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {cohorts.map((cohort) => {
-                const isRegistrationOpen = new Date() < new Date(cohort.registrationDeadline);
-                const isAlreadyJoined = joinedCohorts.includes(cohort.id);
-                const cohortTitle = `${cohort.type.replace('_', ' ')} - Season ${cohort.season}`;
-
-                let status = 'Registration Open';
-                if (isAlreadyJoined) {
-                  status = 'Already Joined';
-                } else if (!isRegistrationOpen) {
-                  status = 'Registration Closed';
-                }
-
-                return (
-                  <div key={cohort.id} className="relative transform transition-all duration-300 hover:scale-[1.02]">
-                    <CohortCard
-                      title={cohortTitle}
-                      students={cohort.weeks.length}
-                      status={status}
-                      onClick={isAlreadyJoined ? () => {} : () => { handleJoinCohort(cohort.id); }}
-                    />
-                    {joiningCohortId === cohort.id && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
-                        <div className="flex items-center space-x-3 text-white">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span className="font-medium">Joining...</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-zinc-400 text-center py-12 text-lg">
-              No cohorts available at the moment.
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
