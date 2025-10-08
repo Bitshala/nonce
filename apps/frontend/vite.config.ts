@@ -9,4 +9,7 @@ export default defineConfig({
     UnoCSS(),
     react(),
   ],
+  server: {
+    port: 80,
+  },
 })
