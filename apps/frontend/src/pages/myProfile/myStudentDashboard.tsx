@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMyCohorts, useJoinCohortWaitlist, useMyWaitlistStatus } from '../../hooks/cohortHooks';
+import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist, useMyWaitlistStatus } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
 import { CohortType } from '../../types/enums';
 
@@ -17,6 +17,8 @@ const getCohortImage = (cohortType: string): string => {
 const MyStudentDashboard = () => {
     const navigate = useNavigate();
     const { data, isLoading } = useMyCohorts({ page: 0, pageSize: 100 });
+    const { data: allCohortsData } = useCohorts({ page: 0, pageSize: 100 });
+    const { mutate: joinCohort } = useJoinCohort();
     const { mutate: joinWaitlist } = useJoinCohortWaitlist();
     const { data: waitlistData } = useMyWaitlistStatus();
     const { data: userData } = useUser();
@@ -36,6 +38,52 @@ const MyStudentDashboard = () => {
 
     const isWaitlisted = (cohortType: CohortType): boolean => {
         return waitlistData?.cohortWaitlist?.includes(cohortType) || false;
+    };
+
+    const getMasteringBitcoinCohortId = (): string | null => {
+        const masteringBitcoinCohort = allCohortsData?.records?.find(
+            (cohort) => cohort.type === CohortType.MASTERING_BITCOIN
+        );
+        return masteringBitcoinCohort?.id || null;
+    };
+
+    const handleJoinMasteringBitcoin = () => {
+        // Check if user email exists
+        if (!userData?.email) {
+            navigate('/me', { state: { showEmailPopup: true } });
+            return;
+        }
+
+        const cohortId = getMasteringBitcoinCohortId();
+        if (!cohortId) {
+            setPopup({
+                show: true,
+                message: 'MASTERING BITCOIN cohort is not available at the moment.',
+                type: 'error',
+            });
+            return;
+        }
+
+        joinCohort(
+            { cohortId },
+            {
+                onSuccess: () => {
+                    setPopup({
+                        show: true,
+                        message: 'Successfully joined MASTERING BITCOIN cohort!',
+                        type: 'success',
+                    });
+                },
+                onError: (error) => {
+                    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+                    setPopup({
+                        show: true,
+                        message: `Failed to join cohort: ${errorMessage}`,
+                        type: 'error',
+                    });
+                },
+            }
+        );
     };
 
     const handleJoinWaitlist = (cohortType: CohortType) => {
@@ -93,15 +141,13 @@ const MyStudentDashboard = () => {
             <h1 className="text-3xl font-bold mb-4">Available Cohorts</h1>
                 <div className="grid grid-cols-4 gap-4">
                  <div
-                        className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                            isWaitlisted(CohortType.MASTERING_BITCOIN) ? 'cursor-default' : 'cursor-pointer'
-                        }`}
-                        onClick={() => handleJoinWaitlist(CohortType.MASTERING_BITCOIN)}
+                        className="h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
+                        onClick={handleJoinMasteringBitcoin}
                     >
                         <img src="https://bitshala.org/cohort/mb.webp" alt="" className="w-full h-full object-contain" />
-                        <div className={`absolute inset-0 ${isWaitlisted(CohortType.MASTERING_BITCOIN) ? 'bg-green-900/70' : 'bg-gray-900/70'} flex items-center justify-center`}>
+                        <div className="absolute inset-0 bg-gray-900/70 flex items-center justify-center">
                             <span className="text-white font-semibold text-lg">
-                                {isWaitlisted(CohortType.MASTERING_BITCOIN) ? 'Waitlisted ✓' : 'Join the waitlist'}
+                                Join Cohort
                             </span>
                         </div>
                     </div>
