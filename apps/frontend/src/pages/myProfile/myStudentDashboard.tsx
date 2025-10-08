@@ -74,11 +74,22 @@ const MyStudentDashboard = () => {
                         type: 'success',
                     });
                 },
-                onError: (error) => {
-                    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+                onError: (error: unknown) => {
+                    let errorMessage = 'An error occurred';
+                    if (typeof error === 'object' && error !== null && 'response' in error) {
+                        const responseError = error as { response?: { data?: { message?: string; errorId?: string } } };
+                        if (responseError.response?.data?.message) {
+                            errorMessage = responseError.response.data.message;
+                            if (responseError.response.data.errorId) {
+                                errorMessage += ` (Error ID: ${responseError.response.data.errorId})`;
+                            }
+                        }
+                    } else if (error instanceof Error) {
+                        errorMessage = error.message;
+                    }
                     setPopup({
                         show: true,
-                        message: `Failed to join cohort: ${errorMessage}`,
+                        message: errorMessage,
                         type: 'error',
                     });
                 },
