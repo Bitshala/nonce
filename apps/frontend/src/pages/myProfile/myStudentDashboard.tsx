@@ -222,12 +222,6 @@ const MyStudentDashboard = () => {
                                             cohortType: cohort.type,
                                             cohortId: cohort.id,
                                         });
-                                        if (userData.name) {
-                                            params.append('studentName', userData.name);
-                                        }
-                                        if (userData.email) {
-                                            params.append('studentEmail', userData.email);
-                                        }
                                         navigate(`/detailPage?${params.toString()}`);
                                     }
                                 }}
