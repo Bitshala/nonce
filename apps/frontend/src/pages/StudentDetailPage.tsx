@@ -116,10 +116,29 @@ const StudentDetailPage = () => {
     return false;
   }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
 
-  // Set the current week index based on weekId from URL
+  // Set the current week index based on weekNumber and weekId from URL
   useEffect(() => {
     const weekIdFromUrl = searchParams.get('weekId');
-    if (weekIdFromUrl && selectedCohort) {
+    const weekNumberFromUrl = searchParams.get('weekNumber');
+
+    if (weekNumberFromUrl && selectedCohort) {
+      const weekNum = parseInt(weekNumberFromUrl, 10);
+
+      // Validate that the weekNumber is valid and matches the weekId if provided
+      if (!isNaN(weekNum) && weekNum >= 0 && weekNum < selectedCohort.weeklyScores.length) {
+        // If weekId is provided, verify it matches the week at this index
+        if (weekIdFromUrl) {
+          const weekAtIndex = selectedCohort.weeklyScores[weekNum];
+          if (weekAtIndex && weekAtIndex.weekId === weekIdFromUrl) {
+            setCurrentWeekIndex(weekNum);
+          }
+        } else {
+          // If no weekId provided, just use the week number
+          setCurrentWeekIndex(weekNum);
+        }
+      }
+    } else if (weekIdFromUrl && selectedCohort) {
+      // Fallback: if only weekId is provided, find the index
       const weekIndex = selectedCohort.weeklyScores.findIndex(
         (weekScore) => weekScore.weekId === weekIdFromUrl
       );
