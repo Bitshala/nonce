@@ -7,8 +7,8 @@ import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
-import apiClient from '../services/api';
 import { useCohort } from '../hooks/cohortHooks';
+import { useMyScores } from '../hooks/scoreHooks';
 
 interface GroupDiscussionScores {
   id: string;
@@ -72,7 +72,6 @@ interface StudentInfo {
 const StudentDetailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [scoresData, setScoresData] = useState<ScoresData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
@@ -83,29 +82,19 @@ const StudentDetailPage = () => {
   // Fetch cohort data using the hook
   const { data: cohortData } = useCohort(cohortIdParam);
 
+  // Fetch scores data using the hook
+  const { data: scoresData } = useMyScores();
+
   useEffect(() => {
-    const studentId = searchParams.get('studentId');
     const studentName = searchParams.get('studentName');
     const studentEmail = searchParams.get('studentEmail');
 
-    if (studentId) {
-      // Set student info from URL params if available
-      if (studentName || studentEmail) {
-        setStudentInfo({
-          name: studentName || 'Unknown',
-          email: studentEmail || 'N/A',
-        });
-      }
-
-      // Fetch scores data
-      apiClient.get(`/scores/user/${studentId}`)
-        .then(response => {
-          console.log('Scores data:', response.data);
-          setScoresData(response.data);
-        })
-        .catch(error => {
-          console.error('Error fetching scores:', error);
-        });
+    // Set student info from URL params if available
+    if (studentName || studentEmail) {
+      setStudentInfo({
+        name: studentName || 'Unknown',
+        email: studentEmail || 'N/A',
+      });
     }
   }, [searchParams]);
 
