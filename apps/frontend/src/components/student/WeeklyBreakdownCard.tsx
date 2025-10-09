@@ -14,6 +14,7 @@ interface GroupDiscussionScores {
   maxBonusFollowupScore: number;
   totalScore: number;
   maxTotalScore: number;
+  groupNumber: number | null;
 }
 
 interface ExerciseScores {
@@ -50,6 +51,11 @@ export const WeeklyBreakdownCard = ({ week }: WeeklyBreakdownCardProps) => {
       <div className="bg-zinc-700 px-4 py-3 flex items-center justify-between border-b border-orange-300">
         <div className="flex items-center space-x-3">
           <span className="text-orange-300 font-semibold">Week {week.week}</span>
+          {gd.groupNumber !== null && (
+            <span className="px-2 py-1 text-xs bg-orange-500 text-white">
+              Group {gd.groupNumber}
+            </span>
+          )}
           <span className={`px-2 py-1 text-xs ${gd.attendance ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
             {gd.attendance ? 'Present' : 'Absent'}
           </span>
