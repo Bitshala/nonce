@@ -221,6 +221,8 @@ const MyStudentDashboard = () => {
                                             studentId: userData.id,
                                             cohortType: cohort.type,
                                             cohortId: cohort.id,
+                                            ...(userData.name && { studentName: userData.name }),
+                                            ...(userData.email && { studentEmail: userData.email }),
                                         });
                                         navigate(`/detailPage?${params.toString()}`);
                                     }
