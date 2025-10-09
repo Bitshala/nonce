@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -8,6 +8,7 @@ import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
 import apiClient from '../services/api';
+import { useCohort } from '../hooks/cohortHooks';
 
 interface GroupDiscussionScores {
   id: string;
@@ -75,6 +76,13 @@ const StudentDetailPage = () => {
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
+  // Get cohortId from URL params
+  const cohortIdParam = searchParams.get('cohortId');
+  const cohortTypeParam = searchParams.get('cohortType');
+
+  // Fetch cohort data using the hook
+  const { data: cohortData } = useCohort(cohortIdParam);
+
   useEffect(() => {
     const studentId = searchParams.get('studentId');
     const studentName = searchParams.get('studentName');
@@ -101,10 +109,6 @@ const StudentDetailPage = () => {
     }
   }, [searchParams]);
 
-  // Get cohortId from URL params or cohortType to find the right cohort
-  const cohortIdParam = searchParams.get('cohortId');
-  const cohortTypeParam = searchParams.get('cohortType');
-
   // Find the selected cohort
   const selectedCohort = scoresData?.cohorts.find(cohort => {
     if (cohortIdParam) {
@@ -116,41 +120,34 @@ const StudentDetailPage = () => {
     return false;
   }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
 
-  // Set the current week index based on weekNumber and weekId from URL
-  useEffect(() => {
-    const weekIdFromUrl = searchParams.get('weekId');
-    const weekNumberFromUrl = searchParams.get('weekNumber');
+  // Sort weeks from the cohort API response (0 to n)
+  const sortedCohortWeeks = useMemo(() => {
+    if (!cohortData?.weeks) return [];
+    return [...cohortData.weeks].sort((a, b) => a.week - b.week);
+  }, [cohortData?.weeks]);
 
-    if (weekNumberFromUrl && selectedCohort) {
-      const weekNum = parseInt(weekNumberFromUrl, 10);
+  // Create a map of weekId to week number for easy lookup
+  const weekIdToNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    sortedCohortWeeks.forEach(week => {
+      map.set(week.id, week.week);
+    });
+    return map;
+  }, [sortedCohortWeeks]);
 
-      // Validate that the weekNumber is valid and matches the weekId if provided
-      if (!isNaN(weekNum) && weekNum >= 0 && weekNum < selectedCohort.weeklyScores.length) {
-        // If weekId is provided, verify it matches the week at this index
-        if (weekIdFromUrl) {
-          const weekAtIndex = selectedCohort.weeklyScores[weekNum];
-          if (weekAtIndex && weekAtIndex.weekId === weekIdFromUrl) {
-            setCurrentWeekIndex(weekNum);
-          }
-        } else {
-          // If no weekId provided, just use the week number
-          setCurrentWeekIndex(weekNum);
-        }
-      }
-    } else if (weekIdFromUrl && selectedCohort) {
-      // Fallback: if only weekId is provided, find the index
-      const weekIndex = selectedCohort.weeklyScores.findIndex(
-        (weekScore) => weekScore.weekId === weekIdFromUrl
-      );
-      if (weekIndex !== -1) {
-        setCurrentWeekIndex(weekIndex);
-      }
-    }
-  }, [searchParams, selectedCohort]);
+  // Sort the student's weekly scores based on the cohort's week order
+  const sortedWeeklyScores = useMemo(() => {
+    if (!selectedCohort?.weeklyScores) return [];
+    return [...selectedCohort.weeklyScores].sort((a, b) => {
+      const weekNumA = weekIdToNumberMap.get(a.weekId) ?? 0;
+      const weekNumB = weekIdToNumberMap.get(b.weekId) ?? 0;
+      return weekNumA - weekNumB;
+    });
+  }, [selectedCohort?.weeklyScores, weekIdToNumberMap]);
 
   // Calculate stats
-  const totalWeeks = selectedCohort?.weeklyScores?.length || 0;
-  const attendedWeeks = selectedCohort?.weeklyScores?.filter(w => w.groupDiscussionScores.attendance).length || 0;
+  const totalWeeks = sortedWeeklyScores.length || 0;
+  const attendedWeeks = sortedWeeklyScores.filter(w => w.groupDiscussionScores.attendance).length || 0;
 
   const stats = {
     totalScore: scoresData?.totalScore || 0,
@@ -161,44 +158,52 @@ const StudentDetailPage = () => {
     attendedWeeks: attendedWeeks,
   };
 
-  // Prepare weekly data for WeeklyBreakdownCard
-  const validWeeks = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
-    week: index,
-    weekId: weekScore.weekId,
-    totalScore: weekScore.totalScore,
-    maxTotalScore: weekScore.maxTotalScore,
-    groupDiscussionScores: weekScore.groupDiscussionScores,
-    exerciseScores: weekScore.exerciseScores,
-    attendance: weekScore.groupDiscussionScores.attendance,
-  })) || [];
+  // Prepare weekly data for WeeklyBreakdownCard (filter out week 0)
+  const validWeeks = sortedWeeklyScores
+    .map((weekScore) => {
+      const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? 0;
+      return {
+        week: weekNumber,
+        weekId: weekScore.weekId,
+        totalScore: weekScore.totalScore,
+        maxTotalScore: weekScore.maxTotalScore,
+        groupDiscussionScores: weekScore.groupDiscussionScores,
+        exerciseScores: weekScore.exerciseScores,
+        attendance: weekScore.groupDiscussionScores.attendance,
+      };
+    })
+    .filter((week) => week.week !== 0);
 
   // Prepare weekly data for WeeklyProgressChart (old format)
-  const chartWeeklyData = selectedCohort?.weeklyScores?.map((weekScore, index) => ({
-    week: index,
-    attendance: weekScore.groupDiscussionScores.attendance,
-    gdScore: {
-      fa: weekScore.groupDiscussionScores.communicationScore,
-      fb: weekScore.groupDiscussionScores.depthOfAnswerScore,
-      fc: weekScore.groupDiscussionScores.technicalBitcoinFluencyScore,
-      fd: weekScore.groupDiscussionScores.engagementScore,
-    },
-    bonusScore: {
-      attempt: weekScore.groupDiscussionScores.bonusAnswerScore,
-      good: weekScore.groupDiscussionScores.bonusAnswerScore,
-      followUp: weekScore.groupDiscussionScores.bonusFollowupScore,
-    },
-    exerciseScore: {
-      Submitted: weekScore.exerciseScores.isSubmitted,
-      privateTest: weekScore.exerciseScores.isPassing,
-      goodDoc: weekScore.exerciseScores.hasGoodDocumentation,
-      goodStructure: weekScore.exerciseScores.hasGoodStructure,
-    },
-    total: weekScore.totalScore / weekScore.maxTotalScore,
-    totalScore: weekScore.totalScore,
-    maxTotalScore: weekScore.maxTotalScore,
-    group: weekScore.groupDiscussionScores.groupNumber?.toString() || null,
-    ta: 'TBD',
-  })).filter((weekData) => weekData.week !== 0) || [];
+  const chartWeeklyData = sortedWeeklyScores.map((weekScore) => {
+    const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? 0;
+    return {
+      week: weekNumber,
+      attendance: weekScore.groupDiscussionScores.attendance,
+      gdScore: {
+        fa: weekScore.groupDiscussionScores.communicationScore,
+        fb: weekScore.groupDiscussionScores.depthOfAnswerScore,
+        fc: weekScore.groupDiscussionScores.technicalBitcoinFluencyScore,
+        fd: weekScore.groupDiscussionScores.engagementScore,
+      },
+      bonusScore: {
+        attempt: weekScore.groupDiscussionScores.bonusAnswerScore,
+        good: weekScore.groupDiscussionScores.bonusAnswerScore,
+        followUp: weekScore.groupDiscussionScores.bonusFollowupScore,
+      },
+      exerciseScore: {
+        Submitted: weekScore.exerciseScores.isSubmitted,
+        privateTest: weekScore.exerciseScores.isPassing,
+        goodDoc: weekScore.exerciseScores.hasGoodDocumentation,
+        goodStructure: weekScore.exerciseScores.hasGoodStructure,
+      },
+      total: weekScore.totalScore / weekScore.maxTotalScore,
+      totalScore: weekScore.totalScore,
+      maxTotalScore: weekScore.maxTotalScore,
+      group: weekScore.groupDiscussionScores.groupNumber?.toString() || null,
+      ta: 'TBD',
+    };
+  }).filter((weekData) => weekData.week !== 0);
 
 
   return (
@@ -295,7 +300,7 @@ const StudentDetailPage = () => {
                 </button>
 
                 <span className="text-orange-300 font-mono">
-                  Week {currentWeekIndex} of {validWeeks.length - 1}
+                  Week {validWeeks[currentWeekIndex]?.week || 1} of {validWeeks[validWeeks.length - 1]?.week || validWeeks.length}
                 </span>
 
                 <button

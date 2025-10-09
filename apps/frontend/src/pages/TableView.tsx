@@ -200,8 +200,9 @@ const TableView: React.FC = () => {
   const handleStudentClick = useCallback((student: TableRowData) => {
     const studentId = student.userId ?? student.id;
     const cohortType = cohortData?.type;
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&weekId=${selectedWeekId}&weekNumber=${weekIndex}`);
-  }, [navigate, cohortData?.type, selectedWeekId, weekIndex]);
+    const cohortId = cohortData?.id;
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}`);
+  }, [navigate, cohortData?.type, cohortData?.id]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {
     setSelectedStudentForEdit(student);
@@ -261,7 +262,7 @@ const TableView: React.FC = () => {
 
   const handleDownloadCSV = useCallback(() => {
     // TODO: add support later
-  }, [sortedFilteredData, cohortData?.type, weekIndex, weeks]);
+  }, []);
 
   const handleAssignGroups = useCallback(() => {
     const participantsPerWeek = 8
