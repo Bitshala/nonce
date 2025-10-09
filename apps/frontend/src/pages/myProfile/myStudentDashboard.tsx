@@ -219,6 +219,7 @@ const MyStudentDashboard = () => {
                                     if (userData?.id) {
                                         const params = new URLSearchParams({
                                             studentId: userData.id,
+                                            cohortType: cohort.type,
                                             cohortId: cohort.id,
                                         });
                                         if (userData.name) {
