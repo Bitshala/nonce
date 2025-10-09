@@ -200,8 +200,8 @@ const TableView: React.FC = () => {
   const handleStudentClick = useCallback((student: TableRowData) => {
     const studentId = student.userId ?? student.id;
     const cohortType = cohortData?.type;
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}`);
-  }, [navigate, cohortData?.type]);
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&weekId=${selectedWeekId}`);
+  }, [navigate, cohortData?.type, selectedWeekId]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {
     setSelectedStudentForEdit(student);

@@ -73,7 +73,7 @@ const StudentDetailPage = () => {
   const navigate = useNavigate();
   const [scoresData, setScoresData] = useState<ScoresData | null>(null);
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(1);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
   useEffect(() => {
     const studentId = searchParams.get('studentId');
@@ -115,6 +115,19 @@ const StudentDetailPage = () => {
     }
     return false;
   }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
+
+  // Set the current week index based on weekId from URL
+  useEffect(() => {
+    const weekIdFromUrl = searchParams.get('weekId');
+    if (weekIdFromUrl && selectedCohort) {
+      const weekIndex = selectedCohort.weeklyScores.findIndex(
+        (weekScore) => weekScore.weekId === weekIdFromUrl
+      );
+      if (weekIndex !== -1) {
+        setCurrentWeekIndex(weekIndex);
+      }
+    }
+  }, [searchParams, selectedCohort]);
 
   // Calculate stats
   const totalWeeks = selectedCohort?.weeklyScores?.length || 0;
