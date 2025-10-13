@@ -7,7 +7,8 @@ interface WeekContent {
   week: number;
   title: string;
   content: string;
-  questions: string[];
+  gdQuestions: string[];
+  bonusQuestions?: string[];
 }
 
 const MBInstructions: React.FC = () => {
@@ -34,7 +35,7 @@ const MBInstructions: React.FC = () => {
           week: 1,
           title: "Introduction & How Bitcoin Works",
           content: "Chapter 1: Introduction - Chapter 2: How Bitcoin Works",
-          questions: [
+          gdQuestions: [
             "What were the major problems of Digital Currencies before Bitcoin? How did Bitcoin solve them?",
             "What are the major components of the Bitcoin System? What does it mean by \"consensus rules\"?",
             "What are the different types of Bitcoin Wallets? Which one among them is most and least secured?",
@@ -57,7 +58,7 @@ const MBInstructions: React.FC = () => {
           week: 2,
           title: "Bitcoin Core & Keys and Addresses",
           content: "Chapter 3: Bitcoin Core - Chapter 4: Keys and Addresses",
-          questions: [
+          gdQuestions: [
             "Why is Bitcoin Core called a \"Reference Implementation\"? What other implementations of Bitcoin are out there? Is it preferable to have many implementations of Bitcoin?",
             "What are BIPs (Bitcoin Improvement Proposals)? What are their role in the Bitcoin development process?",
             "What are the few major configuration options in Bitcoin Core? As a home node operator, which one do you think is most useful?",
@@ -85,123 +86,100 @@ const MBInstructions: React.FC = () => {
           week: 3,
           title: "Wallet Recovery & Transactions",
           content: "Chapter 5: Wallet Recovery - Chapter 6: Transactions",
-          questions: [
-            "Why does address reuse reduce privacy in Bitcoin? Can you think of other de-anonymizing missteps that might occur due to poor user experience design or lack of privacy education? What institutes perform the most address reuse?",
+          gdQuestions: [
             "What is a Bitcoin wallet? What are the different types of wallets available?",
             "What is the difference between deterministic and non-deterministic wallets?",
-            "Why does the author argue that BIP32 wallets are superior?",
             "What is a \"seed\" in the context of Bitcoin wallets? How are mnemonic words generated from the seed?",
-            "What is the optional passphrase for a mnemonic code? Discuss its potential advantages and disadvantages.",
-            "What are XPubs, XPrivs, and Chaincode?",
-            "What are the components of an extended key? What is the fingerprint of a key?",
-            "What are hardened and non-hardened derivations? Why is there a distinction, and what are the advantages of different kinds of derivations?",
-            "Why is a brainwallet not secure, while mnemonic code words are?",
-            "What are the different components of a Bitcoin transaction?",
-            "What parts of the transaction structure got affected with the segwit upgrade? Were there any new fields added to the transaction structure?",
-            "What is a coinbase transaction, how are they created, and why are they important?",
-            "Compare a coinbase transaction to a normal bitcoin transaction and highlight the differences between the two.",
-            "What are UTXOs (Unspent Transaction Outputs), and how is the balance of a wallet calculated?",
-            "Explain transaction weight and virtual bytes? How are they calculated?",
-            "What is witness marker and witness flag? How is it necessary?",
-            "What is nSequence? What was it intented use when Satoshi created Bitcoin? How is it used today?",
+            "What is the optional passphrase for a mnemonic? In which situations passphrase can be useful?",
+            "What are the components of an extended key (XPub)? What is the fingerprint of a key?",
+            "What are hardened and non-hardened derivations? What are the advantages of having different types of derivations?",
+            "What are the different components of a Bitcoin transaction? What are transaction inputs and outputs, and how are they constructed? What are locking and unlocking scripts?",
+            "What are various sources of transaction malleability? How does segwit fix transaction malleability? What parts of the transaction structure got affected with the segwit upgrade?"
+          ],
+          bonusQuestions: [
+            "What is nSequence? What was it intended use when Satoshi created Bitcoin? How is it used today?",
             "What are various sources of transaction malleability? How does segwit fix transaction malleability?",
-            "Can two transactions have the same transaction id? What happens to the UTXOs in those two transactions in that case?",
-            "How is legacy serialization different from serialization after segwit upgrade? Highlight key differences.",
-            "What are transaction inputs, and how are they constructed? What are unlocking scripts?"
+            "Can two transactions have the same transaction id? When can this happen? Is that a consensus violation?"
           ]
         },
         {
           week: 4,
           title: "Authorization and Authentication & Digital Signature",
           content: "Chapter 7: Authorization and Authentication - Chapter 8: Digital Signature",
-          questions: [
+          gdQuestions: [
             "Is the Turing incompleteness of Bitcoin's scripting language (SCRIPT) a feature or a deficiency?",
-            "What is the difference between a locking script (scriptPubKey) and an unlocking script (scriptSig)? What is the difference between a redeem script and a witness script?",
-            "Why are the locking and unlocking scripts executed separately?",
-            "Explain different types of timelocks which you can have and list the components of the transactions that can be used to set timelocks.",
-            "What are the different ways to create contracts in the script? Briefly highlight pros and cons of each.",
-            "Why is the public key directly included in a P2TR output whereas in other script types we always include a hash?",
-            "Why is the Merkle path length limited to 128?",
+            "Explain different types of timelocks available in a Bitcoin transaction and list the components of the transactions that can be used to set these timelocks.",
             "How does Taproot upgrade increase security and privacy in Bitcoin?",
             "Highlight the differences between Tapscript and native Bitcoin script?",
-            "What are sighashes, and what are their uses? How many types of sighashes are there?",
             "What are digital signatures, where are they placed in a transaction, and what is their purpose?",
-            "Describe some real-life exploits that occurred due to poor randomness in digital signatures.",
-            "Besides signing transactions, what other uses could digital signatures have?",
-            "How does batch verification works in Schnorr signatures?",
-            "What are the difference in serialisation of Schnorr signatures and ECDSA signatures?",
-            "What is the quadratic sighash problem? How does segwit's new signing algorithm addresses it?",
+            "What are sighashes, and what are their uses? How many types of sighashes are there?",
             "What is the Discrete Log Problem, and why is it important in Cryptography? What does it mean when we say \"DLP is hard\"? What would have happened if DLP wasn't a \"hard\" problem?",
-            "Why is it important to use a random number (k) as the basis for a private/public nonce pair? What vulnerabilities can be exploited if k is known to be reused? Can you provide a real-life example of when such an exploit occurred?",
-            "How are ECDSA signature malleable? Does this malleability also occur in Schnorr signatures? Is there a way to fix this malleability?",
-            "Explain the key difference between scriptless multisignature and scriptless threshhold signatures. Are they both possible in Bitcoin? If yes, then briefly discuss the different protocols for the same."
+            "Why is it important to use a random number (k) as the basis for a private/public nonce pair? What vulnerabilities can be exploited if k is known to be reused? Can you provide a real-life example of when such an exploit occurred?"
+          ],
+          bonusQuestions: [
+            "Why is the public key directly included in a P2TR output whereas in other script types we always include a hash?",
+            "Why are the locking and unlocking scripts executed separately?",
+            "Besides signing transactions, what other uses could digital signatures have?"
           ]
         },
         {
           week: 5,
           title: "Transaction Fees & The Bitcoin Network",
           content: "Chapter 9: Transaction Fees - Chapter 10: The Bitcoin Network",
-          questions: [
+          gdQuestions: [
             "Why do we need to pay transaction fees when we have block reward as an incentive? Is there a minimum fee that every transaction needs to pay? Is it a consensus rule or policy rule?",
-            "What are the different fee estimation algorithms? Briefly discuss the internal workings of each.",
-            "What are the RBF rules for fee-bumping a transaction? Which rules are important to protect against DoS attacks?",
+            "What is RBF. When is it useful? List all the conditions required to do a valid RBF.",
+            "What is CPFP (Child Pays For Parents)? When is it useful? In which situation RBF cannot be used, but CPFP can be used?",
             "What is transaction pinning? How is it a vulnerability for multiparty time-sensitive protocols such as LN?",
-            "What is fee sniping and how does it work? How can it be prevented?",
-            "Explain CPFP carve out and anchor outputs.",
             "What is a peer-to-peer network? Give two examples of successful peer-to-peer networks that preceded Bitcoin.",
-            "What is a block finding race? How does compact block relay prevent it?",
-            "How does a new node discover other Bitcoin nodes on the network in order to participate?",
-            "How do light weight clients validate that a transaction exists? How is this different from the mechanism full archival nodes use to validate a transaction?",
-            "What are bloom filters? How do they work?",
-            "What are compact block filters? What data should be included in a block filter?",
-            "What are the privacy trade-offs in using a light weight client?",
-            "Explain in brief what is a Mempool and what is an Orphan Pool."
+            "Explain in brief what is a Mempool and what is an Orphan Pool.",
+            "How do light clients validate that a transaction exists? How is this different from the mechanism full archival nodes use to validate a transaction?",
+            "What are compact block filters? What data should be included in a block filter?"
+          ],
+          bonusQuestions: [
+            "What are the privacy trade-offs in using a light client?",
+            "What is fee sniping and how does it work? How can it be prevented?",
+            "What is CPFP carve out and anchor outputs?"
           ]
         },
         {
           week: 6,
           title: "The Blockchain & Mining and Consensus",
           content: "Chapter 11: The Blockchain - Chapter 12: Mining and Consensus",
-          questions: [
-            "How is the Bitcoin blockchain analogous to layers in a geological formation?",
+          gdQuestions: [
             "Describe the structure of a block and what data does a block header contain?",
-            "What are the two identifiers of a Block? Discuss each in brief.",
-            "What is a Merkle Tree and what significance does it have in the Blockchain?",
-            "What is a design flaw in the Merkle Tree used in Bitcoin?",
-            "What is a Light Client in context to Bitcoin? How do Light Clients verify transactions associated to their addresses?",
-            "Explain mainnet and testnet in brief. Can testned coins have value?",
-            "Explain signet and regtest in brief. When would you use regtest for testing, and when Signet?",
-            "What are the goals of Bitcoin mining and what are the incentives for the miners?",
-            "Explain in brief how does the Bitcoin network attain emergent decentralised consensus.",
-            "What is a coin-base transaction? What prevents the miners from inflating the coin-base reward?",
-            "What is Mining Difficulty? Why and how is it adjusted?",
+            "What is a Merkle Tree? How is it used in the blockchain? What data does the Merkle Root verifies?",
+            "What is the difference between mainnet and testnet? Can testnet coins have value?",
+            "What is the difference between signet and testnet? What is regtest? When is it useful?",
+            "What is a coinbase transaction? What prevents the miners from inflating the coinbase reward?",
             "Explain the 51% attack. Can it compromise the security of private keys and signing algorithms?",
-            "What factors could cause a change in Bitcoin's consensus rules? How is a change in consensus rules achieved in a decentralised network like Bitcoin?",
-            "Define a Hard fork and explain whether a new software implementation of the consensus rules is a pre-requisite for it.",
-            "Explain a soft fork. What are some common criticisms of a soft fork?"
+            "What is Mining Difficulty? How is it adjusted? What would happen if it wasn't adjusted?",
+            "What is the difference between Hard Fork and Soft Fork? Is it possible to do hard fork of Bitcoin, without creating a new coin/network, at current stage of the market?"
+          ],
+          bonusQuestions: [
+            "How are soft forks are activated in Bitcoin? What was the last soft fork that happened?",
+            "What is \"Rough Consensus\"? How does it affect Bitcoin's development?",
+            "When was the last Bitcoin hardfork? What caused it?"
           ]
         },
         {
           week: 7,
           title: "Bitcoin Security & Second-Layer Applications",
           content: "Chapter 13: Bitcoin Security - Chapter 14: Second-Layer Applications",
-          questions: [
+          gdQuestions: [
             "Why does the author say securing bitcoins is like securing cash or a chunk of precious metal?",
             "What could be the consequences of applying centralised security models to a decentralised network like Bitcoin?",
             "Explain the concept of root of trust in security models. What should be the root of trust for Bitcoin applications?",
-            "How is physical storage of Bitcoin keys one of the most effective methods of securing bitcoins?",
-            "How do hardware signing devices secure bitcoins?",
-            "What could be the consequences of using unnecessarily complex techniques to secure bitcoins?",
-            "What is the importance of using diverse storing mechanisms for bitcoin?",
-            "What is a multi-sig address? In what situation is it advisable to share confidential information about your bitcoin keys with a trusted person?",
-            "Mention and explain three primitives that Bitcoin guarantees for applications built on top of it.",
-            "Explain at least two use-cases of applications build on top of Bitcoin.",
+            "Why are hardware siging devices the most recommended way of storing Bitcoin?",
             "What are payment channels in context to Bitcoin? How do they facilitate extremely high transaction throughput?",
-            "Explain what are funding and commitment transactions in context of payment channels.",
-            "What is a uni-directional payment channel? Give an example.",
-            "What is a bi-directional payment channel? Give an example.",
             "Can a Bitcoin transaction be cancelled? Explain asymmetric revocable transactions.",
-            "What is a HTLC? Which OP-code is used to achieve it in context to payment channels?"
+            "What is a HTLC? Which OP-code is used to achieve it in context to payment channels?",
+            "Explain what are funding and commitment transactions in context of payment channels."
+          ],
+          bonusQuestions: [
+            "What could be the consequences of using unnecessarily complex techniques to secure bitcoins?",
+            "Explain at least two use-cases of applications build on top of Bitcoin.",
+            "Can a Bitcoin transaction be cancelled? Explain asymmetric revocable transactions."
           ]
         }
       ];
@@ -333,24 +311,47 @@ const MBInstructions: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Questions Section */}
+                {/* GD Questions Section */}
                 <div>
                   <h3 className="text-xl font-semibold text-orange-300 mb-4 flex items-center">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Discussion Questions
+                    GD Questions
                   </h3>
-                  <div className="">
-                    {weeklyContent.find(week => week.week === activeWeek)?.questions.map((question, index) => (
-                      <div key={index} className=" ">
-                        <div className="flex items-center space-x-1">
-                          <p className="text-zinc-200 leading-relaxed">{question}</p>
+                  <div className="space-y-3">
+                    {weeklyContent.find(week => week.week === activeWeek)?.gdQuestions.map((question, index) => (
+                      <div key={index} className="">
+                        <div className="flex items-start space-x-2">
+                          <span className="text-orange-400 font-medium mt-0.5">{index + 1}.</span>
+                          <p className="text-zinc-200 leading-relaxed flex-1">{question}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* Bonus Questions Section */}
+                {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold text-orange-300 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                      Bonus Questions
+                    </h3>
+                    <div className="space-y-3">
+                      {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((question, index) => (
+                        <div key={index} className="">
+                          <div className="flex items-start space-x-2">
+                            <span className="text-orange-400 font-medium mt-0.5">{index + 1}.</span>
+                            <p className="text-zinc-200 leading-relaxed flex-1">{question}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Navigation */}
                 <div className="flex justify-between items-center pt-6 border-t border-zinc-700/30">
