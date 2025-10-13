@@ -104,7 +104,7 @@ const TableView: React.FC = () => {
         id: typeof score.userId === 'number' ? score.userId : idx,
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
-        email: '', // not provided in response
+        email: score.discordGlobalName ?? score.discordUsername ?? '', // discord name
         group: `Group ${groupNumber}`,
         ta: getTAForGroup(groupNumber), // assign TA based on group number
         attendance: Boolean(score.groupDiscussionScores?.attendance),
@@ -155,7 +155,10 @@ const TableView: React.FC = () => {
     if (selectedTA !== 'All TAs') rows = rows.filter((p) => p.ta === selectedTA);
     if (attendanceFilter === 'Present') rows = rows.filter((p) => p.attendance);
     if (attendanceFilter === 'Absent') rows = rows.filter((p) => !p.attendance);
-    if (searchTerm) rows = rows.filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (searchTerm) rows = rows.filter((p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     if (sortConfig.key) {
       const { key, direction } = sortConfig;
