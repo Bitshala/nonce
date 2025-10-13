@@ -323,7 +323,15 @@ const TableView: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-zinc-900 text-zinc-300/90 min-h-screen">
       <div className="max-w-full mx-auto">
-        {cohortTitleBlock}
+        <div className="flex justify-between items-center mb-4">
+          <div>{cohortTitleBlock}</div>
+          <button
+            onClick={() => navigate(`/results/${cohortIdParam}`)}
+            className="border-0 px-4 py-3 bg-orange-400 hover:bg-orange-700 text-white rounded-lg transition-colors duration-200 font-semibold"
+          >
+            View Result
+          </button>
+        </div>
 
         <TableHeader
           // week props

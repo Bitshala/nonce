@@ -63,7 +63,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           <button
             key={weekData.id}
             onClick={() => onWeekChange(weekData.week, weekData.id)}
-            className={`cursor-pointer font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200 ${
+            className={`cursor-pointer font-light border-0 text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200 ${
               selectedWeekId === weekData.id
                 ? 'bg-orange-600 text-white'
                 : 'bg-orange-400 hover:bg-orange-500 text-white'

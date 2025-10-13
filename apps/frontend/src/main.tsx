@@ -50,7 +50,7 @@ const router = createBrowserRouter([
     element: <StudentDetailPage />,
   },
   {
-    path: '/result',
+    path: '/results/:id',
     element: <ResultPage />,
   },
     {
