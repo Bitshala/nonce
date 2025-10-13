@@ -104,7 +104,7 @@ const TableView: React.FC = () => {
         id: typeof score.userId === 'number' ? score.userId : idx,
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
-        email: score.discordGlobalName ?? score.discordUsername ?? '', // discord name
+        email: score.discordUsername ?? '', // discord username
         group: `Group ${groupNumber}`,
         ta: getTAForGroup(groupNumber), // assign TA based on group number
         attendance: Boolean(score.groupDiscussionScores?.attendance),
