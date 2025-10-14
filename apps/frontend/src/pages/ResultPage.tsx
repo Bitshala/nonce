@@ -1,4 +1,4 @@
-import { useState, useMemo, type JSX } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { useCohort } from '../hooks/cohortHooks';
@@ -18,14 +18,10 @@ interface StudentResult {
   total_weeks: number;
 }
 
-// Sort types
-type SortType = 'default' | 'total_score_asc' | 'total_score_desc';
-
 // Props interface (if you need to pass props later)
 type ResultPageProps = object
 
 export const ResultPage: React.FC<ResultPageProps> = () => {
-  const [currentSort, setCurrentSort] = useState<SortType>('default');
   const navigate = useNavigate();
   const { id: cohortIdParam } = useParams<{ id: string }>();
 
@@ -105,28 +101,23 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
     return `${typeName} - Season ${cohortData.season}`;
   }, [cohortData]);
 
-  // Sort functions
-  const handleTotalScoreSort = (): void => {
-    if (currentSort === 'total_score_desc') {
-      setCurrentSort('total_score_asc');
-    } else {
-      setCurrentSort('total_score_desc');
-    }
-  };
-
-  // Apply sorting to results
+  // Apply default sorting: attendance → total score → name
   const sortedResults = useMemo(() => {
-    const sorted = [...results];
+    return [...results].sort((a, b) => {
+      // First, sort by attendance count (descending)
+      if (b.attendance_count !== a.attendance_count) {
+        return b.attendance_count - a.attendance_count;
+      }
 
-    switch (currentSort) {
-      case 'total_score_asc':
-        return sorted.sort((a, b) => a.total_score - b.total_score);
-      case 'total_score_desc':
-        return sorted.sort((a, b) => b.total_score - a.total_score);
-      default:
-        return sorted;
-    }
-  }, [results, currentSort]);
+      // Then, sort by total score (descending)
+      if (b.total_score !== a.total_score) {
+        return b.total_score - a.total_score;
+      }
+
+      // Finally, sort by name (ascending) as tiebreaker
+      return a.name.localeCompare(b.name);
+    });
+  }, [results]);
 
 
   const handleStudentClick = (studentName: string) => {
@@ -171,17 +162,6 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
     }
   };
 
-  // Helper function to get sort indicator for total score
-  const getTotalScoreSortIndicator = (): JSX.Element | null => {
-    if (currentSort === 'total_score_desc') {
-      return <span className="ml-2 text-xs text-zinc-400">↓</span>;
-    }
-    if (currentSort === 'total_score_asc') {
-      return <span className="ml-2 text-xs text-zinc-400">↑</span>;
-    }
-    return null;
-  };
-
 
 
 
@@ -213,16 +193,9 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
                 <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Name</th>
                 <th className="hidden md:table-cell text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Discord</th>
                 <th className="hidden md:table-cell text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Attendance</th>
-                <th
-                  className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter cursor-pointer hover:text-white transition-colors duration-200 select-none"
-                  onClick={handleTotalScoreSort}
-                  title="Click to sort by Total Score"
-                >
-                  <div className="flex items-center">
-                    <span className="md:hidden">Score</span>
-                    <span className="hidden md:inline">Total Score</span>
-                    {getTotalScoreSortIndicator()}
-                  </div>
+                <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">
+                  <span className="md:hidden">Score</span>
+                  <span className="hidden md:inline">Total Score</span>
                 </th>
               </tr>
             </thead>
