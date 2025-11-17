@@ -50,6 +50,12 @@ export const useMyWaitlistStatus = createUseQuery<
 
 export const useCreateCohort = createUseMutation<void, CreateCohortRequestDto>(
   apiService.createCohort,
+  {
+    queryInvalidation: async () => {
+      await useCohorts.invalidate();
+      await useMyCohorts.invalidate();
+    },
+  },
 );
 
 export const useUpdateCohort = createUseMutation<
@@ -60,6 +66,8 @@ export const useUpdateCohort = createUseMutation<
   {
     queryInvalidation: async ({ variables: { cohortId } }) => {
       await useCohort.invalidate(cohortId);
+      await useCohorts.invalidate();
+      await useMyCohorts.invalidate();
     },
   },
 );

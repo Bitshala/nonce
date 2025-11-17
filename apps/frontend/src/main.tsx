@@ -12,6 +12,7 @@ import { ResultPage } from './pages/ResultPage.tsx';
 // import StudentDetailPage from './StudentsPage.tsx';
 import StudentDetailPage from './pages/StudentDetailPage.tsx';
 
+import '@fontsource/sora';
 import 'virtual:uno.css';
 import FeedbackTable from './pages/Feedback.tsx';
 
@@ -27,6 +28,10 @@ import MyError from './pages/404error.tsx';
 import MyStudentDashboard from './pages/myProfile/myStudentDashboard.tsx';
 import ProfilePage from './pages/myProfile/profilePage.tsx';
 import MyCohortInstructions from './pages/myProfile/myCohortInstructions.tsx';
+import CohortFeedback from './pages/CohortFeedback.tsx';
+import AdminPage from './pages/admin/page.tsx';
+import { ProtectedRoute } from './components/ProtectedRoute.tsx';
+import { UserRole } from './types/enums.ts';
 
 const router = createBrowserRouter([
   {
@@ -43,7 +48,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/admin/cohort/:id',
-    element: <TableView />,
+    element: (
+      <ProtectedRoute requiredRole={UserRole.ADMIN}>
+        <TableView />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/detailPage',
@@ -93,6 +102,18 @@ const router = createBrowserRouter([
     {
       path: '/:cohortId/instructions',
       element: <MyCohortInstructions />,
+    },
+    {
+      path: '/cohort/feedback',
+      element: <CohortFeedback />,
+    },
+    {
+      path: '/admin',
+      element: (
+        <ProtectedRoute requiredRole={UserRole.ADMIN}>
+          <AdminPage />
+        </ProtectedRoute>
+      ),
     },
     {
       path: '/unauthorized',
