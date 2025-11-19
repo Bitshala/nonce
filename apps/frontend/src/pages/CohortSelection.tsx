@@ -1,6 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCohorts } from '../hooks/cohortHooks';
+import { useUser } from '../hooks/userHooks';
+import { UserRole } from '../types/enums';
 import CohortCard from '../components/CohortCard';
 
 type ApiCohort = {
@@ -51,6 +53,8 @@ const statusRank: Record<ViewCohort['status'], number> = {
 export const CohortSelection = () => {
   const navigate = useNavigate();
   const { data, isLoading, error } = useCohorts({ page: 0, pageSize: 100 });
+  const { data: user } = useUser();
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   const cohorts: ViewCohort[] = useMemo(() => {
     const records: ApiCohort[] = data?.records ?? [];
@@ -79,7 +83,20 @@ export const CohortSelection = () => {
   const showEmpty = !isLoading && !error && cohorts.length === 0;
 
   return (
-    <div className="min-h-screen bg-zinc-900 font-mono flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-zinc-900 font-mono flex flex-col items-center justify-center p-6 relative">
+      {/* Admin pencil icon - top right */}
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/admin')}
+          className="b-0 absolute top-6 right-6 p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+          title="Create Cohort"
+        >
+          <svg className="w-5 h-5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      )}
+
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-200 mb-2">
           Cohort Selection

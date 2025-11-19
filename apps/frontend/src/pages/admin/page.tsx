@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../../hooks/cohortHooks';
 import { CohortType } from '../../types/enums';
 import type { GetCohortResponseDto } from '../../types/api';
@@ -18,6 +19,7 @@ const getCohortDisplayName = (cohortType: string): string => {
 };
 
 const AdminPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data: cohortsData, isLoading, refetch } = useCohorts({ page: 0, pageSize: 100 });
   const createCohortMutation = useCreateCohort();
   const updateCohortMutation = useUpdateCohort();
@@ -244,7 +246,18 @@ const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 px-4 md:px-8 py-6" style={{ fontFamily: 'Sora, sans-serif' }}>
+    <div className="min-h-screen bg-zinc-900 text-zinc-100 px-4 md:px-8 py-6 relative" style={{ fontFamily: 'Sora, sans-serif' }}>
+      {/* Calculator icon - top right */}
+      <button
+        onClick={() => navigate('/select')}
+        className="b-0 absolute top-6 right-6 p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+        title="Score & Manage Cohorts"
+      >
+        <svg className="w-5 h-5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      </button>
+
       <header className="mb-6">
         <h1 className="text-2xl md:text-4xl font-bold">Admin Panel</h1>
         <p className="text-zinc-400 mt-1 text-sm md:text-base">Create and manage cohort</p>
