@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { useCohort } from '../hooks/cohortHooks';
 import { useScoresForCohortAndWeek } from '../hooks/scoreHooks';
 import apiService from '../services/apiService';
 import type { UsersWeekScoreResponseDto } from '../types/api';
+
 // API Response Types (matching your Rust RowData struct)
 
 // Frontend Display Types
@@ -120,9 +121,12 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
   }, [results]);
 
 
-  const handleStudentClick = (studentName: string) => {
-    navigate(`/detailPage?student=${encodeURIComponent(studentName)}`);
-  };
+ const handleStudentClick = useCallback((student: StudentResult) => {
+    const studentId = student.userId ;
+    const cohortType = cohortData?.type;
+    const cohortId = cohortData?.id;
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}`);
+  }, [navigate, cohortData?.type, cohortData?.id]);
 
 
   if (loading) {
@@ -212,7 +216,7 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
                     </td>
                     <td
                       className="p-2 md:p-4 text-white font-inter truncate cursor-pointer text-sm md:text-base"
-                      onClick={() => handleStudentClick(student.name)}
+                      onClick={() => handleStudentClick(student)}
                       title={student.name}
                     >
                       {student.name}
