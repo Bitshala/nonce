@@ -77,7 +77,7 @@ export const CohortSelection = () => {
 
   const handleSelect = useCallback((cohort: ViewCohort) => {
     // Pass the cohort along (param + state for convenience)
-    navigate(`/admin/cohort/${cohort.id}`, { state: { cohort: cohort.raw } });
+    navigate(`/cohort/${cohort.id}`, { state: { cohort: cohort.raw } });
   }, [navigate]);
 
   const showEmpty = !isLoading && !error && cohorts.length === 0;
