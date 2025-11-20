@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist, useMyWaitlistStatus } from '../../hooks/cohortHooks';
+import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
 import { CohortType } from '../../types/enums';
 
@@ -20,7 +20,6 @@ const MyStudentDashboard = () => {
     const { data: allCohortsData } = useCohorts({ page: 0, pageSize: 100 });
     const { mutate: joinCohort } = useJoinCohort();
     const { mutate: joinWaitlist } = useJoinCohortWaitlist();
-    const { data: waitlistData } = useMyWaitlistStatus();
     const { data: userData } = useUser();
 
     const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
@@ -29,38 +28,32 @@ const MyStudentDashboard = () => {
         type: 'success',
     });
 
-    const activeCohorts = data?.records?.filter((cohort) => {
+    useEffect(() => {
+        if (allCohortsData) {
+            console.log('All Available Cohorts:', allCohortsData);
+            console.log('Cohort Records:', allCohortsData.records);
+        }
+    }, [allCohortsData]);
+
+    useEffect(() => {
+        if (data) {
+            console.log('My Cohorts (Joined):', data);
+            console.log('My Cohort Records:', data.records);
+        }
+    }, [data]);
+
+    const myCohorts = data?.records || [];
+
+    const isRegistrationOpen = (registrationDeadline: string): boolean => {
         const now = new Date();
-        const startDate = new Date(cohort.startDate);
-        const endDate = new Date(cohort.endDate);
-        return now >= startDate && now <= endDate;
-    }) || [];
-
-    const isWaitlisted = (cohortType: CohortType): boolean => {
-        return waitlistData?.cohortWaitlist?.includes(cohortType) || false;
+        const deadline = new Date(registrationDeadline);
+        return now <= deadline;
     };
 
-    const getMasteringBitcoinCohortId = (): string | null => {
-        const masteringBitcoinCohort = allCohortsData?.records?.find(
-            (cohort) => cohort.type === CohortType.MASTERING_BITCOIN
-        );
-        return masteringBitcoinCohort?.id || null;
-    };
-
-    const handleJoinMasteringBitcoin = () => {
+    const handleJoinCohort = (cohortId: string, cohortName: string) => {
         // Check if user email exists
         if (!userData?.email) {
             navigate('/me', { state: { showEmailPopup: true } });
-            return;
-        }
-
-        const cohortId = getMasteringBitcoinCohortId();
-        if (!cohortId) {
-            setPopup({
-                show: true,
-                message: 'MASTERING BITCOIN cohort is not available at the moment.',
-                type: 'error',
-            });
             return;
         }
 
@@ -70,7 +63,7 @@ const MyStudentDashboard = () => {
                 onSuccess: () => {
                     setPopup({
                         show: true,
-                        message: 'Successfully joined MASTERING BITCOIN cohort!',
+                        message: `Successfully joined ${cohortName} cohort!`,
                         type: 'success',
                     });
                 },
@@ -98,10 +91,6 @@ const MyStudentDashboard = () => {
     };
 
     const handleJoinWaitlist = (cohortType: CohortType) => {
-        if (isWaitlisted(cohortType)) {
-            return; // Already waitlisted, do nothing
-        }
-
         // Check if user email exists
         if (!userData?.email) {
             navigate('/me', { state: { showEmailPopup: true } });
@@ -151,67 +140,46 @@ const MyStudentDashboard = () => {
             <div>
             <h1 className="text-3xl font-bold mb-4">Available Cohorts</h1>
                 <div className="grid grid-cols-4 gap-4">
-                 <div
-                        className="h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
-                        onClick={handleJoinMasteringBitcoin}
-                    >
-                        <img src="https://bitshala.org/cohort/mb.webp" alt="" className="w-full h-full object-contain" />
-                        <div className="absolute inset-0 bg-gray-900/70 flex items-center justify-center">
-                            <span className="text-white font-semibold text-lg">
-                                Join Cohort
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                            isWaitlisted(CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE) ? 'cursor-default' : 'cursor-pointer'
-                        }`}
-                        onClick={() => handleJoinWaitlist(CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE)}
-                    >
-                        <img src="https://bitshala.org/cohort/lbtcl.webp" alt="" className="w-full h-full object-contain" />
-                        <div className={`absolute inset-0 ${isWaitlisted(CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE) ? 'bg-green-900/70' : 'bg-gray-900/70'} flex items-center justify-center`}>
-                            <span className="text-white font-semibold text-lg">
-                                {isWaitlisted(CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE) ? 'Waitlisted ✓' : 'Join the waitlist'}
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                            isWaitlisted(CohortType.BITCOIN_PROTOCOL_DEVELOPMENT) ? 'cursor-default' : 'cursor-pointer'
-                        }`}
-                        onClick={() => handleJoinWaitlist(CohortType.BITCOIN_PROTOCOL_DEVELOPMENT)}
-                    >
-                        <img src="https://bitshala.org/cohort/bpd.webp" alt="" className="w-full h-full object-contain" />
-                        <div className={`absolute inset-0 ${isWaitlisted(CohortType.BITCOIN_PROTOCOL_DEVELOPMENT) ? 'bg-green-900/70' : 'bg-gray-900/70'} flex items-center justify-center`}>
-                            <span className="text-white font-semibold text-lg">
-                                {isWaitlisted(CohortType.BITCOIN_PROTOCOL_DEVELOPMENT) ? 'Waitlisted ✓' : 'Join the waitlist'}
-                            </span>
-                        </div>
-                    </div>
-                    <div
-                        className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                            isWaitlisted(CohortType.PROGRAMMING_BITCOIN) ? 'cursor-default' : 'cursor-pointer'
-                        }`}
-                        onClick={() => handleJoinWaitlist(CohortType.PROGRAMMING_BITCOIN)}
-                    >
-                        <img src="https://bitshala.org/cohort/pb.webp" alt="" className="w-full h-full object-contain" />
-                        <div className={`absolute inset-0 ${isWaitlisted(CohortType.PROGRAMMING_BITCOIN) ? 'bg-green-900/70' : 'bg-gray-900/70'} flex items-center justify-center`}>
-                            <span className="text-white font-semibold text-lg">
-                                {isWaitlisted(CohortType.PROGRAMMING_BITCOIN) ? 'Waitlisted ✓' : 'Join the waitlist'}
-                            </span>
-                        </div>
-                    </div>
+                    {allCohortsData?.records
+                        ?.filter((cohort) => {
+                            const now = new Date();
+                            const endDate = new Date(cohort.endDate);
+                            return now <= endDate; // Only show cohorts that haven't ended
+                        })
+                        .map((cohort) => {
+                            const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
+                            return (
+                                <div
+                                    key={cohort.id}
+                                    className="h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
+                                    onClick={() => {
+                                        if (registrationOpen) {
+                                            handleJoinCohort(cohort.id, cohort.type.replace(/_/g, ' '));
+                                        } else {
+                                            handleJoinWaitlist(cohort.type as CohortType);
+                                        }
+                                    }}
+                                >
+                                    <img src={getCohortImage(cohort.type)} alt={cohort.type} className="w-full h-full object-contain" />
+                                    <div className="absolute inset-0 bg-gray-900/70 flex items-center justify-center">
+                                        <span className="text-white font-semibold text-lg">
+                                            {registrationOpen ? 'Join Cohort' : 'Join the waitlist'}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                 </div>
             </div>
               <div>
                              <h1 className="text-3xl font-bold mb-4">My Active Cohorts</h1>
             <div className="grid grid-cols-4 gap-4">
                     {isLoading ? (
-                        <div className="text-zinc-400">Loading active cohorts...</div>
-                    ) : activeCohorts.length === 0 ? (
-                        <div className="text-zinc-400">No active cohorts</div>
+                        <div className="text-zinc-400">Loading cohorts...</div>
+                    ) : myCohorts.length === 0 ? (
+                        <div className="text-zinc-400">No cohorts joined yet</div>
                     ) : (
-                        activeCohorts.map((cohort) => (
+                        myCohorts.map((cohort) => (
                             <div
                                 key={cohort.id}
                                 className="h-[180px] w-[320px] rounded-sm overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
