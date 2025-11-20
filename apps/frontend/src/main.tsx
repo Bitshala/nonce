@@ -47,9 +47,9 @@ const router = createBrowserRouter([
     element: <CohortSelection />,
   },
   {
-    path: '/admin/cohort/:id',
+    path: '/cohort/:id',
     element: (
-      <ProtectedRoute requiredRole={UserRole.ADMIN}>
+      <ProtectedRoute requiredRole={UserRole.ADMIN || UserRole.TEACHING_ASSISTANT}>
         <TableView />
       </ProtectedRoute>
     ),
