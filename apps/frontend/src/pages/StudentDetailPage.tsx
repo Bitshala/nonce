@@ -9,7 +9,7 @@ import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
 import { useCohort } from '../hooks/cohortHooks';
-import { useMyScores } from '../hooks/scoreHooks';
+import { useUserScores } from '../hooks/scoreHooks';
 
 interface GroupDiscussionScores {
   id: string;
@@ -76,15 +76,16 @@ const StudentDetailPage = () => {
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
-  // Get cohortId from URL params
+  // Get cohortId and studentId from URL params
   const cohortIdParam = searchParams.get('cohortId');
   const cohortTypeParam = searchParams.get('cohortType');
+  const studentId = searchParams.get('studentId');
 
   // Fetch cohort data using the hook
   const { data: cohortData } = useCohort(cohortIdParam);
 
-  // Fetch scores data using the hook
-  const { data: scoresData } = useMyScores();
+  // Fetch scores data using the hook for the specific student
+  const { data: scoresData } = useUserScores(studentId || '');
 
   useEffect(() => {
     const studentName = searchParams.get('studentName');
