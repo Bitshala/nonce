@@ -136,17 +136,18 @@ const StudentDetailPage = () => {
     });
   }, [selectedCohort?.weeklyScores, weekIdToNumberMap]);
 
-  // Calculate stats
+  // Calculate stats for the selected cohort only
   const totalWeeks = sortedWeeklyScores.length || 0;
   const attendedWeeks = sortedWeeklyScores.filter(w => w.groupDiscussionScores.attendance).length || 0;
 
   const stats = {
-    totalScore: scoresData?.totalScore || 0,
-    maxPossibleScore: scoresData?.maxTotalScore || 0,
-    avgScore: totalWeeks > 0 ? (scoresData?.totalScore || 0) / totalWeeks : 0,
+    totalScore: selectedCohort?.totalScore || 0,
+    maxPossibleScore: selectedCohort?.maxTotalScore || 0,
+    avgScore: totalWeeks > 0 ? (selectedCohort?.totalScore || 0) / totalWeeks : 0,
     attendanceRate: totalWeeks > 0 ? (attendedWeeks / totalWeeks) * 100 : 0,
-    overallPercentage: (scoresData?.maxTotalScore || 0) > 0 ? ((scoresData?.totalScore || 0) / (scoresData?.maxTotalScore || 0)) * 100 : 0,
+    overallPercentage: (selectedCohort?.maxTotalScore || 0) > 0 ? ((selectedCohort?.totalScore || 0) / (selectedCohort?.maxTotalScore || 0)) * 100 : 0,
     attendedWeeks: attendedWeeks,
+    totalWeeks: totalWeeks,
   };
 
   // Prepare weekly data for WeeklyBreakdownCard (filter out week 0)

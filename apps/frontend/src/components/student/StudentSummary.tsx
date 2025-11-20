@@ -8,6 +8,7 @@ interface StudentSummaryProps {
     overallPercentage: number;
     attendedWeeks: number;
     maxPossibleScore: number;
+    totalWeeks: number;
   };
 }
 
@@ -18,7 +19,7 @@ export const StudentSummary = ({ stats }: StudentSummaryProps) => {
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 text-center">
         <div className="text-3xl font-bold text-zinc-100">{stats.totalScore}</div>
-        <div className="text-sm text-zinc-400 mt-1">Total Score</div>
+        <div className="text-sm text-zinc-400 mt-1">Cohort Score</div>
         <div className="text-xs text-zinc-500">of {stats.maxPossibleScore}</div>
       </div>
       
@@ -33,7 +34,7 @@ export const StudentSummary = ({ stats }: StudentSummaryProps) => {
           {Math.round(stats.attendanceRate)}%
         </div>
         <div className="text-sm text-zinc-400 mt-1">Attendance</div>
-        <div className="text-xs text-zinc-500">{stats.attendedWeeks}/{6} weeks</div>
+        <div className="text-xs text-zinc-500">{stats.attendedWeeks}/{stats.totalWeeks} weeks</div>
       </div>
       
       <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 text-center">
