@@ -22,6 +22,7 @@ const MyStudentDashboard = () => {
     const { mutate: joinWaitlist } = useJoinCohortWaitlist();
     const { data: userData } = useUser();
 
+    const [loadingCohortId, setLoadingCohortId] = useState<string | null>(null);
     const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
         show: false,
         message: '',
@@ -57,10 +58,12 @@ const MyStudentDashboard = () => {
             return;
         }
 
+        setLoadingCohortId(cohortId);
         joinCohort(
             { cohortId },
             {
                 onSuccess: () => {
+                    setLoadingCohortId(null);
                     setPopup({
                         show: true,
                         message: `Successfully joined ${cohortName} cohort!`,
@@ -68,6 +71,7 @@ const MyStudentDashboard = () => {
                     });
                 },
                 onError: (error: unknown) => {
+                    setLoadingCohortId(null);
                     let errorMessage = 'An error occurred';
                     if (typeof error === 'object' && error !== null && 'response' in error) {
                         const responseError = error as { response?: { data?: { message?: string; errorId?: string } } };
@@ -90,17 +94,19 @@ const MyStudentDashboard = () => {
         );
     };
 
-    const handleJoinWaitlist = (cohortType: CohortType) => {
+    const handleJoinWaitlist = (cohortId: string, cohortType: CohortType) => {
         // Check if user email exists
         if (!userData?.email) {
             navigate('/me', { state: { showEmailPopup: true } });
             return;
         }
 
+        setLoadingCohortId(cohortId);
         joinWaitlist(
             { type: cohortType },
             {
                 onSuccess: () => {
+                    setLoadingCohortId(null);
                     setPopup({
                         show: true,
                         message: `Successfully joined the waitlist for ${cohortType.replace(/_/g, ' ')}!`,
@@ -108,6 +114,7 @@ const MyStudentDashboard = () => {
                     });
                 },
                 onError: (error) => {
+                    setLoadingCohortId(null);
                     const errorMessage = error instanceof Error ? error.message : 'An error occurred';
                     setPopup({
                         show: true,
@@ -148,23 +155,38 @@ const MyStudentDashboard = () => {
                         })
                         .map((cohort) => {
                             const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
+                            const isLoading = loadingCohortId === cohort.id;
+                            const isEnrolled = myCohorts.some((myCohort) => myCohort.id === cohort.id);
                             return (
                                 <div
                                     key={cohort.id}
-                                    className="h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
+                                    className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 ${
+                                        isLoading ? 'cursor-wait opacity-75' : isEnrolled ? 'cursor-default' : 'hover:scale-105 hover:shadow-lg cursor-pointer'
+                                    }`}
                                     onClick={() => {
+                                        if (isLoading || isEnrolled) return;
                                         if (registrationOpen) {
                                             handleJoinCohort(cohort.id, cohort.type.replace(/_/g, ' '));
                                         } else {
-                                            handleJoinWaitlist(cohort.type as CohortType);
+                                            handleJoinWaitlist(cohort.id, cohort.type as CohortType);
                                         }
                                     }}
                                 >
                                     <img src={getCohortImage(cohort.type)} alt={cohort.type} className="w-full h-full object-contain" />
                                     <div className="absolute inset-0 bg-gray-900/70 flex items-center justify-center">
-                                        <span className="text-white font-semibold text-lg">
-                                            {registrationOpen ? 'Join Cohort' : 'Join the waitlist'}
-                                        </span>
+                                        {isLoading ? (
+                                            <div className="flex items-center gap-2">
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span className="text-white font-semibold text-lg">Loading...</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-white font-semibold text-lg">
+                                                {isEnrolled ? 'Enrolled' : registrationOpen ? 'Join Cohort' : 'Join the waitlist'}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             );

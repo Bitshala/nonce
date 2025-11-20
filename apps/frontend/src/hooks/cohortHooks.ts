@@ -51,9 +51,8 @@ export const useMyWaitlistStatus = createUseQuery<
 export const useCreateCohort = createUseMutation<void, CreateCohortRequestDto>(
   apiService.createCohort,
   {
-    queryInvalidation: async () => {
-      await useCohorts.invalidate();
-      await useMyCohorts.invalidate();
+    queryInvalidation: async ({ queryClient }) => {
+      await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
     },
   },
 );
@@ -64,10 +63,9 @@ export const useUpdateCohort = createUseMutation<
 >(
   ({ cohortId, body }) => apiService.updateCohort(cohortId, body),
   {
-    queryInvalidation: async ({ variables: { cohortId } }) => {
+    queryInvalidation: async ({ variables: { cohortId }, queryClient }) => {
       await useCohort.invalidate(cohortId);
-      await useCohorts.invalidate();
-      await useMyCohorts.invalidate();
+      await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
     },
   },
 );
@@ -86,6 +84,12 @@ export const useUpdateCohortWeek = createUseMutation<
 
 export const useJoinCohort = createUseMutation<void, { cohortId: string }>(
   ({ cohortId }) => apiService.joinCohort(cohortId),
+  {
+    queryInvalidation: async ({ queryClient }) => {
+      // Invalidate all cohort-related queries
+      await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+    },
+  },
 );
 
 export const useJoinCohortWaitlist = createUseMutation<
