@@ -177,10 +177,10 @@ const StudentProfileData: React.FC = () => {
 
   return (
     <div className="min-h-screen from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-8 text-center lg:text-left">Profile Settings</h1>
 
-        <form onSubmit={handleSubmit} className="">
+        <form onSubmit={handleSubmit} >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Basic Information */}
             <div className="space-y-6">
@@ -307,7 +307,7 @@ const StudentProfileData: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-10 space-y-8">
+          <div className="mt-10 space-y-6">
             <div>
               <label htmlFor="description" className="block text-sm font-semibold text-zinc-300 mb-3">
                 How would you describe yourself?*
@@ -323,7 +323,7 @@ const StudentProfileData: React.FC = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
               <div>
                 <label htmlFor="background" className="block text-sm font-semibold text-zinc-300 mb-3">
                   Why is Bitcoin important to you?*
@@ -355,7 +355,7 @@ const StudentProfileData: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
               <div>
                 <label className="block text-sm font-semibold text-zinc-300 mb-3">
                   Please select list of skills*
@@ -385,7 +385,7 @@ const StudentProfileData: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
-                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                      className="outline-none border-0 w-[520px] px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
                     >
                       <span>Add a skill...</span>
                       <span className="text-orange-400">{skillsDropdownOpen ? '▼' : '▲'}</span>
@@ -411,7 +411,7 @@ const StudentProfileData: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Please select books/resources that you have gone through?*
+                  select books that you have gone through?*
                 </label>
                 <div className="w-full">
                   {/* Selected Books Tags */}
@@ -438,7 +438,7 @@ const StudentProfileData: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setBooksDropdownOpen(!booksDropdownOpen)}
-                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                      className="outline-none border-0 w-[520px] px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
                     >
                       <span>Add a book...</span>
                       <span className="text-orange-400">{booksDropdownOpen ? '▼' : '▲'}</span>
