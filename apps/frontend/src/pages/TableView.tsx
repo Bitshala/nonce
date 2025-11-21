@@ -206,7 +206,7 @@ const TableView: React.FC = () => {
     const cohortId = cohortData?.id;
     const studentName = encodeURIComponent(student.name);
     const studentEmail = encodeURIComponent(student.email || 'N/A');
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentEmail}`);
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentEmail}&from=table`);
   }, [navigate, cohortData?.type, cohortData?.id]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {

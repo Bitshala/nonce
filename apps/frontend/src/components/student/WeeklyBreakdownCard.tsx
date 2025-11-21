@@ -39,9 +39,10 @@ interface WeekData {
 interface WeeklyBreakdownCardProps {
   week: WeekData;
   studentName: string;
+  cohortType?: string;
 }
 
-export const WeeklyBreakdownCard = ({ week }: WeeklyBreakdownCardProps) => {
+export const WeeklyBreakdownCard = ({ week, cohortType }: WeeklyBreakdownCardProps) => {
   const gd = week.groupDiscussionScores;
   const ex = week.exerciseScores;
 
@@ -82,18 +83,20 @@ export const WeeklyBreakdownCard = ({ week }: WeeklyBreakdownCardProps) => {
           </div>
         </div>
 
-        {/* Exercise Scores */}
-        <div>
-          <h4 className="text-orange-400 font-semibold mb-3 border-b border-orange-400 pb-2">
-            Exercise ({ex.totalScore}/{ex.maxTotalScore})
-          </h4>
-          <div className="space-y-2 text-sm">
-            <BooleanRow label="Submitted" value={ex.isSubmitted} />
-            <BooleanRow label="Tests Passing" value={ex.isPassing} />
-            <BooleanRow label="Good Documentation" value={ex.hasGoodDocumentation} />
-            <BooleanRow label="Good Structure" value={ex.hasGoodStructure} />
+        {/* Exercise Scores - Only show if NOT MASTERING_BITCOIN */}
+        {cohortType !== 'MASTERING_BITCOIN' && (
+          <div>
+            <h4 className="text-orange-400 font-semibold mb-3 border-b border-orange-400 pb-2">
+              Exercise ({ex.totalScore}/{ex.maxTotalScore})
+            </h4>
+            <div className="space-y-2 text-sm">
+              <BooleanRow label="Submitted" value={ex.isSubmitted} />
+              <BooleanRow label="Tests Passing" value={ex.isPassing} />
+              <BooleanRow label="Good Documentation" value={ex.hasGoodDocumentation} />
+              <BooleanRow label="Good Structure" value={ex.hasGoodStructure} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
