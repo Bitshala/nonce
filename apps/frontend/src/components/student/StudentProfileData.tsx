@@ -355,7 +355,6 @@ const StudentProfileData: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
               <div>
                 <label className="block text-sm font-semibold text-zinc-300 mb-3">
                   Please select list of skills*
@@ -461,7 +460,6 @@ const StudentProfileData: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
 
           <div className="mt-8 flex justify-end">
