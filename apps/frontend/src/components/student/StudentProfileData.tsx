@@ -24,22 +24,40 @@ interface UserProfile {
 
 // Predefined options
 const SKILLS_OPTIONS = [
-  'JavaScript', 'TypeScript', 'Python', 'Rust', 'Go', 'C++', 'React', 'Node.js',
-  'Bitcoin Core', 'Lightning Network', 'Cryptography', 'Backend Development',
-  'Frontend Development', 'Smart Contracts', 'Security', 'DevOps'
+  "No skills",
+  "Full-stack",
+  "Front-end",
+  "Back-end",
+  "Dev ops",
+  "UI/UX design",
+  "Prompt engineering",
+  "Rust",
+  "Python",
+  "C++",
+  "Golang",
+  "Graphic Design",
+  "Video Editing",
+  "Product Management",
+  "Accounting",
+  "Law",
+  "Sales",
+  "Business Operations",
+  "Others"
 ];
 
 const BITCOIN_BOOKS_OPTIONS = [
-  'Mastering Bitcoin',
-  'The Bitcoin Standard',
-  'Programming Bitcoin',
-  'Inventing Bitcoin',
-  'The Blocksize War',
-  'Layered Money',
-  '21 Lessons',
-  'Grokking Bitcoin',
-  'The Book of Satoshi',
-  'Bitcoin Money'
+  "Haven't read any",
+  "Mastering Bitcoin",
+  "Mastering Lightning Network",
+  "BPD",
+  "LPD",
+  "Learning Bitcoin through Command Line",
+  "Programming Bitcoin",
+  "The Bitcoin Standard",
+  "Sovereign Individual",
+  "The Broken Money",
+  "The Blocksize War",
+  "Others"
 ];
 
 const StudentProfileData: React.FC = () => {
@@ -110,9 +128,21 @@ const StudentProfileData: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
 
+    // Validate that at least one skill is selected
+    if (profile.skills.length === 0) {
+      alert('Please select at least one skill');
+      return;
+    }
+
+    // Validate that at least one book is selected
+    if (profile.bitcoinBooksRead.length === 0) {
+      alert('Please select at least one book/resource');
+      return;
+    }
+
     console.log('Submitting profile update:', profile);
 
-    
+
     updateUser(profile, {
       onSuccess: (data) => {
         console.log('Update successful, received data:', data);
@@ -146,17 +176,17 @@ const StudentProfileData: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen from-zinc-900 via-zinc-800 to-zinc-900 p-4 sm:p-6">
+      <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-8 text-center lg:text-left">Profile Settings</h1>
 
-        <form onSubmit={handleSubmit} className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 mb-8 shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <form onSubmit={handleSubmit} className="">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Basic Information */}
             <div className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Name
+                  Preferred Name*
                 </label>
                 <input
                   type="text"
@@ -164,13 +194,14 @@ const StudentProfileData: React.FC = () => {
                   name="name"
                   value={profile.name || ''}
                   onChange={handleInputChange}
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Email
+                  Email*
                 </label>
                 <input
                   type="email"
@@ -178,7 +209,8 @@ const StudentProfileData: React.FC = () => {
                   name="email"
                   value={profile.email || ''}
                   onChange={handleInputChange}
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
 
@@ -192,7 +224,7 @@ const StudentProfileData: React.FC = () => {
                   name="discordUsername"
                   value={profile.discordUsername}
                   disabled
-                  className="w-96 px-4 py-3 bg-zinc-600/60 border border-zinc-600/30 rounded-xl text-zinc-400 cursor-not-allowed"
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-600/60 rounded-xl text-zinc-400 cursor-not-allowed"
                 />
               </div>
 
@@ -206,15 +238,15 @@ const StudentProfileData: React.FC = () => {
                   name="discordGlobalName"
                   value={profile.discordGlobalName}
                   disabled
-                  className="w-96 px-4 py-3 bg-zinc-600/60 border border-zinc-600/30 rounded-xl text-zinc-400 cursor-not-allowed"
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-600/60 rounded-xl text-zinc-400 cursor-not-allowed"
                 />
               </div>
             </div>
 
             <div className="space-y-6">
               <div>
-                <label htmlFor="location" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Location
+                <label htmlFor="location" className="block text-sm font-semibold text-zinc-300 mb-3 whitespace-nowrap">
+                  Location*
                 </label>
                 <input
                   type="text"
@@ -222,13 +254,14 @@ const StudentProfileData: React.FC = () => {
                   name="location"
                   value={profile.location || ''}
                   onChange={handleInputChange}
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
 
               <div>
-                <label htmlFor="githubProfileUrl" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  GitHub Profile URL
+                <label htmlFor="githubProfileUrl" className="block text-sm font-semibold text-zinc-300 mb-3 whitespace-nowrap">
+                  Portfolio/Github/Side-project link:*
                 </label>
                 <input
                   type="url"
@@ -236,13 +269,14 @@ const StudentProfileData: React.FC = () => {
                   name="githubProfileUrl"
                   value={profile.githubProfileUrl || ''}
                   onChange={handleInputChange}
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
 
               <div>
-                <label htmlFor="weeklyCohortCommitmentHours" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Weekly Cohort Commitment Hours
+                <label htmlFor="weeklyCohortCommitmentHours" className="block text-sm font-semibold text-zinc-300 mb-3 whitespace-nowrap">
+                  hours per week willing to dedicate to this cohort?*
                 </label>
                 <input
                   type="number"
@@ -251,13 +285,14 @@ const StudentProfileData: React.FC = () => {
                   value={profile.weeklyCohortCommitmentHours || ''}
                   onChange={handleInputChange}
                   min="0"
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
 
               <div>
-                <label htmlFor="firstHeardAboutBitcoinOn" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  First Heard About Bitcoin On
+                <label htmlFor="firstHeardAboutBitcoinOn" className="block text-sm font-semibold text-zinc-300 mb-3 whitespace-nowrap">
+                  Which year did you start taking Bitcoin seriously?*
                 </label>
                 <input
                   type="text"
@@ -265,7 +300,8 @@ const StudentProfileData: React.FC = () => {
                   name="firstHeardAboutBitcoinOn"
                   value={profile.firstHeardAboutBitcoinOn || ''}
                   onChange={handleInputChange}
-                  className="w-96 px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200"
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>
             </div>
@@ -274,7 +310,7 @@ const StudentProfileData: React.FC = () => {
           <div className="mt-10 space-y-8">
             <div>
               <label htmlFor="description" className="block text-sm font-semibold text-zinc-300 mb-3">
-                Description
+                How would you describe yourself?*
               </label>
               <textarea
                 id="description"
@@ -282,140 +318,147 @@ const StudentProfileData: React.FC = () => {
                 value={profile.description || ''}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-[820px] px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 resize-none"
+                required
+                className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200 resize-none"
               />
             </div>
 
-            <div>
-              <label htmlFor="background" className="block text-sm font-semibold text-zinc-300 mb-3">
-                Background
-              </label>
-              <textarea
-                id="background"
-                name="background"
-                value={profile.background || ''}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-[820px] px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 resize-none"
-              />
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <label htmlFor="background" className="block text-sm font-semibold text-zinc-300 mb-3">
+                  Why is Bitcoin important to you?*
+                </label>
+                <textarea
+                  id="background"
+                  name="background"
+                  value={profile.background || ''}
+                  onChange={handleInputChange}
+                  rows={3}
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200 resize-none"
+                />
+              </div>
 
-            <div>
-              <label htmlFor="whyBitcoin" className="block text-sm font-semibold text-zinc-300 mb-3">
-                Why Bitcoin?
-              </label>
-              <textarea
-                id="whyBitcoin"
-                name="whyBitcoin"
-                value={profile.whyBitcoin || ''}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-[820px] px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white placeholder-zinc-400 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-3">
-                Skills
-              </label>
-              <div className="w-[820px]">
-                {/* Selected Skills Tags */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {profile.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
-                    >
-                      <span>{skill}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeSkill(skill)}
-                        className="hover:text-orange-200 border-none bg-transparent"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
-                    className="w-full px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
-                  >
-                    <span>Add a skill...</span>
-                    <span className="text-orange-400">{skillsDropdownOpen ? '▲' : '▼'}</span>
-                  </button>
-
-                  {skillsDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-2 bg-zinc-800 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
-                      {SKILLS_OPTIONS.filter(s => !profile.skills.includes(s)).map((skill) => (
-                        <button
-                          key={skill}
-                          type="button"
-                          onClick={() => addSkill(skill)}
-                          className="w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors border-none"
-                        >
-                          {skill}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div>
+                <label htmlFor="whyBitcoin" className="block text-sm font-semibold text-zinc-300 mb-3">
+                  What do you hope to achieve through this Cohort?*
+                </label>
+                <textarea
+                  id="whyBitcoin"
+                  name="whyBitcoin"
+                  value={profile.whyBitcoin || ''}
+                  onChange={handleInputChange}
+                  rows={3}
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200 resize-none"
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-3">
-                Bitcoin Books Read
-              </label>
-              <div className="w-[820px]">
-                {/* Selected Books Tags */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {profile.bitcoinBooksRead.map((book) => (
-                    <span
-                      key={book}
-                      className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
-                    >
-                      <span>{book}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeBook(book)}
-                        className="hover:text-orange-200 border-none bg-transparent"
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <label className="block text-sm font-semibold text-zinc-300 mb-3">
+                  Please select list of skills*
+                </label>
+                <div className="w-full">
+                  {/* Selected Skills Tags */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {profile.skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
                       >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setBooksDropdownOpen(!booksDropdownOpen)}
-                    className="w-full px-4 py-3 bg-zinc-700/80 border border-zinc-600/50 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
-                  >
-                    <span>Add a book...</span>
-                    <span className="text-orange-400">{booksDropdownOpen ? '▲' : '▼'}</span>
-                  </button>
-
-                  {booksDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-2 bg-zinc-800 border border-zinc-600 rounded-xl max-h-60 overflow-y-auto shadow-lg">
-                      {BITCOIN_BOOKS_OPTIONS.filter(b => !profile.bitcoinBooksRead.includes(b)).map((book) => (
+                        <span>{skill}</span>
                         <button
-                          key={book}
                           type="button"
-                          onClick={() => addBook(book)}
-                          className="w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors border-none"
+                          onClick={() => removeSkill(skill)}
+                          className="hover:text-orange-200 border-none bg-transparent"
                         >
-                          {book}
+                          ×
                         </button>
-                      ))}
-                    </div>
-                  )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
+                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                    >
+                      <span>Add a skill...</span>
+                      <span className="text-orange-400">{skillsDropdownOpen ? '▼' : '▲'}</span>
+                    </button>
+
+                    {skillsDropdownOpen && (
+                      <div className="absolute z-10 w-full bottom-full mb-2 bg-zinc-800 border-0 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                        {SKILLS_OPTIONS.filter(s => !profile.skills.includes(s)).map((skill) => (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => addSkill(skill)}
+                            className="outline-none border-0 w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors"
+                          >
+                            {skill}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-zinc-300 mb-3">
+                  Please select books/resources that you have gone through?*
+                </label>
+                <div className="w-full">
+                  {/* Selected Books Tags */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {profile.bitcoinBooksRead.map((book) => (
+                      <span
+                        key={book}
+                        className="px-3 py-1 bg-orange-600 text-white rounded-lg text-sm flex items-center space-x-2"
+                      >
+                        <span>{book}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeBook(book)}
+                          className="hover:text-orange-200 border-none bg-transparent"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setBooksDropdownOpen(!booksDropdownOpen)}
+                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                    >
+                      <span>Add a book...</span>
+                      <span className="text-orange-400">{booksDropdownOpen ? '▼' : '▲'}</span>
+                    </button>
+
+                    {booksDropdownOpen && (
+                      <div className="absolute z-10 w-full bottom-full mb-2 bg-zinc-800 border-0 rounded-xl max-h-60 overflow-y-auto shadow-lg">
+                        {BITCOIN_BOOKS_OPTIONS.filter(b => !profile.bitcoinBooksRead.includes(b)).map((book) => (
+                          <button
+                            key={book}
+                            type="button"
+                            onClick={() => addBook(book)}
+                            className="outline-none border-0 w-full px-4 py-2 text-left text-white bg-zinc-800 hover:bg-orange-600 transition-colors"
+                          >
+                            {book}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -451,9 +494,9 @@ const StudentProfileData: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-zinc-100 mb-2">
-                Email Required
+                Information Required
               </h3>
-              <p className="text-zinc-300 mb-6">Please fill in your email to join a cohort</p>
+              <p className="text-zinc-300 mb-6">Please fill in your profile information to join a cohort</p>
               <button
                 onClick={() => setShowEmailPopup(false)}
                 className="border-none bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-semibold px-8 py-3 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-zinc-500"
