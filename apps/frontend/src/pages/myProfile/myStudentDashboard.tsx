@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
 import { CohortType } from '../../types/enums';
+import type { GetUserResponse } from '../../types/api';
 
 const getCohortImage = (cohortType: string): string => {
     const imageMap: Record<string, string> = {
@@ -12,6 +13,25 @@ const getCohortImage = (cohortType: string): string => {
         'PROGRAMMING_BITCOIN': 'https://bitshala.org/cohort/pb.webp',
     };
     return imageMap[cohortType] || 'https://bitshala.org/cohort/mb.webp';
+};
+
+const isProfileComplete = (userData: GetUserResponse | undefined): boolean => {
+    if (!userData) return false;
+
+    // Check all required profile fields
+    return !!(
+        userData.email &&
+        userData.name &&
+        userData.description &&
+        userData.background &&
+        userData.githubProfileUrl &&
+        userData.skills && userData.skills.length > 0 &&
+        userData.firstHeardAboutBitcoinOn &&
+        userData.bitcoinBooksRead && userData.bitcoinBooksRead.length > 0 &&
+        userData.whyBitcoin &&
+        userData.weeklyCohortCommitmentHours &&
+        userData.location
+    );
 };
 
 const MyStudentDashboard = () => {
@@ -52,8 +72,8 @@ const MyStudentDashboard = () => {
     };
 
     const handleJoinCohort = (cohortId: string, cohortName: string) => {
-        // Check if user email exists
-        if (!userData?.email) {
+        // Check if user profile is complete
+        if (!isProfileComplete(userData)) {
             navigate('/me', { state: { showEmailPopup: true } });
             return;
         }
@@ -95,8 +115,8 @@ const MyStudentDashboard = () => {
     };
 
     const handleJoinWaitlist = (cohortId: string, cohortType: CohortType) => {
-        // Check if user email exists
-        if (!userData?.email) {
+        // Check if user profile is complete
+        if (!isProfileComplete(userData)) {
             navigate('/me', { state: { showEmailPopup: true } });
             return;
         }
