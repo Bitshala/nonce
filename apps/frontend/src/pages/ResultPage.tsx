@@ -125,7 +125,9 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
     const studentId = student.userId ;
     const cohortType = cohortData?.type;
     const cohortId = cohortData?.id;
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}`);
+    const studentName = encodeURIComponent(student.name);
+    const studentEmail = encodeURIComponent(student.email || 'N/A');
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentEmail}`);
   }, [navigate, cohortData?.type, cohortData?.id]);
 
 
