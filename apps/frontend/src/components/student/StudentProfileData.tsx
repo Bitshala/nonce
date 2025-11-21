@@ -385,7 +385,7 @@ const StudentProfileData: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
-                      className="outline-none border-0 w-[520px] px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
                     >
                       <span>Add a skill...</span>
                       <span className="text-orange-400">{skillsDropdownOpen ? '▼' : '▲'}</span>
@@ -438,7 +438,7 @@ const StudentProfileData: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setBooksDropdownOpen(!booksDropdownOpen)}
-                      className="outline-none border-0 w-[520px] px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
+                      className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white text-left flex items-center justify-between hover:bg-zinc-700 transition-all"
                     >
                       <span>Add a book...</span>
                       <span className="text-orange-400">{booksDropdownOpen ? '▼' : '▲'}</span>
