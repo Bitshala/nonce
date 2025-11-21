@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
+import { UserRole } from '../../types/enums';
 
 interface WeekContent {
   week: number;
@@ -18,13 +19,16 @@ const MBInstructions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Use hooks for data fetching
-  const { isLoading: isLoadingUser } = useUser();
+  const { data: userData, isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
 
   // Derive hasAccessToMB from scoresData
   const hasAccessToMB = scoresData?.cohorts.some(
     (record) => record.cohortType === 'MASTERING_BITCOIN'
   ) ?? false;
+
+  // Check if user is TA or Admin
+  const canViewBonusQuestions = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
   const isLoading = isLoadingUser || isLoadingScores;
 
@@ -331,8 +335,8 @@ const MBInstructions: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bonus Questions Section */}
-                {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
+                {/* Bonus Questions Section - Only visible to TAs and Admins */}
+                {canViewBonusQuestions && weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
                   <div className="mt-8">
                     <h3 className="text-xl font-semibold text-orange-300 mb-4 flex items-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

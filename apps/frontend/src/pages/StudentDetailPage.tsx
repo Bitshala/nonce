@@ -232,7 +232,7 @@ const StudentDetailPage = () => {
                     <span className="text-zinc-300">{studentInfo.name}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-orange-400 font-semibold">EMAIL:</span>
+                    <span className="text-orange-400 font-semibold">DISCORD INFO:</span>
                     <span className="text-zinc-300">{studentInfo.email}</span>
                   </div>
                   {selectedCohort && (
