@@ -76,7 +76,12 @@ const StudentProfileData: React.FC = () => {
   useEffect(() => {
     if (userData) {
       console.log('userData changed, updating profile:', userData);
-      setProfile(userData);
+      // Ensure all array fields are initialized properly
+      setProfile({
+        ...userData,
+        skills: userData.skills || [],
+        bitcoinBooksRead: userData.bitcoinBooksRead || [],
+      });
     }
   }, [userData]);
 
