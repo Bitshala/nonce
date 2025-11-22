@@ -18,6 +18,7 @@ interface UserProfile {
   whyBitcoin: string | null;
   weeklyCohortCommitmentHours: number | null;
   location: string | null;
+  referral: string | null;
 }
 
 
@@ -186,7 +187,7 @@ const StudentProfileData: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-semibold text-zinc-300 mb-3">
-                  Preferred Name*
+                  Certificate Name*
                 </label>
                 <input
                   type="text"
@@ -459,6 +460,21 @@ const StudentProfileData: React.FC = () => {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="referral" className="block text-sm font-semibold text-zinc-300 mb-3">
+                  Where did you hear about this cohort?*
+                </label>
+                <input
+                  type="text"
+                  id="referral"
+                  name="referral"
+                  value={profile.referral || ''}
+                  onChange={handleInputChange}
+                  required
+                  className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
+                />
               </div>
           </div>
 

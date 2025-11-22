@@ -152,6 +152,7 @@ export interface UpdateUserRequest {
   whyBitcoin?: string;
   weeklyCohortCommitmentHours?: number;
   location?: string;
+  referral?: string;
 }
 
 export interface UpdateUserRoleRequest {
@@ -176,4 +177,5 @@ export interface GetUserResponse {
   whyBitcoin: string | null;
   weeklyCohortCommitmentHours: number | null;
   location: string | null;
+  referral: string | null;
 }
