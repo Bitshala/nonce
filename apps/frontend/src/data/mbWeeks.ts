@@ -1,0 +1,135 @@
+import type { WeekContent } from '../types/instructions';
+
+export const mbWeeks: WeekContent[] = [
+  {
+    week: 1,
+    title: "Introduction & How Bitcoin Works",
+    content: "Chapter 1: Introduction - Chapter 2: How Bitcoin Works",
+    gdQuestions: [
+      "What were the major problems of Digital Currencies before Bitcoin? How did Bitcoin solve them?",
+      "What are the major components of the Bitcoin System? What does it mean by \"consensus rules\"?",
+      "What are the different types of Bitcoin Wallets? Which one among them is most and least secured?",
+      "What are the different types of Bitcoin Nodes? What are the tradeoffs between them? When is it applicable to use a \"light node\"?",
+      "Do you think it would be better if bitcoin transactions were reversible? What are the potential benefits and drawbacks?",
+      "Do you believe Bitcoin needs to compete with Visa/MasterCard to succeed? Why or why not?",
+      "What is the Bitcoin Issuance Rate? How do we know the supply cap of Bitcoin is 21 million?",
+      "Is Bitcoin private? Does Bitcoin need to be private? Why isn't Bitcoin fungible?",
+      "What is transaction fee? How is it calculated? Whats the effect of transaction fee on transaction confirmation?",
+      "What are the two main components of a Transaction? What does each component include?",
+      "What are change addresses? When are change addresses required? What happens if the user (or wallet sofwtware) forgets to include the change address in a transaction? When will we not require a change address?",
+      "What does coinselection mean? Can you name few popular coinselection algorithms? Is it better to manually select coins or let the wallet software automatically handle it?",
+      "How is Proof of Work mining similar to \"needle in haystack\" problem? What happens when two blocks are mined by different miners at the same height, how does the network decide which is the \"right\" block?",
+      "What does it mean by a transaction to be \"confirmed\"? How many confirmation is usually acceptable? Is it okay to accept unconfirmed transactions? Why or why not?",
+      "What is the lowest denomination of Bitcoin? Can we run out of decimals to denominate the smallest unit, as Bitcoin adoption increases?",
+      "Why did Satoshi said transactions are \"chain of digital signatures\"? What is a UTXO? Whats the difference between UTXO and Account based model? Why did Bitcoin choose to stick with UTXO model?"
+    ]
+  },
+  {
+    week: 2,
+    title: "Bitcoin Core & Keys and Addresses",
+    content: "Chapter 3: Bitcoin Core - Chapter 4: Keys and Addresses",
+    gdQuestions: [
+      "Why is Bitcoin Core called a \"Reference Implementation\"? What other implementations of Bitcoin are out there? Is it preferable to have many implementations of Bitcoin?",
+      "What are BIPs (Bitcoin Improvement Proposals)? What are their role in the Bitcoin development process?",
+      "What are the few major configuration options in Bitcoin Core? As a home node operator, which one do you think is most useful?",
+      "What is `txindex`? When would a node operator use this configuration flag? What are the overheads of turning this configuration on?",
+      "What is `bitcoin-cli`? What is it used for? Have you explored any `bitcoin-cli` commands? Which commands do you find most useful as a home node operator?",
+      "What is the approximate disk space requirement for running Bitcoin Core? What are the approximate network bandwidth and memory requirements? Do you think it's \"cheap\" to run a node?",
+      "What are commands you would use sequentially to get the fully deserialized coinbase transaction of the Block 100, using `bitcoin-cli`?",
+      "How can you verify the signatures of download binaries of Bitcoin Core? What are the potential damages of running a malicious version of the software?",
+      "Describe the functions of 'private keys', 'public keys', 'Bitcoin addresses', and 'digital signatures'. What is the mathematical relationship between them and how are they used in Bitcoin?",
+      "What is the discrete logarithm problem, and why is it considered hard to solve?",
+      "What is asymmetry in cryptography, and why are one-way functions useful? Identify a one-way cryptographic function used in deriving public keys from private keys.",
+      "Describe instances where private keys have been compromised due to lack of entropy. Why is it important to use a cryptographically secure pseudorandom number generator to produce a private key? What are some techniques of generating pseudo random numbers?",
+      "What is secp256k1, and what are the curve constants used in Bitcoin? How is ECDSA malleable?",
+      "What is a Bitcoin address, and why are addresses used instead of raw public keys?",
+      "What hash functions are used in the generation of Bitcoin addresses?",
+      "Why is Base58 used for Bitcoin addresses instead of Base64? Would you make any modifications beyond Base58?",
+      "What are the different private key formats used by wallets?",
+      "What are compressed public keys, and what are the benefits of compressing a public key?",
+      "What are the different kinds of Bitcoin addresses? Explain the differences between P2PKH and P2SH.",
+      "What is the difference between a hot wallet and cold storage?",
+      "What is bech32? How is it better than base58? Are there any problems in bech32? How are they solved?"
+    ]
+  },
+  {
+    week: 3,
+    title: "Wallet Recovery & Transactions",
+    content: "Chapter 5: Wallet Recovery - Chapter 6: Transactions",
+    gdQuestions: [
+      "What is a Bitcoin wallet? What are the different types of wallets available?",
+      "What is the difference between deterministic and non-deterministic wallets?",
+      "What is a \"seed\" in the context of Bitcoin wallets? How are mnemonic words generated from the seed?",
+      "What is the optional passphrase for a mnemonic? In which situations passphrase can be useful?",
+      "What are the components of an extended key (XPub)? What is the fingerprint of a key?",
+      "What are hardened and non-hardened derivations? What are the advantages of having different types of derivations?",
+      "What are the different components of a Bitcoin transaction? What are transaction inputs and outputs, and how are they constructed? What are locking and unlocking scripts?",
+      "What are various sources of transaction malleability? How does segwit fix transaction malleability? What parts of the transaction structure got affected with the segwit upgrade?"
+    ],
+    bonusQuestions: [
+      "What is nSequence? What was it intended use when Satoshi created Bitcoin? How is it used today?",
+      "What are various sources of transaction malleability? How does segwit fix transaction malleability?",
+      "Can two transactions have the same transaction id? When can this happen? Is that a consensus violation?"
+    ]
+  },
+  {
+    week: 4,
+    title: "Authorization and Authentication & Digital Signature",
+    content: "Chapter 7: Authorization and Authentication - Chapter 8: Digital Signature",
+    gdQuestions: [
+      "Is the Turing incompleteness of Bitcoin's scripting language (SCRIPT) a feature or a deficiency?",
+      "Explain different types of timelocks available in a Bitcoin transaction and list the components of the transactions that can be used to set these timelocks.",
+      "How does Taproot upgrade increase security and privacy in Bitcoin?",
+      "Highlight the differences between Tapscript and native Bitcoin script?",
+      "What are digital signatures, where are they placed in a transaction, and what is their purpose?",
+      "What are sighashes, and what are their uses? How many types of sighashes are there?",
+      "What is the Discrete Log Problem, and why is it important in Cryptography? What does it mean when we say \"DLP is hard\"? What would have happened if DLP wasn't a \"hard\" problem?",
+      "Why is it important to use a random number (k) as the basis for a private/public nonce pair? What vulnerabilities can be exploited if k is known to be reused? Can you provide a real-life example of when such an exploit occurred?"
+    ],
+    bonusQuestions: [
+      "Why is the public key directly included in a P2TR output whereas in other script types we always include a hash?",
+      "Why are the locking and unlocking scripts executed separately?",
+      "Besides signing transactions, what other uses could digital signatures have?"
+    ]
+  },
+  {
+    week: 5,
+    title: "Transaction Fees & The Bitcoin Network",
+    content: "Chapter 9: Transaction Fees - Chapter 10: The Bitcoin Network",
+    gdQuestions: [
+      "Why do we need to pay transaction fees when we have block reward as an incentive? Is there a minimum fee that every transaction needs to pay? Is it a consensus rule or policy rule?",
+      "What is RBF. When is it useful? List all the conditions required to do a valid RBF.",
+      "What is CPFP (Child Pays For Parents)? When is it useful? In which situation RBF cannot be used, but CPFP can be used?",
+      "What is transaction pinning? How is it a vulnerability for multiparty time-sensitive protocols such as LN?",
+      "What is a peer-to-peer network? Give two examples of successful peer-to-peer networks that preceded Bitcoin.",
+      "Explain in brief what is a Mempool and what is an Orphan Pool.",
+      "How do light clients validate that a transaction exists? How is this different from the mechanism full archival nodes use to validate a transaction?",
+      "What are compact block filters? What data should be included in a block filter?"
+    ],
+    bonusQuestions: [
+      "What are the privacy trade-offs in using a light client?",
+      "What is fee sniping and how does it work? How can it be prevented?",
+      "What is CPFP carve out and anchor outputs?"
+    ]
+  },
+  {
+    week: 6,
+    title: "The Blockchain & Mining and Consensus",
+    content: "Chapter 11: The Blockchain - Chapter 12: Mining and Consensus",
+    gdQuestions: [
+      "Describe the structure of a block and what data does a block header contain?",
+      "What is a Merkle Tree? How is it used in the blockchain? What data does the Merkle Root verifies?",
+      "What is the difference between mainnet and testnet? Can testnet coins have value?",
+      "What is the difference between signet and testnet? What is regtest? When is it useful?",
+      "What is a coinbase transaction? What prevents the miners from inflating the coinbase reward?",
+      "Explain the 51% attack. Can it compromise the security of private keys and signing algorithms?",
+      "What is Mining Difficulty? How is it adjusted? What would happen if it wasn't adjusted?",
+      "What is the difference between Hard Fork and Soft Fork? Is it possible to do hard fork of Bitcoin, without creating a new coin/network, at current stage of the market?"
+    ],
+    bonusQuestions: [
+      "How are soft forks are activated in Bitcoin? What was the last soft fork that happened?",
+      "What is \"Rough Consensus\"? How does it affect Bitcoin's development?",
+      "When was the last Bitcoin hardfork? What caused it?"
+    ]
+  }
+];
