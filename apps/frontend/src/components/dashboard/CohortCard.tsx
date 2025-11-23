@@ -26,17 +26,16 @@ const CohortCard = ({
 
   const getCursorStyle = () => {
     if (isLoading) return 'cursor-wait';
-    if (isEnrolled) return 'cursor-default';
     return 'cursor-pointer';
   };
 
   return (
     <div
       className={`h-[180px] w-[320px] rounded-sm overflow-hidden relative transform transition-all duration-300 ${getCursorStyle()} ${
-        isLoading ? 'opacity-75' : isEnrolled ? '' : 'hover:scale-105 hover:shadow-lg'
+        isLoading ? 'opacity-75' : 'hover:scale-105 hover:shadow-lg'
       }`}
       onClick={() => {
-        if (!isLoading && !isEnrolled && onClick) {
+        if (!isLoading && onClick) {
           onClick();
         }
       }}
