@@ -3,7 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const redirectToDiscordAuth = (role?: string) => {
   const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || 'https://undedicated-clarine-peskily.ngrok-free.dev';
+    import.meta.env.VITE_BACKEND_URL || 'https://api.bitshala.org';
   const authPath = role ? `/auth/discord/${role}` : '/auth/discord';
   window.location.href = `${backendUrl}${authPath}`;
 };
