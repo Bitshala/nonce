@@ -14,14 +14,13 @@ import StudentDetailPage from './pages/StudentDetailPage.tsx';
 
 import '@fontsource/sora';
 import 'virtual:uno.css';
-import FeedbackTable from './pages/Feedback.tsx';
 
 
-import CohortParticipantLogin from './pages/Students/studentLogin.tsx';
 import WeekSelector from './pages/Students/weekSelector.tsx';
 import StudentCohortSelector from './pages/Students/studentCohortSelector.tsx';
 
 import MBInstructions from './pages/Students/MBInstructions.tsx';
+import LBTCLInstructions from './pages/Students/LBTCLInstructions.tsx';
 import StudentProfileData from './components/student/StudentProfileData.tsx';
 
 import MyError from './pages/404error.tsx';
@@ -60,22 +59,17 @@ const router = createBrowserRouter([
     path: '/results/:id',
     element: <ResultPage />,
   },
-    {
-    path: '/feedback',
-    element: <FeedbackTable />,
-  },
-
   {
     path: '/mb-instructions',
     element: <MBInstructions />,
   },
   {
-    path:'/me',
-    element:<StudentProfileData/>
+    path: '/lbtcl-instructions',
+    element: <LBTCLInstructions />,
   },
   {
-    path: '/participants',
-    element: <CohortParticipantLogin />,
+    path:'/me',
+    element:<StudentProfileData/>
   },
     {
       path: '/weekSelector',
@@ -102,7 +96,7 @@ const router = createBrowserRouter([
       element: <MyCohortInstructions />,
     },
     {
-      path: '/cohort/feedback',
+      path: '/cohortfeedback',
       element: <CohortFeedback />,
     },
     {

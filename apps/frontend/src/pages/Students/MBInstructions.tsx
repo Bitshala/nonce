@@ -22,13 +22,16 @@ const MBInstructions: React.FC = () => {
   const { data: userData, isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
 
-  // Derive hasAccessToMB from scoresData
-  const hasAccessToMB = scoresData?.cohorts.some(
-    (record) => record.cohortType === 'MASTERING_BITCOIN'
-  ) ?? false;
-
   // Check if user is TA or Admin
-  const canViewBonusQuestions = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
+  const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
+
+  // Derive hasAccessToMB from scoresData or admin/TA role
+  const hasAccessToMB = isAdminOrTA || (scoresData?.cohorts.some(
+    (record) => record.cohortType === 'MASTERING_BITCOIN'
+  ) ?? false);
+
+  // Admins and TAs can view bonus questions
+  const canViewBonusQuestions = isAdminOrTA;
 
   const isLoading = isLoadingUser || isLoadingScores;
 
