@@ -131,5 +131,25 @@ export const mbWeeks: WeekContent[] = [
       "What is \"Rough Consensus\"? How does it affect Bitcoin's development?",
       "When was the last Bitcoin hardfork? What caused it?"
     ]
+  },
+  {
+    week: 7,
+    title: "Bitcoin Security & Second-Layer Applications",
+    content: "Chapter 13: Bitcoin Security - Chapter 14: Second-Layer Applications",
+    gdQuestions: [
+      "Why does the author say securing bitcoins is like securing cash or a chunk of precious metal?",
+      "What could be the consequences of applying centralised security models to a decentralised network like Bitcoin?",
+      "Explain the concept of root of trust in security models. What should be the root of trust for Bitcoin applications?",
+      "Why are hardware siging devices the most recommended way of storing Bitcoin?",
+      "What are payment channels in context to Bitcoin? How do they facilitate extremely high transaction throughput?",
+      "Can a Bitcoin transaction be cancelled? Explain asymmetric revocable transactions.",
+      "What is a HTLC? Which OP-code is used to achieve it in context to payment channels?",
+      "Explain what are funding and commitment transactions in context of payment channels."
+    ],
+    bonusQuestions: [
+      "What could be the consequences of using unnecessarily complex techniques to secure bitcoins?",
+      "Explain at least two use-cases of applications build on top of Bitcoin.",
+      "Can a Bitcoin transaction be cancelled? Explain asymmetric revocable transactions."
+    ]
   }
 ];
