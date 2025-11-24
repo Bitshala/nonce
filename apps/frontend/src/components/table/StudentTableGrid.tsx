@@ -5,6 +5,7 @@ import type { TableRowData } from '../../types/student';
 interface StudentTableGridProps {
   data: TableRowData[];
   week: number;
+  cohortType?: string;
   sortConfig: {
     key: keyof TableRowData | null;
     direction: 'ascending' | 'descending';
@@ -18,12 +19,14 @@ interface StudentTableGridProps {
 export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
   data,
   week,
+  cohortType,
   sortConfig,
   onSort,
   onStudentClick,
   onEditStudent,
   onContextMenu,
 }) => {
+  const showExerciseScores = cohortType !== 'MASTERING_BITCOIN';
   const requestSort = (key: keyof TableRowData) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -98,13 +101,15 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
               >
                 BONUS SCORE
               </th>
-              <th
-                scope="col"
-                colSpan={2}
-                className="px-8 py-4 text-center text-xs font-semibold hover:bg-orange-50 text-orange-700 uppercase tracking-wider bg-orange-200 text-zinc-700 border-b border-zinc-200"
-              >
-                EXERCISE SCORES
-              </th>
+              {showExerciseScores && (
+                <th
+                  scope="col"
+                  colSpan={2}
+                  className="px-8 py-4 text-center text-xs font-semibold hover:bg-orange-50 text-orange-700 uppercase tracking-wider bg-orange-200 text-zinc-700 border-b border-zinc-200"
+                >
+                  EXERCISE SCORES
+                </th>
+              )}
               <th
                 scope="col"
                 rowSpan={2}
@@ -143,12 +148,16 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
               <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
                 Follow Up
               </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Submitted
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Github Test
-              </th>
+              {showExerciseScores && (
+                <>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
+                    Submitted
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
+                    Github Test
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
 
@@ -158,6 +167,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
                 key={person.id}
                 person={person}
                 week={week}
+                showExerciseScores={showExerciseScores}
                 onStudentClick={onStudentClick}
                 onEditStudent={onEditStudent}
                 onContextMenu={onContextMenu}

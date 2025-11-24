@@ -5,16 +5,19 @@ interface ScoreEditModalProps {
   student: TableRowData;
   cohortId: string;
   weekId: string;
+  cohortType?: string;
   onSubmit: (studentData: TableRowData) => void;
   onClose: () => void;
 }
 
 export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
   student,
+  cohortType,
   onSubmit,
   onClose,
 }) => {
   const [editedStudent, setEditedStudent] = useState<TableRowData>({ ...student });
+  const showExerciseScores = cohortType !== 'MASTERING_BITCOIN';
 
   const scoreOptions = [0, 1, 2, 3, 4, 5];
 
@@ -174,32 +177,34 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           </fieldset>
 
           {/* Exercise Scores */}
-          <fieldset className="border border-zinc-200 p-6 rounded-lg bg-zinc-50">
-            <legend className="text-sm font-medium text-zinc-700 px-2 bg-white">
-              Exercise Scores
-            </legend>
-            <div className="grid grid-cols-2 gap-6 mt-4">
-              {(['Submitted', 'privateTest'] as const).map(key => (
-                <div key={key} className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    name={`exerciseScore.${key}`}
-                    id={`form-exerciseScore.${key}`}
-                    checked={editedStudent.exerciseScore[key]}
-                    onChange={handleChange}
-                    className="h-5 w-5 text-orange-600 border-zinc-300 rounded focus:ring-orange-500"
-                  />
-                  <label
-                    htmlFor={`form-exerciseScore.${key}`}
-                    className="block text-sm font-medium text-zinc-900"
-                  >
-                    {key === 'Submitted' && 'Submitted'}
-                    {key === 'privateTest' && 'Tests Passing'}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </fieldset>
+          {showExerciseScores && (
+            <fieldset className="border border-zinc-200 p-6 rounded-lg bg-zinc-50">
+              <legend className="text-sm font-medium text-zinc-700 px-2 bg-white">
+                Exercise Scores
+              </legend>
+              <div className="grid grid-cols-2 gap-6 mt-4">
+                {(['Submitted', 'privateTest'] as const).map(key => (
+                  <div key={key} className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      name={`exerciseScore.${key}`}
+                      id={`form-exerciseScore.${key}`}
+                      checked={editedStudent.exerciseScore[key]}
+                      onChange={handleChange}
+                      className="h-5 w-5 text-orange-600 border-zinc-300 rounded focus:ring-orange-500"
+                    />
+                    <label
+                      htmlFor={`form-exerciseScore.${key}`}
+                      className="block text-sm font-medium text-zinc-900"
+                    >
+                      {key === 'Submitted' && 'Submitted'}
+                      {key === 'privateTest' && 'Tests Passing'}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          )}
         </div>
 
         <div className="flex justify-end items-center p-6 border-t border-zinc-200 space-x-4 bg-zinc-50">

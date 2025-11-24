@@ -10,6 +10,8 @@ export const cohortTypeToName = (type: CohortType) : string => {
       return 'Programming Bitcoin';
     case CohortType.BITCOIN_PROTOCOL_DEVELOPMENT:
       return 'Bitcoin Protocol Development';
+    case CohortType.MASTERING_LIGHTNING_NETWORK:
+      return 'Mastering Lightning Network';
     default:
       return 'Unknown Cohort';
   }

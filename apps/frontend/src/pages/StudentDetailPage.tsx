@@ -9,7 +9,9 @@ import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
 
 import { useCohort } from '../hooks/cohortHooks';
-import { useUserScores } from '../hooks/scoreHooks';
+import { useUserScores, useMyScores } from '../hooks/scoreHooks';
+import { useUser } from '../hooks/userHooks';
+import { UserRole } from '../types/enums';
 
 interface GroupDiscussionScores {
   id: string;
@@ -85,8 +87,19 @@ const StudentDetailPage = () => {
   // Fetch cohort data using the hook
   const { data: cohortData } = useCohort(cohortIdParam);
 
-  // Fetch scores data using the hook for the specific student
-  const { data: scoresData } = useUserScores(studentId || '');
+  // Get current user to determine role
+  const { data: currentUser } = useUser();
+
+  // Determine if we should use student's own scores or fetch another user's scores
+  const isViewingOwnProfile = currentUser?.id === studentId;
+  const canViewOtherScores = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.TEACHING_ASSISTANT;
+
+  // Fetch scores data - use appropriate hook based on whether viewing own profile
+  const { data: myScoresData } = useMyScores(undefined, { enabled: isViewingOwnProfile });
+  const { data: userScoresData } = useUserScores(studentId || '', { enabled: !isViewingOwnProfile && canViewOtherScores && !!studentId });
+
+  // Use the appropriate scores data
+  const scoresData = isViewingOwnProfile ? myScoresData : userScoresData;
 
   useEffect(() => {
     const studentName = searchParams.get('studentName');

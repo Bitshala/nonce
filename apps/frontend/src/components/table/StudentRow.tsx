@@ -7,6 +7,7 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 interface StudentRowProps {
   person: TableRowData;
   week: number;
+  showExerciseScores?: boolean;
   onStudentClick: (student: TableRowData) => void;
   onEditStudent: (student: TableRowData) => void;
   onContextMenu: (menu: {
@@ -20,6 +21,7 @@ interface StudentRowProps {
 export const StudentRow: React.FC<StudentRowProps> = ({
   person,
   week,
+  showExerciseScores = true,
   onStudentClick,
   onEditStudent,
   onContextMenu,
@@ -33,11 +35,13 @@ export const StudentRow: React.FC<StudentRowProps> = ({
     event: React.MouseEvent<HTMLTableCellElement>
   ) => {
     event.preventDefault();
+    // Use the same logic as other handlers to get the actual student ID
+    const studentId = person.userId ?? person.id;
     onContextMenu({
       visible: true,
       x: event.clientX,
       y: event.clientY,
-      targetId: person.id,
+      targetId: studentId,
     });
   };
 
@@ -132,7 +136,7 @@ export const StudentRow: React.FC<StudentRowProps> = ({
       ))}
 
       {/* Exercise Scores */}
-      {(['Submitted', 'privateTest'] as const).map(
+      {showExerciseScores && (['Submitted', 'privateTest'] as const).map(
         key => (
           <td
             key={key}

@@ -31,90 +31,91 @@ import CohortFeedback from './pages/CohortFeedback.tsx';
 import AdminPage from './pages/admin/page.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { UserRole } from './types/enums.ts';
+import Layout from './components/Layout.tsx';
 
 const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Login />,
+    element: <Layout><Login /></Layout>,
   },
   {
     path: '/',
-    element: <Home />,
+    element: <Layout><Home /></Layout>,
   },
   {
     path: '/select',
-    element: <CohortSelection />,
+    element: <Layout><CohortSelection /></Layout>,
   },
   {
     path: '/cohort/:id',
-    element: (
-        <TableView />
-    ),
+    element: <Layout><TableView /></Layout>,
   },
   {
     path: '/detailPage',
-    element: <StudentDetailPage />,
+    element: <Layout><StudentDetailPage /></Layout>,
   },
   {
     path: '/results/:id',
-    element: <ResultPage />,
+    element: <Layout><ResultPage /></Layout>,
   },
   {
     path: '/mb-instructions',
-    element: <MBInstructions />,
+    element: <Layout><MBInstructions /></Layout>,
   },
   {
     path: '/lbtcl-instructions',
-    element: <LBTCLInstructions />,
+    element: <Layout><LBTCLInstructions /></Layout>,
   },
   {
     path:'/me',
-    element:<StudentProfileData/>
+    element: <Layout><StudentProfileData /></Layout>
   },
     {
       path: '/weekSelector',
-      element: <WeekSelector />,
+      element: <Layout><WeekSelector /></Layout>,
     },
         {
       path: '/cohortSelector',
-      element: <StudentCohortSelector />,
+      element: <Layout><StudentCohortSelector /></Layout>,
     },
     {
       path: '/*',
-      element: <MyError />,
+      element: <Layout><MyError /></Layout>,
     },
       {
       path: '/myDashboard',
-      element: <MyStudentDashboard />,
+      element: <Layout><MyStudentDashboard /></Layout>,
     },
     {
       path: '/:userId/aboutMe',
-      element: <ProfilePage />,
+      element: <Layout><ProfilePage /></Layout>,
     },
     {
       path: '/:cohortId/instructions',
-      element: <MyCohortInstructions />,
+      element: <Layout><MyCohortInstructions /></Layout>,
     },
     {
       path: '/cohortfeedback',
-      element: <CohortFeedback />,
+      element: <Layout><CohortFeedback /></Layout>,
     },
     {
       path: '/admin',
       element: (
-        <ProtectedRoute requiredRole={UserRole.ADMIN}>
-          <AdminPage />
-        </ProtectedRoute>
+        <Layout>
+          <ProtectedRoute requiredRole={UserRole.ADMIN}>
+            <AdminPage />
+          </ProtectedRoute>
+        </Layout>
       ),
     },
     {
       path: '/unauthorized',
-      element: <div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
+      element: <Layout><div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold text-red-400">Unauthorized</h1>
           <p className="text-zinc-400">You don't have permission to access this resource.</p>
         </div>
-      </div>,
+      </div></Layout>,
     }
 ]);
 

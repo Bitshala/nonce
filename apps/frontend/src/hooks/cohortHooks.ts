@@ -100,3 +100,16 @@ export const useJoinCohortWaitlist = createUseMutation<
     await useMyWaitlistStatus.invalidate();
   },
 });
+
+export const useRemoveUserFromCohort = createUseMutation<
+  void,
+  { cohortId: string; userId: string }
+>(
+  ({ cohortId, userId }) => apiService.removeUserFromCohort(cohortId, userId),
+  {
+    queryInvalidation: async ({ variables: { cohortId }, queryClient }) => {
+      await useCohort.invalidate(cohortId);
+      await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+    },
+  },
+);

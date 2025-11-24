@@ -4,10 +4,11 @@ import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '
 import { useUser } from '../../hooks/userHooks';
 import { CohortType } from '../../types/enums';
 import NotificationModal from '../../components/NotificationModal';
-import CohortCard from '../../components/dashboard/CohortCard';
+import CohortCardV2 from '../../components/dashboard/CohortCardV2';
 import { getCohortImage, isRegistrationOpen, isCohortActive, formatCohortType } from '../../utils/cohortUtils';
 import { isProfileComplete } from '../../utils/userUtils';
 import { extractErrorMessage } from '../../utils/errorUtils';
+import { cohortTypeToName } from '../../helpers/cohortHelpers';
 import type { NotificationState } from '../../types/feedback';
 
 const MyStudentDashboard = () => {
@@ -40,6 +41,13 @@ const MyStudentDashboard = () => {
     }, [data]);
 
     const myCohorts = data?.records || [];
+
+    // Filter out cohorts that the user is already enrolled in
+    const availableCohorts = allCohortsData?.records
+        ?.filter((cohort) => isCohortActive(cohort.endDate))
+        ?.filter((cohort) => !myCohorts.some((myCohort) => myCohort.id === cohort.id)) || [];
+
+    const hasAnyCohorts = myCohorts.length > 0 || availableCohorts.length > 0;
 
     const handleJoinCohort = (cohortId: string, cohortName: string) => {
         // Check if user profile is complete
@@ -128,71 +136,83 @@ const MyStudentDashboard = () => {
                 </div>
             </div>
         </header>
-        <div className="flex flex-col gap-6">
-            <div>
-            <h1 className="text-3xl font-bold mb-4">Available Cohorts</h1>
-                <div className="grid grid-cols-4 gap-4">
-                    {allCohortsData?.records
-                        ?.filter((cohort) => isCohortActive(cohort.endDate))
-                        .map((cohort) => {
-                            const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
-                            const isLoading = loadingCohortId === cohort.id;
-                            const isEnrolled = myCohorts.some((myCohort) => myCohort.id === cohort.id);
-                            return (
-                                <CohortCard
+
+        {isLoading ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-zinc-400">Loading cohorts...</div>
+            </div>
+        ) : !hasAnyCohorts ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+                <h2 className="text-2xl font-bold text-zinc-400 mb-2">No Cohorts Available</h2>
+                <p className="text-zinc-500">There are currently no cohorts to join or show data of.</p>
+            </div>
+        ) : (
+            <div className="flex flex-col gap-6">
+                {/* Available Cohorts Section - Only show if there are available cohorts */}
+                {availableCohorts.length > 0 && (
+                    <div>
+                        <h1 className="text-3xl font-bold mb-4">Available Cohorts</h1>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {availableCohorts.map((cohort) => {
+                                const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
+                                const isLoadingCohort = loadingCohortId === cohort.id;
+                                return (
+                                    <CohortCardV2
+                                        key={cohort.id}
+                                        cohortType={cohort.type}
+                                        cohortDisplayName={cohortTypeToName(cohort.type as CohortType)}
+                                        imageUrl={getCohortImage(cohort.type)}
+                                        isLoading={isLoadingCohort}
+                                        registrationOpen={registrationOpen}
+                                        season={cohort.season}
+                                        variant="desktop"
+                                        onClick={() => {
+                                            if (registrationOpen) {
+                                                handleJoinCohort(cohort.id, formatCohortType(cohort.type));
+                                            } else {
+                                                handleJoinWaitlist(cohort.id, cohort.type as CohortType);
+                                            }
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* My Active Cohorts Section - Only show if there are enrolled cohorts */}
+                {myCohorts.length > 0 && (
+                    <div>
+                        <h1 className="text-3xl font-bold mb-4">My Active Cohorts</h1>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {myCohorts.map((cohort) => (
+                                <CohortCardV2
                                     key={cohort.id}
-                                    cohortId={cohort.id}
                                     cohortType={cohort.type}
+                                    cohortDisplayName={cohortTypeToName(cohort.type as CohortType)}
                                     imageUrl={getCohortImage(cohort.type)}
-                                    isLoading={isLoading}
-                                    isEnrolled={isEnrolled}
-                                    registrationOpen={registrationOpen}
+                                    isEnrolled={true}
+                                    season={cohort.season}
+                                    variant="desktop"
                                     onClick={() => {
-                                        if (registrationOpen) {
-                                            handleJoinCohort(cohort.id, formatCohortType(cohort.type));
-                                        } else {
-                                            handleJoinWaitlist(cohort.id, cohort.type as CohortType);
+                                        if (userData?.id) {
+                                            const params = new URLSearchParams({
+                                                studentId: userData.id,
+                                                cohortType: cohort.type,
+                                                cohortId: cohort.id,
+                                                ...(userData.name && { studentName: userData.name }),
+                                                ...(userData.email && { studentEmail: userData.email }),
+                                            });
+                                            navigate(`/detailPage?${params.toString()}`);
                                         }
                                     }}
                                 />
-                            );
-                        })}
-                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
-              <div>
-                             <h1 className="text-3xl font-bold mb-4">My Active Cohorts</h1>
-            <div className="grid grid-cols-4 gap-4">
-                    {isLoading ? (
-                        <div className="text-zinc-400">Loading cohorts...</div>
-                    ) : myCohorts.length === 0 ? (
-                        <div className="text-zinc-400">No cohorts joined yet</div>
-                    ) : (
-                        myCohorts.map((cohort) => (
-                            <CohortCard
-                                key={cohort.id}
-                                cohortId={cohort.id}
-                                cohortType={cohort.type}
-                                imageUrl={getCohortImage(cohort.type)}
-                                isEnrolled={true}
-                                onClick={() => {
-                                    if (userData?.id) {
-                                        const params = new URLSearchParams({
-                                            studentId: userData.id,
-                                            cohortType: cohort.type,
-                                            cohortId: cohort.id,
-                                            ...(userData.name && { studentName: userData.name }),
-                                            ...(userData.email && { studentEmail: userData.email }),
-                                        });
-                                        navigate(`/detailPage?${params.toString()}`);
-                                    }
-                                }}
-                            />
-                        ))
-                    )}
-
-                </div>
-            </div>
-        </div>
+        )}
 
         {/* Notification Modal */}
         <NotificationModal

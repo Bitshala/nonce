@@ -8,7 +8,7 @@ interface TableContextMenuProps {
     targetId: number | null;
   };
   onClose: () => void;
-  onDelete: (studentId: number) => void;
+  onDelete: (studentId: string) => void; 
 }
 
 export const TableContextMenu: React.FC<TableContextMenuProps> = ({
@@ -48,7 +48,7 @@ export const TableContextMenu: React.FC<TableContextMenuProps> = ({
 
   const handleDelete = () => {
     if (contextMenu.targetId !== null) {
-      onDelete(contextMenu.targetId);
+      onDelete(String(contextMenu.targetId));
       onClose();
     }
   };
@@ -66,18 +66,16 @@ export const TableContextMenu: React.FC<TableContextMenuProps> = ({
         position: 'fixed',
         zIndex: 1000,
       }}
-      className="bg-white border border-zinc-300 rounded-md shadow-lg py-1 w-40"
+      className=" flex justify-center items-center bg-red-200 b-0 border border-zinc-300 rounded-md  w-40"
     >
-      <ul>
-        <li>
+
           <button
             onClick={handleDelete}
-            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-red-500 hover:text-white transition-colors"
+            className="b-0 rounded-md cursor-pointer w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-red-500 hover:text-white transition-colors"
           >
             Delete Row
           </button>
-        </li>
-      </ul>
+
     </div>
   );
 };

@@ -184,6 +184,17 @@ class ApiService {
     return data;
   };
 
+  public removeUserFromCohort = async (
+    cohortId: string,
+    userId: string,
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/cohorts/${cohortId}/remove/${userId}`,
+    });
+  };
+
   // =========================
   // Scores
   // =========================

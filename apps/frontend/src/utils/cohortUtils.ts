@@ -4,6 +4,7 @@ export const getCohortImage = (cohortType: string): string => {
     'LEARNING_BITCOIN_FROM_COMMAND_LINE': 'https://bitshala.org/cohort/lbtcl.webp',
     'BITCOIN_PROTOCOL_DEVELOPMENT': 'https://bitshala.org/cohort/bpd.webp',
     'PROGRAMMING_BITCOIN': 'https://bitshala.org/cohort/pb.webp',
+    'MASTERING_LIGHTNING_NETWORK': 'https://bitshala.org/cohort/ln.webp',
   };
   return imageMap[cohortType] || 'https://bitshala.org/cohort/mb.webp';
 };

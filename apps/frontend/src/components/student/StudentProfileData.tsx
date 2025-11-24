@@ -301,12 +301,14 @@ const StudentProfileData: React.FC = () => {
                   Which year did you start taking Bitcoin seriously?*
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   id="firstHeardAboutBitcoinOn"
                   name="firstHeardAboutBitcoinOn"
                   value={profile.firstHeardAboutBitcoinOn || ''}
                   onChange={handleInputChange}
+                  max={new Date().toISOString().split('T')[0]}
                   required
+                  style={{ colorScheme: 'dark' }}
                   className="outline-none border-0 w-full px-4 py-3 bg-zinc-700/80 rounded-xl text-white placeholder-zinc-400 transition-all duration-200"
                 />
               </div>

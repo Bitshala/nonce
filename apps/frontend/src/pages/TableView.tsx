@@ -15,7 +15,7 @@ import {
   useUpdateScoresForUserCohortAndWeek,
   useAssignGroupsForCohortWeek,
 } from '../hooks/scoreHooks';
-import { useCohort } from '../hooks/cohortHooks';
+import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
 import { getTAForGroup } from '../helpers/taHelpers.ts';
 
@@ -87,6 +87,7 @@ const TableView: React.FC = () => {
   // === Mutation ===
   const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
   const assignGroupsMutation = useAssignGroupsForCohortWeek();
+  const removeUserMutation = useRemoveUserFromCohort();
 
   // === Transform API scores to table rows ===
   useEffect(() => {
@@ -261,9 +262,37 @@ const TableView: React.FC = () => {
     [selectedStudentForEdit, cohortData?.id, selectedWeekId, updateScoresMutation]
   );
 
-  const handleDeleteStudent = useCallback(() => {
-    // TODO: implement delete if backend supports it
-  }, []);
+  const handleDeleteStudent = useCallback((studentId: string) => {
+    if (!cohortData?.id) {
+      console.error('No cohort ID available');
+      return;
+    }
+
+    removeUserMutation.mutate(
+      {
+        cohortId: cohortData.id,
+        userId: studentId,
+      },
+      {
+        onSuccess: () => {
+          console.log('Successfully deleted student');
+          // Remove student from local state
+          setData((prev) => prev.filter((s) => {
+            const id = s.userId ?? s.id;
+            return String(id) !== String(studentId);
+          }));
+          alert('Student removed successfully!');
+        },
+        onError: (error: any) => {
+          console.error('Failed to remove student - Full error:', error);
+          console.error('Error response:', error?.response?.data);
+          console.error('Error status:', error?.response?.status);
+          const message = error?.response?.data?.message || error?.message || 'Unknown error occurred';
+          alert(`Failed to remove student: ${message}`);
+        },
+      }
+    );
+  }, [cohortData?.id, removeUserMutation]);
 
   const handleDownloadCSV = useCallback(() => {
     // TODO: add support later
@@ -378,6 +407,7 @@ const TableView: React.FC = () => {
         <StudentTableGrid
           data={sortedFilteredData}
           week={weekIndex}
+          cohortType={cohortData?.type}
           sortConfig={sortConfig}
           onSort={setSortConfig}
           onStudentClick={handleStudentClick}
@@ -390,6 +420,7 @@ const TableView: React.FC = () => {
             student={selectedStudentForEdit}
             cohortId={cohortData?.id}
             weekId={selectedWeekId}
+            cohortType={cohortData?.type}
             onSubmit={handleScoreUpdate}
             onClose={() => {
               setShowScoreEditModal(false);

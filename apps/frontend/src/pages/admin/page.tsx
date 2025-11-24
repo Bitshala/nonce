@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../../hooks/cohortHooks';
 import { CohortType } from '../../types/enums';
 import type { GetCohortResponseDto } from '../../types/api';
+import CohortCardV2 from '../../components/dashboard/CohortCardV2';
 
 const getCohortImage = (cohortType: string): string => {
   const imageMap: Record<string, string> = {
@@ -10,6 +11,7 @@ const getCohortImage = (cohortType: string): string => {
     'LEARNING_BITCOIN_FROM_COMMAND_LINE': 'https://bitshala.org/cohort/lbtcl.webp',
     'BITCOIN_PROTOCOL_DEVELOPMENT': 'https://bitshala.org/cohort/bpd.webp',
     'PROGRAMMING_BITCOIN': 'https://bitshala.org/cohort/pb.webp',
+    'MASTERING_LIGHTNING_NETWORK': 'https://bitshala.org/cohort/ln.webp',
   };
   return imageMap[cohortType] || 'https://bitshala.org/cohort/mb.webp';
 };
@@ -47,6 +49,7 @@ const AdminPage: React.FC = () => {
     CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE,
     CohortType.BITCOIN_PROTOCOL_DEVELOPMENT,
     CohortType.PROGRAMMING_BITCOIN,
+    CohortType.MASTERING_LIGHTNING_NETWORK,
   ];
 
   // Format date to YYYY-MM-DD for input
@@ -279,40 +282,16 @@ const AdminPage: React.FC = () => {
                   const displaySeason = isCompleted ? getNextSeason(cohortType) : existingCohort?.season;
 
                   return (
-                    <div
+                    <CohortCardV2
                       key={cohortType}
-                      className="bg-zinc-800 rounded-2xl overflow-hidden cursor-pointer hover:bg-zinc-750 transition-colors"
+                      cohortType={cohortType}
+                      cohortDisplayName={getCohortDisplayName(cohortType)}
+                      imageUrl={getCohortImage(cohortType)}
+                      status={status}
+                      season={displaySeason}
+                      variant="mobile"
                       onClick={() => handleCardClick(cohortType)}
-                    >
-                      <div className="flex items-center gap-4 p-4 min-h-[104px]">
-                        {/* Image */}
-                        <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                          <img
-                            src={getCohortImage(cohortType)}
-                            alt={cohortType}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex items-center justify-between flex-1 min-h-[80px]">
-                          <div className="flex-1 flex flex-col justify-center min-w-0 pr-2">
-                            <h3 className="text-base font-medium lowercase mb-1 leading-tight truncate w-64">
-                              {getCohortDisplayName(cohortType).toLowerCase()}
-                            </h3>
-                            <p className="text-sm text-zinc-400 lowercase">
-                              {status.toLowerCase()}
-                            </p>
-                          </div>
-                          {(existingCohort || isCompleted) && (
-                            <div className="text-right ml-3 flex-shrink-0">
-                              <p className="text-sm text-zinc-400 lowercase">season</p>
-                              <p className="text-lg font-semibold">{displaySeason}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    />
                   );
                 })}
               </div>
@@ -326,34 +305,16 @@ const AdminPage: React.FC = () => {
                   const displaySeason = isCompleted ? getNextSeason(cohortType) : existingCohort?.season;
 
                   return (
-                    <div
+                    <CohortCardV2
                       key={cohortType}
-                      className="h-[180px] w-full rounded-sm overflow-hidden relative transform transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer"
+                      cohortType={cohortType}
+                      cohortDisplayName={getCohortDisplayName(cohortType)}
+                      imageUrl={getCohortImage(cohortType)}
+                      status={status}
+                      season={displaySeason}
+                      variant="desktop"
                       onClick={() => handleCardClick(cohortType)}
-                    >
-                      <img
-                        src={getCohortImage(cohortType)}
-                        alt={cohortType}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className={`absolute inset-0 ${
-                        status === 'Active' ? 'bg-green-900/70' :
-                        status === 'Upcoming' ? 'bg-blue-900/70' :
-                        status === 'Create Cohort' ? 'bg-gray-900/70' :
-                        'bg-gray-900/70'
-                      } flex items-center justify-center`}>
-                        <div className="text-center">
-                          <span className="text-white font-semibold text-lg block">
-                            {status}
-                          </span>
-                          {(existingCohort || isCompleted) && (
-                            <span className="text-white text-sm block mt-1">
-                              Season {displaySeason}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    />
                   );
                 })}
               </div>
