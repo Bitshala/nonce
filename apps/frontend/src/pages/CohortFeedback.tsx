@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyCohorts } from '../hooks/cohortHooks';
+import { useSubmitFeedback } from '../hooks/feedbackHooks';
+import { extractErrorMessage } from '../utils/errorUtils';
 import NotificationModal from '../components/NotificationModal';
 import CohortFeedbackForm from '../components/CohortFeedbackForm';
 import type { NotificationState, FeedbackFormData } from '../types/feedback';
@@ -8,6 +10,7 @@ import type { NotificationState, FeedbackFormData } from '../types/feedback';
 const CohortFeedback = () => {
     const navigate = useNavigate();
     const { data: cohortsData, isLoading } = useMyCohorts({ page: 0, pageSize: 100 });
+    const submitFeedbackMutation = useSubmitFeedback();
 
     const [notification, setNotification] = useState<NotificationState>({
         show: false,
@@ -35,11 +38,10 @@ const CohortFeedback = () => {
         }
 
         try {
-            // TODO: Replace with actual API call when available
-            // await apiService.submitCohortFeedback({ cohortId: data.cohortId, feedback: data.feedback, userId: userData?.id });
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await submitFeedbackMutation.mutateAsync({
+                cohortId: data.cohortId,
+                feedback: data.feedback,
+            });
 
             setNotification({
                 show: true,
@@ -49,7 +51,7 @@ const CohortFeedback = () => {
         } catch (error) {
             setNotification({
                 show: true,
-                message: 'Failed to submit feedback. Please try again.',
+                message: extractErrorMessage(error),
                 type: 'error',
             });
             throw error;

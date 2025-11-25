@@ -252,6 +252,19 @@ class ApiService {
       data: body,
     });
   };
+
+  // =========================
+  // Feedback
+  // =========================
+
+  public submitFeedback = async (cohortId: string, body: { feedbackText: string }): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/feedback/${cohortId}`,
+      data: body,
+    });
+  };
 }
 
 const serviceInstance = new ApiService();
