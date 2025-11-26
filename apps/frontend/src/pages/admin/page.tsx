@@ -37,6 +37,7 @@ const AdminPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [registrationDeadline, setRegistrationDeadline] = useState<string>('');
+  const [lastChangedField, setLastChangedField] = useState<'startDate' | 'endDate' | null>(null);
 
   const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
     show: false,
@@ -86,12 +87,21 @@ const AdminPage: React.FC = () => {
     return deadline.toISOString().split('T')[0];
   };
 
-  // Update end date when start date or weeks change
+  // Calculate start date based on end date and weeks (for edit mode)
+  const calculateStartDate = (endDate: string, weeks: number): string => {
+    if (!endDate) return '';
+    const end = new Date(endDate);
+    const start = new Date(end);
+    start.setDate(start.getDate() - (weeks * 7));
+    return start.toISOString().split('T')[0];
+  };
+
+  // Update end date when start date or weeks change (only in create mode)
   useEffect(() => {
-    if (startDate && weeks) {
+    if (startDate && weeks && !isEditMode) {
       setEndDate(calculateEndDate(startDate, weeks));
     }
-  }, [startDate, weeks]);
+  }, [startDate, weeks, isEditMode]);
 
   // Update registration deadline when start date changes (only in create mode)
   useEffect(() => {
@@ -99,6 +109,21 @@ const AdminPage: React.FC = () => {
       setRegistrationDeadline(calculateRegistrationDeadline(startDate));
     }
   }, [startDate, isEditMode]);
+
+  // Handle date changes in edit mode
+  useEffect(() => {
+    if (isEditMode && weeks) {
+      if (lastChangedField === 'startDate' && startDate) {
+        // If start date changed, recalculate end date
+        setEndDate(calculateEndDate(startDate, weeks));
+        setLastChangedField(null);
+      } else if (lastChangedField === 'endDate' && endDate) {
+        // If end date changed, recalculate start date
+        setStartDate(calculateStartDate(endDate, weeks));
+        setLastChangedField(null);
+      }
+    }
+  }, [lastChangedField, startDate, endDate, weeks, isEditMode]);
 
   const handleCardClick = (cohortType: CohortType) => {
     setSelectedCohortType(cohortType);
@@ -151,6 +176,7 @@ const AdminPage: React.FC = () => {
     setStartDate('');
     setEndDate('');
     setRegistrationDeadline('');
+    setLastChangedField(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -385,20 +411,17 @@ const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Number of Weeks - Only show in edit mode */}
+              {/* Number of Weeks - Show in edit mode but disabled */}
               {isEditMode && (
                 <div>
                   <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    Number of Weeks
+                    Number of Weeks <span className="text-zinc-500 text-xs">(Fixed)</span>
                   </label>
                   <input
                     type="number"
                     value={weeks}
-                    onChange={(e) => setWeeks(parseInt(e.target.value))}
-                    min="1"
-                    max="52"
-                    placeholder="8"
-                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
+                    disabled={true}
+                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               )}
@@ -412,7 +435,13 @@ const AdminPage: React.FC = () => {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      if (isEditMode) {
+                        setLastChangedField('startDate');
+                      }
+                    }}
+                    min={getTodayDate()}
                     className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
                     style={{ colorScheme: 'dark' }}
                     required
@@ -421,13 +450,19 @@ const AdminPage: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    End Date <span className="text-zinc-500 text-xs">(Auto-calculated)</span>
+                    End Date {!isEditMode && <span className="text-zinc-500 text-xs">(Auto-calculated)</span>}
                   </label>
                   <input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    disabled={true}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      if (isEditMode) {
+                        setLastChangedField('endDate');
+                      }
+                    }}
+                    min={startDate ? calculateEndDate(startDate, 1) : getTodayDate()}
+                    disabled={!isEditMode}
                     className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ colorScheme: 'dark' }}
                     required
