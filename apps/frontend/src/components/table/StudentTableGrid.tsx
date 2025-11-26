@@ -183,19 +183,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
         </div>
       )}
       
-      {data.length > 0 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-zinc-200 sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-zinc-700">
-                Showing <span className="font-medium">1</span> to{' '}
-                <span className="font-medium">{Math.min(10, data.length)}</span> of{' '}
-                <span className="font-medium">{data.length}</span> results
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

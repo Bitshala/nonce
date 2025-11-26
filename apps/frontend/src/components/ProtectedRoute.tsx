@@ -6,7 +6,7 @@ import { UserRole } from '../types/enums';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: UserRole;
+  requiredRole?: UserRole | UserRole[];
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -22,8 +22,11 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     }
 
     // If authenticated but user data is loaded and doesn't have required role
-    if (!isLoading && user && requiredRole && user.role !== requiredRole) {
-      navigate('/unauthorized');
+    if (!isLoading && user && requiredRole) {
+      const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+      if (!allowedRoles.includes(user.role)) {
+        navigate('/unauthorized');
+      }
     }
   }, [isAuthenticated, isLoading, user, requiredRole, navigate]);
 
@@ -45,8 +48,11 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   // If user doesn't have required role, don't render anything (will redirect)
-  if (requiredRole && user?.role !== requiredRole) {
-    return null;
+  if (requiredRole && user) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(user.role)) {
+      return null;
+    }
   }
 
   // Render children if all checks pass

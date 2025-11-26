@@ -102,7 +102,7 @@ const router = createBrowserRouter([
       path: '/admin',
       element: (
         <Layout>
-          <ProtectedRoute requiredRole={UserRole.ADMIN}>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
             <AdminPage />
           </ProtectedRoute>
         </Layout>

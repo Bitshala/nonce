@@ -86,12 +86,12 @@ const AdminPage: React.FC = () => {
     return deadline.toISOString().split('T')[0];
   };
 
-  // Update end date when start date or weeks change (only in create mode)
+  // Update end date when start date or weeks change
   useEffect(() => {
-    if (startDate && weeks && !isEditMode) {
+    if (startDate && weeks) {
       setEndDate(calculateEndDate(startDate, weeks));
     }
-  }, [startDate, weeks, isEditMode]);
+  }, [startDate, weeks]);
 
   // Update registration deadline when start date changes (only in create mode)
   useEffect(() => {
@@ -377,11 +377,29 @@ const AdminPage: React.FC = () => {
                       value={weeks}
                       onChange={(e) => setWeeks(parseInt(e.target.value))}
                       min="1"
-                      max="10"
+                      max="52"
                       placeholder="8"
                       className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
                     />
                   </div>
+                </div>
+              )}
+
+              {/* Number of Weeks - Only show in edit mode */}
+              {isEditMode && (
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-zinc-300">
+                    Number of Weeks
+                  </label>
+                  <input
+                    type="number"
+                    value={weeks}
+                    onChange={(e) => setWeeks(parseInt(e.target.value))}
+                    min="1"
+                    max="52"
+                    placeholder="8"
+                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
+                  />
                 </div>
               )}
 
@@ -403,13 +421,14 @@ const AdminPage: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    End Date
+                    End Date <span className="text-zinc-500 text-xs">(Auto-calculated)</span>
                   </label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
+                    disabled={true}
+                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ colorScheme: 'dark' }}
                     required
                   />
