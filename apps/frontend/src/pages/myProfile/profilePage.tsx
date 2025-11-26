@@ -66,12 +66,12 @@ const ProfilePage: React.FC = () => {
   }
 
   const [profile, setProfile] = useState<Profile>({
-    id: "f2bdc953-e0d4-455a-a24d-715a8b0980d0",
-    email: "tusharvyas316@gmail.com",
-    discordUsername: "vayras21",
-    discordGlobalName: "Vayras",
+    id: "",
+    email: "",
+    discordUsername: "",
+    discordGlobalName: "",
     name: null,
-    role: "TEACHING_ASSISTANT",
+    role: "",
     description: null,
     background: null,
     githubProfileUrl: null,
