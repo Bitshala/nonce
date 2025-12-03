@@ -21,6 +21,7 @@ import StudentCohortSelector from './pages/Students/studentCohortSelector.tsx';
 
 import MBInstructions from './pages/Students/MBInstructions.tsx';
 import LBTCLInstructions from './pages/Students/LBTCLInstructions.tsx';
+import GeneralInstructions from './pages/Students/GeneralInstructions.tsx';
 import StudentProfileData from './components/student/StudentProfileData.tsx';
 
 import MyError from './pages/404error.tsx';
@@ -65,6 +66,10 @@ const router = createBrowserRouter([
   {
     path: '/lbtcl-instructions',
     element: <Layout><LBTCLInstructions /></Layout>,
+  },
+  {
+    path: '/general-instructions',
+    element: <Layout><GeneralInstructions /></Layout>,
   },
   {
     path:'/me',
