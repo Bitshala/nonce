@@ -6,6 +6,7 @@ import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
 import { ScoreEditModal } from '../components/table/ScoreEditModal';
 import { TableContextMenu } from '../components/table/TableContextMenu';
+import { Modal, InputField, Button, ModalRow } from '../components/Modal';
 
 import { computeTotal } from '../utils/calculations';
 import type { TableRowData } from '../types/student';
@@ -14,16 +15,22 @@ import {
   useScoresForCohortAndWeek,
   useUpdateScoresForUserCohortAndWeek,
   useAssignGroupsForCohortWeek,
+  useAssignSelfToGroup,
 } from '../hooks/scoreHooks';
 import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
+import { useUser } from '../hooks/userHooks';
+import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
-import { getTAForGroup } from '../helpers/taHelpers.ts';
 
 const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'];
 
 const TableView: React.FC = () => {
   const navigate = useNavigate();
   const { id: cohortIdParam } = useParams<{ id: string }>();
+
+  // === User data ===
+  const { data: userData } = useUser();
+  const isTA = userData?.role === UserRole.TEACHING_ASSISTANT;
 
   // === Cohort & Weeks (dynamic from hook) ===
   const {
@@ -71,6 +78,13 @@ const TableView: React.FC = () => {
   const [showScoreEditModal, setShowScoreEditModal] = useState(false);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<TableRowData | null>(null);
 
+  const [showAssignGroupsModal, setShowAssignGroupsModal] = useState(false);
+  const [participantsPerGroup, setParticipantsPerGroup] = useState<number>(8);
+  const [groupsAvailable, setGroupsAvailable] = useState<number>(3);
+
+  const [showTASelfAssignModal, setShowTASelfAssignModal] = useState(false);
+  const [selectedGroupNumber, setSelectedGroupNumber] = useState<number>(0);
+
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -87,6 +101,7 @@ const TableView: React.FC = () => {
   // === Mutation ===
   const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
   const assignGroupsMutation = useAssignGroupsForCohortWeek();
+  const assignSelfToGroupMutation = useAssignSelfToGroup();
   const removeUserMutation = useRemoveUserFromCohort();
 
   // === Transform API scores to table rows ===
@@ -101,13 +116,19 @@ const TableView: React.FC = () => {
 
     const transformed: TableRowData[] = scoresData.scores.map((score: any, idx: number) => {
       const groupNumber = score.groupDiscussionScores?.groupNumber ?? 0;
+      const teachingAssistant = score.teachingAssistant;
+      console.log('Teaching Assistant data:', teachingAssistant);
+      const taName = teachingAssistant
+        ? (teachingAssistant.discordGlobalName || teachingAssistant.discordUsername || teachingAssistant.name || 'N/A')
+        : 'N/A';
+
       return {
         id: typeof score.userId === 'number' ? score.userId : idx,
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
         email: score.discordUsername ?? '', // discord username
         group: `Group ${groupNumber}`,
-        ta: getTAForGroup(groupNumber), // assign TA based on group number
+        ta: taName,
         attendance: Boolean(score.groupDiscussionScores?.attendance),
         gdScore: {
           fa: score.groupDiscussionScores?.communicationScore ?? 0,
@@ -299,30 +320,62 @@ const TableView: React.FC = () => {
   }, []);
 
   const handleAssignGroups = useCallback(() => {
-    const participantsPerWeek = 8
-    const groupsAvailable = 3
+    setShowAssignGroupsModal(true);
+  }, []);
 
-    if (isNaN(participantsPerWeek) || isNaN(groupsAvailable) || participantsPerWeek <= 0 || groupsAvailable <= 0) {
+  const handleAssignGroupsSubmit = useCallback(() => {
+    if (isNaN(participantsPerGroup) || isNaN(groupsAvailable) || participantsPerGroup <= 0 || groupsAvailable <= 0) {
       alert('Please enter valid positive numbers');
       return;
     }
 
-    if (confirm('Are you sure you want to assign groups for this week?')) {
-      assignGroupsMutation.mutate(
-        { weekId: selectedWeekId, cohortId: cohortIdParam, participantsPerWeek, groupsAvailable },
-        {
-          onSuccess: () => {
-            alert('Groups assigned successfully!');
-          },
-          onError: (error: unknown) => {
-            console.error('Group assignment failed', error);
-            const message = error instanceof Error ? error.message : 'Unknown error occurred';
-            alert(`Failed to assign groups: ${message}`);
-          },
-        }
-      );
+    assignGroupsMutation.mutate(
+      { weekId: selectedWeekId, cohortId: cohortIdParam, participantsPerWeek: participantsPerGroup, groupsAvailable },
+      {
+        onSuccess: () => {
+          alert('Groups assigned successfully!');
+          setShowAssignGroupsModal(false);
+        },
+        onError: (error: unknown) => {
+          console.error('Group assignment failed', error);
+          const message = error instanceof Error ? error.message : 'Unknown error occurred';
+          alert(`Failed to assign groups: ${message}`);
+        },
+      }
+    );
+  }, [selectedWeekId, cohortIdParam, participantsPerGroup, groupsAvailable, assignGroupsMutation]);
+
+  const handleTASelfAssign = useCallback(() => {
+    setShowTASelfAssignModal(true);
+  }, []);
+
+  const handleTASelfAssignSubmit = useCallback(() => {
+    if (!selectedWeekId || !cohortIdParam) {
+      alert('Please select a week first');
+      return;
     }
-  }, [selectedWeekId, cohortIdParam, assignGroupsMutation]);
+
+    assignSelfToGroupMutation.mutate(
+      { weekId: selectedWeekId, cohortId: cohortIdParam, groupNumber: selectedGroupNumber },
+      {
+        onSuccess: () => {
+          alert('Successfully assigned yourself to the group!');
+          setShowTASelfAssignModal(false);
+        },
+        onError: (error: any) => {
+          console.error('Self assignment failed', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred';
+
+          // Check if it's a "no group found" error
+          if (errorMessage.includes('No group found')) {
+            alert(`Failed to assign to group: The group doesn't exist yet. Please ask an admin to assign groups for this week first using the "Assign Groups" button.`);
+          } else {
+            alert(`Failed to assign to group: ${errorMessage}`);
+          }
+        },
+      }
+    );
+  }, [selectedWeekId, cohortIdParam, selectedGroupNumber, assignSelfToGroupMutation]);
 
   // === Cohort Header (dynamic title) ===
   const cohortTitleBlock = useMemo(() => {
@@ -394,6 +447,7 @@ const TableView: React.FC = () => {
           }}
           onDownloadCSV={handleDownloadCSV}
           onAssignGroups={handleAssignGroups}
+          onTASelfAssign={handleTASelfAssign}
           onClearFilters={() => {
             setSearchTerm('');
             setSelectedGroup('All Groups');
@@ -402,6 +456,7 @@ const TableView: React.FC = () => {
           }}
           navigate={navigate}
           cohortType={cohortData?.type}
+          isTA={isTA}
         />
 
         <StudentTableGrid
@@ -427,6 +482,95 @@ const TableView: React.FC = () => {
               setSelectedStudentForEdit(null);
             }}
           />
+        )}
+
+        <Modal
+            isOpen={showAssignGroupsModal}
+            onClose={() => setShowAssignGroupsModal(false)}
+            title="Assign Groups"
+            description="Configure the group assignment settings for this week."
+            size="sm"
+            footer={
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowAssignGroupsModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleAssignGroupsSubmit}
+                  loading={assignGroupsMutation.isPending}
+                >
+                  Assign Groups
+                </Button>
+              </>
+            }
+          >
+            <ModalRow>
+              <InputField
+                label="Participants Per Group"
+                name="participantsPerGroup"
+                type="number"
+                value={participantsPerGroup}
+                onChange={(e) => setParticipantsPerGroup(parseInt(e.target.value) || 0)}
+                min={1}
+                required
+                placeholder="8"
+              />
+              <InputField
+                label="Number of Groups"
+                name="groupsAvailable"
+                type="number"
+                value={groupsAvailable}
+                onChange={(e) => setGroupsAvailable(parseInt(e.target.value) || 0)}
+                min={1}
+                required
+                placeholder="3"
+              />
+            </ModalRow>
+          </Modal>
+
+        {isTA && (
+          <Modal
+            isOpen={showTASelfAssignModal}
+            onClose={() => setShowTASelfAssignModal(false)}
+            title="Assign Yourself to a Group"
+            description="Select a group number to assign yourself as a TA for this week."
+            size="sm"
+            footer={
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowTASelfAssignModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleTASelfAssignSubmit}
+                  loading={assignSelfToGroupMutation.isPending}
+                >
+                  Assign to Group
+                </Button>
+              </>
+            }
+          >
+            <ModalRow>
+              <InputField
+                label="Group Number"
+                name="groupNumber"
+                type="number"
+                value={selectedGroupNumber}
+                onChange={(e) => setSelectedGroupNumber(parseInt(e.target.value) || 0)}
+                min={0}
+                max={5}
+                required
+                placeholder="0"
+              />
+            </ModalRow>
+          </Modal>
         )}
 
         <TableContextMenu

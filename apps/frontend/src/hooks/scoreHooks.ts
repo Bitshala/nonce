@@ -63,3 +63,18 @@ export const useAssignGroupsForCohortWeek = createUseMutation<
     },
   }
 );
+
+export const useAssignSelfToGroup = createUseMutation<
+  void,
+  { weekId: string; cohortId: string; groupNumber: number }
+>(
+  ({ weekId, groupNumber }) => apiService.assignSelfToGroup(weekId, groupNumber),
+  {
+    queryInvalidation: async ({variables: {weekId, cohortId}}) => {
+      if (cohortId) {
+        await useScoresForCohortAndWeek.invalidate({cohortId, weekId});
+      }
+      await useMyScores.invalidate();
+    },
+  }
+);

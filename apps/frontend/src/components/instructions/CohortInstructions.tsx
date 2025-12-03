@@ -18,7 +18,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   weeklyContent,
 }) => {
   const navigate = useNavigate();
-  const [activeWeek, setActiveWeek] = useState(1);
+  const [activeWeek, setActiveWeek] = useState<number | 'links'>(1);
   const [error, setError] = useState<string | null>(null);
 
   // Use hooks for data fetching
@@ -95,6 +95,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   return (
     <InstructionsLayout
       cohortName={cohortName}
+      cohortType={cohortType}
       weeklyContent={weeklyContent}
       activeWeek={activeWeek}
       setActiveWeek={setActiveWeek}

@@ -19,7 +19,9 @@ import type // Users
   // Scores
   GetUsersScoresResponseDto,
   ListScoresForCohortAndWeekResponseDto,
-  UpdateScoresRequestDto
+  UpdateScoresRequestDto,
+  // Teaching Assistants
+  GetTeachingAssistantResponseDto
 } from '../types/api.ts';
 
 const COMMON_REQUEST_HEADERS = {
@@ -253,6 +255,15 @@ class ApiService {
     });
   };
 
+  public assignSelfToGroup = async (weekId: string, groupNumber: number): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/scores/week/${weekId}/assign-self-to-group`,
+      params: { groupNumber },
+    });
+  };
+
   // =========================
   // Feedback
   // =========================
@@ -264,6 +275,28 @@ class ApiService {
       url: `/feedback/${cohortId}`,
       data: body,
     });
+  };
+
+  // =========================
+  // Teaching Assistants
+  // =========================
+
+  public listTeachingAssistants = async (): Promise<GetTeachingAssistantResponseDto[]> => {
+    const { data } = await this.request<GetTeachingAssistantResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/teaching-assistants',
+    });
+    return data;
+  };
+
+  public getTeachingAssistant = async (id: string): Promise<GetTeachingAssistantResponseDto> => {
+    const { data } = await this.request<GetTeachingAssistantResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/teaching-assistants/${id}`,
+    });
+    return data;
   };
 }
 

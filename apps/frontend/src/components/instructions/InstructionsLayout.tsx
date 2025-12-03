@@ -3,14 +3,16 @@ import type { WeekContent } from '../../types/instructions';
 
 interface InstructionsLayoutProps {
   cohortName: string;
+  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE';
   weeklyContent: WeekContent[];
-  activeWeek: number;
-  setActiveWeek: (week: number) => void;
+  activeWeek: number | 'links';
+  setActiveWeek: (week: number | 'links') => void;
   canViewBonusQuestions: boolean;
 }
 
 const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   cohortName,
+  cohortType,
   weeklyContent,
   activeWeek,
   setActiveWeek,
@@ -24,6 +26,21 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
           <h1 className="text-3xl font-bold mb-12">{cohortName}</h1>
 
           <div className="space-y-2">
+            {/* Links Tab */}
+            <button
+              onClick={() => setActiveWeek('links')}
+              className={`w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors ${
+                activeWeek === 'links'
+                  ? 'bg-zinc-800 text-white'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+              }`}
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Links
+            </button>
+
             {weeklyContent.map((week) => (
               <button
                 key={week.week}
@@ -46,36 +63,127 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
         {/* Main Content */}
         <div className="flex-1 p-12">
           <div className="max-w-5xl">
-            <h2 className="text-3xl font-bold mb-8">List of Questions</h2>
+            {activeWeek === 'links' ? (
+              // Links Content
+              <>
+                <h2 className="text-3xl font-bold mb-8">Frequently Accessed Links</h2>
+                <div className="flex flex-col space-y-6 text-lg">
+                  <a
+                    href="https://wheelofnames.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-underline text-white hover:underline flex items-center gap-2"
+                  >
+                    Wheel of Names
+                                   <img
+                      src="/link-icon.svg"
+                      alt="Link"
+                      className="w-5 h-5"
+                      style={{ filter: 'invert(1)' }}
+                    />
+                  </a>
 
-            {weeklyContent.find(week => week.week === activeWeek) && (
-              <div className="space-y-8">
-                {/* Group Round */}
-                <div>
-                  <h3 className="text-2xl font-bold mb-6">Group Round</h3>
-                  <ul className="space-y-4 list-disc pl-6">
-                    {weeklyContent.find(week => week.week === activeWeek)?.gdQuestions.map((question, index) => (
-                      <li key={index} className="text-zinc-200 leading-relaxed">
-                        {question}
-                      </li>
-                    ))}
-                  </ul>
+                  <a
+                    href="https://www.multibuzz.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-underline text-white hover:underline flex items-center gap-2"
+                  >
+                    MultiBuzz
+                                        <img
+                      src="/link-icon.svg"
+                      alt="Link"
+                      className="w-5 h-5"
+                      style={{ filter: 'invert(1)' }}
+                    />
+                  </a>
+
+                  {/* Admin and TA only links - Cohort Specific */}
+                  {canViewBonusQuestions && cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE' && (
+                    <>
+                      <a
+                        href="https://docs.google.com/document/d/1YXsW3gRVbBxBEAAcI84W3KCFBbevzVXUUznH8w2XohM/preview"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-underline text-white hover:underline flex items-center gap-2"
+                      >
+                        lbtcl-playbook
+                        <img
+                          src="/link-icon.svg"
+                          alt="Link"
+                          className="w-5 h-5"
+                          style={{ filter: 'invert(1)' }}
+                        />
+                      </a>
+
+                      <a
+                        href="https://gist.github.com/rajarshimaitra/f83eaf3295b88ac180a965b3daab4d8a"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-underline text-white hover:underline flex items-center gap-2"
+                      >
+                        lbtcl-bonus-questions
+                        <img
+                          src="/link-icon.svg"
+                          alt="Link"
+                          className="w-5 h-5"
+                          style={{ filter: 'invert(1)' }}
+                        />
+                      </a>
+
+                      <a
+                        href="https://github.com/Bitshala/LBTCL"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="no-underline text-white hover:underline flex items-center gap-2"
+                      >
+                        lbtcl-main-repo
+                        <img
+                          src="/link-icon.svg"
+                          alt="Link"
+                          className="w-5 h-5"
+                          style={{ filter: 'invert(1)' }}
+                        />
+                      </a>
+                    </>
+                  )}
                 </div>
+              </>
+            ) : (
+              // Questions Content
+              <>
+                <h2 className="text-3xl font-bold mb-8">List of Questions</h2>
 
-                {/* Bonus Round - Only visible to TAs and Admins */}
-                {canViewBonusQuestions && weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
-                  <div>
-                    <h3 className="text-2xl font-bold mb-6">Bonus Round</h3>
-                    <ul className="space-y-4 list-disc pl-6">
-                      {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((question, index) => (
-                        <li key={index} className="text-zinc-200 leading-relaxed">
-                          {question}
-                        </li>
-                      ))}
-                    </ul>
+                {weeklyContent.find(week => week.week === activeWeek) && (
+                  <div className="space-y-8">
+                    {/* Group Round */}
+                    <div>
+                      <h3 className="text-2xl font-bold mb-6">Group Round</h3>
+                      <ul className="space-y-4 list-disc pl-6">
+                        {weeklyContent.find(week => week.week === activeWeek)?.gdQuestions.map((question, index) => (
+                          <li key={index} className="text-zinc-200 leading-relaxed">
+                            {question}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Bonus Round - Only visible to TAs and Admins */}
+                    {canViewBonusQuestions && weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
+                      <div>
+                        <h3 className="text-2xl font-bold mb-6">Bonus Round</h3>
+                        <ul className="space-y-4 list-disc pl-6">
+                          {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((question, index) => (
+                            <li key={index} className="text-zinc-200 leading-relaxed">
+                              {question}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>

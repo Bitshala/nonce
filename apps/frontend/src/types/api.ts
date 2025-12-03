@@ -94,6 +94,12 @@ export interface GroupDiscussionScore {
   totalScore: number;
   maxTotalScore: number;
   groupNumber: number | null;
+  teachingAssistant?: {
+    id: string;
+    name: string | null;
+    discordUsername: string;
+    discordGlobalName: string | null;
+  } | null;
 }
 
 export interface ExerciseScore {
@@ -178,4 +184,13 @@ export interface GetUserResponse {
   weeklyCohortCommitmentHours: number | null;
   location: string | null;
   referral: string | null;
+}
+
+export interface GetTeachingAssistantResponseDto {
+  id: string;
+  email: string;
+  discordUserId: string;
+  discordUserName: string;
+  discordGlobalName: string | null;
+  name: string | null;
 }

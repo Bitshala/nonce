@@ -29,12 +29,15 @@ interface TableHeaderProps {
   onAddNew: () => void;
   onDownloadCSV: () => void;
   onAssignGroups: () => void;
+  onTASelfAssign?: () => void;
   onClearFilters: () => void;
   navigate: (path: string) => void;
   cohortType?: string;
+  isTA?: boolean;
 }
 
 export const TableHeader: React.FC<TableHeaderProps> = ({
+  week,
   selectedWeekId,
   weeks,
   onWeekChange,
@@ -51,9 +54,11 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   totalCount,
   weeklyData,
   onAssignGroups,
+  onTASelfAssign,
   onClearFilters,
   navigate,
   cohortType,
+  isTA,
 }) => {
   return (
     <>
@@ -170,12 +175,22 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
               Cohort Instructions
             </button>
           )}
-          <button
-            onClick={onAssignGroups}
-            className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
-          >
-            Assign Groups
-          </button>
+          {week > 0 && (
+            <button
+              onClick={onAssignGroups}
+              className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
+            >
+              Assign Groups
+            </button>
+          )}
+          {isTA && onTASelfAssign && week > 0 && (
+            <button
+              onClick={onTASelfAssign}
+              className="cursor-pointer px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+            >
+              Assign Self to Group
+            </button>
+          )}
           {/*<button*/}
           {/*  onClick={onAddNew}*/}
           {/*  className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"*/}
