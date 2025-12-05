@@ -6,6 +6,7 @@ interface GeneralInstructionsProps {
 }
 
 const GeneralInstructions: React.FC<GeneralInstructionsProps> = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   cohortName,
 }) => {
   const navigate = useNavigate();

@@ -1,12 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
 import { useCohort } from '../hooks/cohortHooks';
-import { useScoresForCohortAndWeek } from '../hooks/scoreHooks';
-import apiService from '../services/apiService';
-import type { UsersWeekScoreResponseDto } from '../types/api';
-
-// API Response Types (matching your Rust RowData struct)
+import { useCohortLeaderboard } from '../hooks/scoreHooks';
 
 // Frontend Display Types
 interface StudentResult {
@@ -29,71 +24,42 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
   // Fetch specific cohort
   const { data: cohortData, isLoading: cohortsLoading, error: cohortsError } = useCohort(cohortIdParam);
 
-  // Create array of all cohort-week combinations for this cohort
-  const cohortWeekPairs = useMemo(() => {
-    if (!cohortData?.weeks?.length || !cohortData?.id) return [];
-    return cohortData.weeks.map(week => ({
-      cohortId: cohortData.id,
-      weekId: week.id,
-    }));
-  }, [cohortData]);
+  // Fetch leaderboard data using the new API endpoint
+  const { data: leaderboardData, isLoading: leaderboardLoading, error: leaderboardError } = useCohortLeaderboard(
+    { cohortId: cohortIdParam || '' },
+    { enabled: !!cohortIdParam }
+  );
 
-  // Fetch scores for all cohort-week combinations using useQueries
-  // This uses the same query keys as useScoresForCohortAndWeek hook
-  const scoresQueries = useQueries({
-    queries: cohortWeekPairs.map(({ cohortId, weekId }) => ({
-      queryKey: useScoresForCohortAndWeek.queryKey({ cohortId, weekId }),
-      queryFn: () => apiService.listScoresForCohortAndWeek(cohortId, weekId),
-      enabled: cohortWeekPairs.length > 0,
-    })),
-  });
+  console.log('Cohort ID Param:', cohortIdParam);
+  console.log('Cohort Data:', cohortData);
+  console.log('Leaderboard Data:', leaderboardData);
+  console.log('Leaderboard Loading:', leaderboardLoading);
+  console.log('Leaderboard Error:', leaderboardError);
 
-  // Check if any scores are still loading
-  const scoresLoading = scoresQueries.some(query => query.isLoading);
-  const scoresError = scoresQueries.find(query => query.error)?.error;
-
-  // Consolidate scores from all weeks per person
+  // Transform leaderboard data to StudentResult format
   const results = useMemo<StudentResult[]>(() => {
-    if (scoresLoading) return [];
+    // Check if leaderboardData is an array (direct response) or has a leaderboard property
+    const leaderboard = Array.isArray(leaderboardData)
+      ? leaderboardData
+      : leaderboardData?.leaderboard;
 
-    const studentScoresMap = new Map<string, StudentResult>();
+    if (!leaderboard) return [];
 
-    scoresQueries.forEach(query => {
-      if (!query.data?.scores) return;
+    return leaderboard
+      .filter(entry => entry.totalScore > 0)
+      .map(entry => ({
+        userId: entry.userId,
+        name: entry.name ?? entry.discordGlobalName ?? entry.discordUsername ?? 'Unknown',
+        discordUsername: entry.discordUsername ?? 'N/A',
+        email: '', // Not available in leaderboard API
+        total_score: entry.totalScore,
+        attendance_count: entry.attendanceCount,
+        total_weeks: entry.totalWeeks,
+      }));
+  }, [leaderboardData]);
 
-      query.data.scores.forEach((score: UsersWeekScoreResponseDto) => {
-        const userId = score.userId;
-        const existing = studentScoresMap.get(userId);
-        const wasPresent = score.groupDiscussionScores?.attendance ?? false;
-
-        if (existing) {
-          // Consolidate scores
-          existing.total_score += score.totalScore ?? 0;
-          existing.total_weeks += 1;
-          if (wasPresent) {
-            existing.attendance_count += 1;
-          }
-        } else {
-          // Create new entry
-          studentScoresMap.set(userId, {
-            userId: userId,
-            name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
-            discordUsername: score.discordUsername ?? 'N/A',
-            email: '', // Not available in API response
-            total_score: score.totalScore ?? 0,
-            attendance_count: wasPresent ? 1 : 0,
-            total_weeks: 1,
-          });
-        }
-      });
-    });
-
-    // Filter out students with 0 total score and return as array
-    return Array.from(studentScoresMap.values()).filter(student => student.total_score > 0);
-  }, [scoresQueries, scoresLoading]);
-
-  const loading = cohortsLoading || scoresLoading;
-  const error = cohortsError ? String(cohortsError) : scoresError ? String(scoresError) : null;
+  const loading = cohortsLoading || leaderboardLoading;
+  const error = cohortsError ? String(cohortsError) : leaderboardError ? String(leaderboardError) : null;
 
   // Get cohort name for display
   const cohortName = useMemo(() => {
@@ -102,32 +68,27 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
     return `${typeName} - Season ${cohortData.season}`;
   }, [cohortData]);
 
-  // Apply default sorting: attendance → total score → name
+  // Apply default sorting: total score → discord username
   const sortedResults = useMemo(() => {
     return [...results].sort((a, b) => {
-      // First, sort by attendance count (descending)
-      if (b.attendance_count !== a.attendance_count) {
-        return b.attendance_count - a.attendance_count;
-      }
-
-      // Then, sort by total score (descending)
+      // Sort by total score (descending)
       if (b.total_score !== a.total_score) {
         return b.total_score - a.total_score;
       }
 
-      // Finally, sort by name (ascending) as tiebreaker
-      return a.name.localeCompare(b.name);
+      // Then sort by discord username (ascending) as tiebreaker
+      return a.discordUsername.localeCompare(b.discordUsername);
     });
   }, [results]);
 
 
  const handleStudentClick = useCallback((student: StudentResult) => {
-    const studentId = student.userId ;
+    const studentId = student.userId;
     const cohortType = cohortData?.type;
     const cohortId = cohortData?.id;
     const studentName = encodeURIComponent(student.name);
-    const studentEmail = encodeURIComponent(student.email || 'N/A');
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentEmail}&from=results`);
+    const studentDiscord = encodeURIComponent(student.discordUsername);
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentDiscord}&from=results`);
   }, [navigate, cohortData?.type, cohortData?.id]);
 
 
@@ -186,23 +147,15 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
         <div className="bg-zinc-800/80 backdrop-blur-sm rounded-xl border border-zinc-700/50 overflow-x-auto">
           <table className="w-full">
             <colgroup>
-              {/* Mobile: Only 3 columns */}
               <col className="w-16" />
-              <col className="min-w-[120px]" />
-              <col className="hidden md:table-column md:w-48" />
-              <col className="hidden md:table-column md:w-32" />
-              <col className="w-24 md:w-32" />
+              <col className="min-w-[200px]" />
+              <col className="w-32" />
             </colgroup>
             <thead>
               <tr className="bg-zinc-700/50 border-b border-zinc-600/50">
                 <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Rank</th>
-                <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Name</th>
-                <th className="hidden md:table-cell text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Discord</th>
-                <th className="hidden md:table-cell text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Attendance</th>
-                <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">
-                  <span className="md:hidden">Score</span>
-                  <span className="hidden md:inline">Total Score</span>
-                </th>
+                <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Discord</th>
+                <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Total Score</th>
               </tr>
             </thead>
             <tbody>
@@ -211,26 +164,15 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
                 return (
                   <tr
                     key={`${student.email}-${index}`}
-                    className="border-b border-zinc-700/30 hover:bg-zinc-700/20 transition-colors duration-200"
+                    className="border-b border-zinc-700/30 hover:bg-zinc-700/20 transition-colors duration-200 cursor-pointer"
+                    onClick={() => handleStudentClick(student)}
                   >
                     <td className="p-2 md:p-4 font-inter">
                       <span className={getRankStyling(rank)}>#{rank}</span>
                     </td>
-                    <td
-                      className="p-2 md:p-4 text-white font-inter truncate cursor-pointer text-sm md:text-base"
-                      onClick={() => handleStudentClick(student)}
-                      title={student.name}
-                    >
-                      {student.name}
-                    </td>
-                    <td className="hidden md:table-cell p-2 md:p-4 font-inter truncate" title={student.discordUsername}>
-                      <span className="text-zinc-300">
+                    <td className="p-2 md:p-4 font-inter truncate" title={student.discordUsername}>
+                      <span className="text-white text-sm md:text-base">
                         {student.discordUsername}
-                      </span>
-                    </td>
-                    <td className="hidden md:table-cell p-2 md:p-4 font-inter">
-                      <span className="text-zinc-300">
-                        {student.attendance_count}/{student.total_weeks}
                       </span>
                     </td>
                     <td className="p-2 md:p-4 font-inter">

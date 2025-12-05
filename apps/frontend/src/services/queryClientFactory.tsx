@@ -17,7 +17,7 @@ export const createQueryClient = () => {
     {
       defaultOptions: {
         queries: {
-          refetchOnWindowFocus: false,
+          refetchOnWindowFocus: true,
           staleTime: 1000 * 60, // 1 minute
           retryDelay: (failureCount, error) =>
             isNetworkError(error as AxiosError)

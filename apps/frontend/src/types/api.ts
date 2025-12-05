@@ -194,3 +194,15 @@ export interface GetTeachingAssistantResponseDto {
   discordGlobalName: string | null;
   name: string | null;
 }
+
+export interface LeaderboardEntryDto {
+  userId: string;
+  name: string | null;
+  discordUsername: string;
+  discordGlobalName: string | null;
+  totalScore: number;
+  attendanceCount: number;
+  totalWeeks: number;
+}
+
+export type GetCohortLeaderboardResponseDto = LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] };

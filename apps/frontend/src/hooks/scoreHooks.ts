@@ -4,6 +4,7 @@ import type {
   GetUsersScoresResponseDto,
   ListScoresForCohortAndWeekResponseDto,
   UpdateScoresRequestDto,
+  GetCohortLeaderboardResponseDto,
 } from '../types/api.ts';
 
 // ===============
@@ -30,6 +31,14 @@ export const useUserScores = createUseQuery<
 >(
   (userId) => ['scores', 'user', userId],
   (userId) => () => apiService.getUserScores(userId)
+);
+
+export const useCohortLeaderboard = createUseQuery<
+  GetCohortLeaderboardResponseDto,
+  { cohortId: string }
+>(
+  ({ cohortId }) => ['scores', 'cohort', cohortId, 'leaderboard'],
+  ({ cohortId }) => () => apiService.getCohortLeaderboard(cohortId)
 );
 
 // ===============

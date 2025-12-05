@@ -273,7 +273,6 @@ const StudentDetailPage = () => {
                         Cohort Instructions
                       </button>
                     )}
-                    {/* Disabled for now
                     {cohortIdParam && (
                       <button
                         onClick={() => navigate(`/results/${cohortIdParam}`)}
@@ -282,7 +281,6 @@ const StudentDetailPage = () => {
                         View Ranking
                       </button>
                     )}
-                    */}
                   </div>
                 )}
               </div>

@@ -20,6 +20,7 @@ import type // Users
   GetUsersScoresResponseDto,
   ListScoresForCohortAndWeekResponseDto,
   UpdateScoresRequestDto,
+  GetCohortLeaderboardResponseDto,
   // Teaching Assistants
   GetTeachingAssistantResponseDto
 } from '../types/api.ts';
@@ -262,6 +263,15 @@ class ApiService {
       url: `/scores/week/${weekId}/assign-self-to-group`,
       params: { groupNumber },
     });
+  };
+
+  public getCohortLeaderboard = async (cohortId: string): Promise<GetCohortLeaderboardResponseDto> => {
+    const { data } = await this.request<GetCohortLeaderboardResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/scores/cohort/${cohortId}/leaderboard`,
+    });
+    return data;
   };
 
   // =========================
