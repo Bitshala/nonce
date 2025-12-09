@@ -200,9 +200,14 @@ export interface LeaderboardEntryDto {
   name: string | null;
   discordUsername: string;
   discordGlobalName: string | null;
+  groupDiscussionTotalScore: number;
+  groupDiscussionMaxTotalScore: number;
+  exerciseTotalScore: number;
+  exerciseMaxTotalScore: number;
   totalScore: number;
-  attendanceCount: number;
-  totalWeeks: number;
+  maxTotalScore: number;
+  totalAttendance: number;
+  maxAttendance: number;
 }
 
 export type GetCohortLeaderboardResponseDto = LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] };

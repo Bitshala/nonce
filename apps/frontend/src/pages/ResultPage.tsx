@@ -2,6 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCohort } from '../hooks/cohortHooks';
 import { useCohortLeaderboard } from '../hooks/scoreHooks';
+import { useUser } from '../hooks/userHooks';
+import { UserRole } from '../types/enums';
 
 // Frontend Display Types
 interface StudentResult {
@@ -10,8 +12,8 @@ interface StudentResult {
   discordUsername: string;
   email: string;
   total_score: number;
-  attendance_count: number;
-  total_weeks: number;
+  total_attendance: number;
+  max_attendance: number;
 }
 
 // Props interface (if you need to pass props later)
@@ -21,6 +23,9 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
   const navigate = useNavigate();
   const { id: cohortIdParam } = useParams<{ id: string }>();
 
+  // Fetch current user to check role
+  const { data: userData } = useUser();
+
   // Fetch specific cohort
   const { data: cohortData, isLoading: cohortsLoading, error: cohortsError } = useCohort(cohortIdParam);
 
@@ -29,6 +34,11 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
     { cohortId: cohortIdParam || '' },
     { enabled: !!cohortIdParam }
   );
+
+  // Check if user is TA or Admin
+  const canViewAttendance = useMemo(() => {
+    return userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
+  }, [userData?.role]);
 
   console.log('Cohort ID Param:', cohortIdParam);
   console.log('Cohort Data:', cohortData);
@@ -53,8 +63,8 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
         discordUsername: entry.discordUsername ?? 'N/A',
         email: '', // Not available in leaderboard API
         total_score: entry.totalScore,
-        attendance_count: entry.attendanceCount,
-        total_weeks: entry.totalWeeks,
+        total_attendance: entry.totalAttendance,
+        max_attendance: entry.maxAttendance,
       }));
   }, [leaderboardData]);
 
@@ -149,12 +159,16 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
             <colgroup>
               <col className="w-16" />
               <col className="min-w-[200px]" />
+              {canViewAttendance && <col className="w-32" />}
               <col className="w-32" />
             </colgroup>
             <thead>
               <tr className="bg-zinc-700/50 border-b border-zinc-600/50">
                 <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Rank</th>
                 <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Discord</th>
+                {canViewAttendance && (
+                  <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Attendance</th>
+                )}
                 <th className="text-left p-2 md:p-4 text-xs md:text-sm font-semibold text-zinc-300 font-inter">Total Score</th>
               </tr>
             </thead>
@@ -175,6 +189,13 @@ export const ResultPage: React.FC<ResultPageProps> = () => {
                         {student.discordUsername}
                       </span>
                     </td>
+                    {canViewAttendance && (
+                      <td className="p-2 md:p-4 font-inter">
+                        <span className="text-zinc-300 text-sm md:text-base">
+                          {student.total_attendance -1 } / {student.max_attendance - 1}
+                        </span>
+                      </td>
+                    )}
                     <td className="p-2 md:p-4 font-inter">
                       <span className={`font-semibold text-sm md:text-base ${getScoreColorClass(student.total_score)}`}>
                         {student.total_score}
