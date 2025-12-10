@@ -4,7 +4,13 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 1,
     title: "Bitcoin Fundamentals & Cryptographic Primitives",
-    content: "Introduction to Bitcoin's cryptographic foundations, blockchain structure, and node operations",
+    content: `
+## Reading Material
+
+1. [Chapter 1: Introducing Bitcoin](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/01_0_Introduction.md)
+2. [Chapter 2: Setting Up a Bitcoin-Core VPS](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/02_0_Setting_Up_a_Bitcoin-Core_VPS.md)
+3. [Chapter 3: Understanding Your Bitcoin Setup](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/03_0_Understanding_Your_Bitcoin_Setup.md)
+    `,
     gdQuestions: [
       "What are the cryptographic primitives used in Bitcoin? Give a brief description of each.",
       "What is a blockchain? How does it differ from an array or other common data structures in programming, and in what situations is a blockchain especially useful?",
@@ -30,7 +36,12 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 2,
     title: "Transactions, Fees & Advanced Transaction Mechanics",
-    content: "Deep dive into Bitcoin transactions, fee mechanisms, UTXOs, and transaction lifecycle management",
+    content: `
+## Reading Material
+
+1. [Chapter 4: Sending Bitcoin Transactions](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/04_0_Sending_Bitcoin_Transactions.md)
+2. [Chapter 5: Controlling Bitcoin Transactions](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/05_0_Controlling_Bitcoin_Transactions.md)
+    `,
     gdQuestions: [
       "What are the components of a transaction? Describe in brief each component and the data they contain.",
       "What is the transaction fee? Why do transactions need to pay fee? How to determine a suitable fee at the time of transaction creation?",
@@ -54,7 +65,12 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 3,
     title: "Multisig, PSBT & Hardware Wallet Integration",
-    content: "Understanding multisignature transactions, Partially Signed Bitcoin Transactions, and hardware wallet workflows",
+    content: `
+## Reading Material
+
+1. [Chapter 6: Expanding Bitcoin Transactions with Multisigs](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/06_0_Expanding_Bitcoin_Transactions_Multisigs.md)
+2. [Chapter 7: Expanding Bitcoin Transactions with PSBTs](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/07_0_Expanding_Bitcoin_Transactions_PSBTs.md)
+    `,
     gdQuestions: [
       "What is a multisig? What are the common script types for multisig addresses?",
       "Why is it important to preserve the order of keys in multisig addresses for address generation? What happens if the order isn't preserved?",
@@ -74,7 +90,12 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 4,
     title: "Bitcoin Script & Transaction Verification",
-    content: "Deep dive into Bitcoin's scripting language, script verification, locktimes, and standard/non-standard transactions",
+    content: `
+## Reading Material
+
+1. [Chapter 8: Embedding Bitcoin Scripts in P2SH Transactions](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/08_0_Embedding_Bitcoin_Scripts_in_P2SH_Transactions.md)
+2. [Chapter 9: Introducing Bitcoin Scripts](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/09_0_Introducing_Bitcoin_Scripts.md)
+    `,
     gdQuestions: [
       "How are locktime via Unix time and via block height differentiated in the transaction data?",
       "What is a LockTime? Why are locktimes useful?",
@@ -95,7 +116,12 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 5,
     title: "Advanced Scripts & Time Locks",
-    content: "Understanding P2SH, SegWit compatibility, time lock mechanisms, and advanced script verification techniques",
+    content: `
+## Reading Material
+
+1. [Chapter 10: Embedding Bitcoin Scripts in P2SH Transactions](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/10_0_Embedding_Bitcoin_Scripts_in_P2SH_Transactions.md)
+2. [Chapter 11: Empowering Timelock with Bitcoin Scripts](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/11_0_Empowering_Timelock_with_Bitcoin_Scripts.md)
+    `,
     gdQuestions: [
       "Why is P2SH useful when we can have the raw locking script inside the `scriptpubkey`?",
       "What are the limitations imposed by consensus on the size of a `scriptsig`?",
@@ -118,7 +144,12 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 6,
     title: "Complex Scripts & Real-World Applications",
-    content: "Exploring conditional scripts, transaction malleability, practical opcodes usage, and advanced Bitcoin Script applications",
+    content: `
+## Reading Material
+
+1. [Chapter 12: Expanding Bitcoin Scripts](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/12_0_Expanding_Bitcoin_Scripts.md)
+2. [Chapter 13: Designing Real Bitcoin Scripts](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/13_0_Designing_Real_Bitcoin_Scripts.md)
+    `,
     gdQuestions: [
       "How can script conditionals cause transaction malleability?",
       "What are some real-world conditional script examples?",

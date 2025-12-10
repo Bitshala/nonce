@@ -259,13 +259,15 @@ const StudentDetailPage = () => {
                 </div>
                 {!fromSource && (
                   <div className="mt-4 pt-3 border-t border-zinc-700 flex gap-3">
-                    {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE") && (
+                    {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") && (
                       <button
                         onClick={() => {
                           if (selectedCohort.cohortType === "MASTERING_BITCOIN") {
                             navigate('/mb-instructions');
                           } else if (selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE") {
                             navigate('/lbtcl-instructions');
+                          } else if (selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") {
+                            navigate('/ln-instructions');
                           }
                         }}
                         className="px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors border-0"

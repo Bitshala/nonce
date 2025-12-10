@@ -161,13 +161,15 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
         </div>
 
         <div className="flex gap-2">
-          {(cohortType === 'MASTERING_BITCOIN' || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE') && (
+          {(cohortType === 'MASTERING_BITCOIN' || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE' || cohortType === 'MASTERING_LIGHTNING_NETWORK') && (
             <button
               onClick={() => {
                 if (cohortType === 'MASTERING_BITCOIN') {
                   navigate('/mb-instructions');
                 } else if (cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE') {
                   navigate('/lbtcl-instructions');
+                } else if (cohortType === 'MASTERING_LIGHTNING_NETWORK') {
+                  navigate('/ln-instructions');
                 }
               }}
               className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"

@@ -7,7 +7,7 @@ import InstructionsLayout from './InstructionsLayout';
 import type { WeekContent } from '../../types/instructions';
 
 interface CohortInstructionsProps {
-  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE';
+  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK';
   cohortName: string;
   weeklyContent: WeekContent[];
 }
@@ -18,7 +18,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   weeklyContent,
 }) => {
   const navigate = useNavigate();
-  const [activeWeek, setActiveWeek] = useState<number | 'links'>(1);
+  const [activeWeek, setActiveWeek] = useState<number | 'links' | 'exercises'>(1);
   const [error, setError] = useState<string | null>(null);
 
   // Use hooks for data fetching
