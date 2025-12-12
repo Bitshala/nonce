@@ -281,6 +281,29 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                       {weeklyContent.find(week => week.week === activeWeek)?.title}
                     </h2>
 
+                    {/* Assignment Link Section */}
+                    {weeklyContent.find(week => week.week === activeWeek)?.assignmentLink && (
+                      <div>
+                        <h3 className="text-2xl font-bold mb-6 text-blue-400">Assignment</h3>
+                        <div className="flex flex-col space-y-6 text-lg">
+                          <a
+                            href={weeklyContent.find(week => week.week === activeWeek)?.assignmentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="no-underline text-white hover:underline flex items-center gap-2"
+                          >
+                            Week {activeWeek} Assignment
+                            <img
+                              src="/link-icon.svg"
+                              alt="Link"
+                              className="w-5 h-5"
+                              style={{ filter: 'invert(1)' }}
+                            />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Reading Material Section - Before Questions */}
                     {weeklyContent.find(week => week.week === activeWeek)?.content && (() => {
                       const content = weeklyContent.find(week => week.week === activeWeek)?.content || '';

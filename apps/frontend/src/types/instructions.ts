@@ -4,4 +4,5 @@ export interface WeekContent {
   content: string;
   gdQuestions: string[];
   bonusQuestions?: string[];
+  assignmentLink?: string;
 }
