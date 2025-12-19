@@ -129,9 +129,19 @@ export const StudentRow: React.FC<StudentRowProps> = ({
           key={key}
           className="px-4 py-6 whitespace-nowrap text-center text-sm"
         >
-          <span className="text-sm font-medium text-zinc-900">
-            {person.bonusScore[key] === 0 ? '-' : person.bonusScore[key]}
-          </span>
+          {key === 'attempt' ? (
+            <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
+              person.bonusScore[key] > 0
+                ? 'bg-green-100 text-green-800'
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {person.bonusScore[key] > 0 ? '✓' : '✗'}
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-zinc-900">
+              {person.bonusScore[key] === 0 ? '-' : person.bonusScore[key]}
+            </span>
+          )}
         </td>
       ))}
 
