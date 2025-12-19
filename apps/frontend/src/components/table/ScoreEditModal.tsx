@@ -35,6 +35,13 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
       }
       if (name.startsWith('bonusScore.')) {
         const key = name.split('.')[1] as keyof TableRowData['bonusScore'];
+        // Handle attempt as checkbox (0 or 1), others as number inputs
+        if (key === 'attempt') {
+          return {
+            ...prev,
+            bonusScore: { ...prev.bonusScore, [key]: checked ? 1 : 0 },
+          };
+        }
         return {
           ...prev,
           bonusScore: { ...prev.bonusScore, [key]: parseInt(value) || 0 },
@@ -125,14 +132,30 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           {/* Bonus Scores */}
           <div className="space-y-4">
             <h4 className="text-base font-medium text-zinc-200">Bonus Scores</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {(['attempt', 'good', 'followUp'] as const).map(key => (
+
+            {/* Bonus Attempted Checkbox */}
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                name="bonusScore.attempt"
+                id="form-bonusScore.attempt"
+                checked={editedStudent.bonusScore.attempt > 0}
+                onChange={handleChange}
+                className="h-5 w-5 text-orange-500 bg-zinc-800 border-0 rounded focus:ring-orange-500 focus:ring-offset-0"
+              />
+              <label htmlFor="form-bonusScore.attempt" className="text-base font-medium text-zinc-200">
+                Bonus Attempted
+              </label>
+            </div>
+
+            {/* Other Bonus Score Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {(['good', 'followUp'] as const).map(key => (
                 <div key={key}>
                   <label
                     htmlFor={`form-bonusScore.${key}`}
                     className="block text-sm font-medium text-zinc-400 mb-2"
                   >
-                    {key === 'attempt' && 'Bonus Attempted'}
                     {key === 'good' && 'Answer Quality'}
                     {key === 'followUp' && 'Follow Up'}
                   </label>
