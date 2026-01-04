@@ -97,7 +97,7 @@ export const lbtclWeeks: WeekContent[] = [
     content: `
 ## Reading Material
 
-1. [Chapter 8: Embedding Bitcoin Scripts in P2SH Transactions](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/08_0_Embedding_Bitcoin_Scripts_in_P2SH_Transactions.md)
+1. [Chapter 8: Expanding Bitcoin Transactions in Other Ways](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/08_0_Expanding_Bitcoin_Transactions_Other.md)
 2. [Chapter 9: Introducing Bitcoin Scripts](https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/09_0_Introducing_Bitcoin_Scripts.md)
     `,
     gdQuestions: [

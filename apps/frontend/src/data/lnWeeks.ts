@@ -4,6 +4,7 @@ export const lnWeeks: WeekContent[] = [
   {
     week: 1,
     title: "Introduction to Lightning Network",
+    assignmentLink: "https://classroom.github.com/a/UtmQhOi5",
     content: `
 ## Reading Material
 
