@@ -43,9 +43,28 @@ const MyStudentDashboard = () => {
     const myCohorts = data?.records || [];
 
     // Filter out cohorts that the user is already enrolled in
-    const availableCohorts = allCohortsData?.records
+    const filteredCohorts = allCohortsData?.records
         ?.filter((cohort) => isCohortActive(cohort.endDate))
         ?.filter((cohort) => !myCohorts.some((myCohort) => myCohort.id === cohort.id)) || [];
+
+    // If a newer season has registration open, hide older seasons with waitlist only
+    const availableCohorts = filteredCohorts.filter((cohort) => {
+        const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
+
+        // If registration is open, always show this cohort
+        if (registrationOpen) return true;
+
+        // If registration is closed (waitlist only), check if there's a newer season with open registration
+        const hasNewerSeasonWithOpenRegistration = filteredCohorts.some(
+            (otherCohort) =>
+                otherCohort.type === cohort.type &&
+                otherCohort.season > cohort.season &&
+                isRegistrationOpen(otherCohort.registrationDeadline)
+        );
+
+        // Hide this cohort if a newer season with open registration exists
+        return !hasNewerSeasonWithOpenRegistration;
+    });
 
     const hasAnyCohorts = myCohorts.length > 0 || availableCohorts.length > 0;
 
