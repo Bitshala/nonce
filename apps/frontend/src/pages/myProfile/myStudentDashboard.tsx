@@ -60,8 +60,19 @@ const MyStudentDashboard = () => {
         ?.filter((cohort) => !myCohorts.some((myCohort) => myCohort.id === cohort.id)) || [];
 
     // If a newer season has registration open, hide older seasons with waitlist only
+    // Also hide older season waitlists if user is already enrolled in a newer season of the same type
     const availableCohorts = filteredCohorts.filter((cohort) => {
         const registrationOpen = isRegistrationOpen(cohort.registrationDeadline);
+
+        // Check if user is already enrolled in a newer season of this cohort type
+        const enrolledInNewerSeason = myCohorts.some(
+            (myCohort) =>
+                myCohort.type === cohort.type &&
+                myCohort.season > cohort.season
+        );
+
+        // If enrolled in a newer season, don't show older seasons (especially waitlists)
+        if (enrolledInNewerSeason) return false;
 
         // If registration is open, always show this cohort
         if (registrationOpen) return true;
