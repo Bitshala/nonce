@@ -356,28 +356,28 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                     {/* Group Round */}
                     <div>
                       <h3 className="text-2xl font-bold mb-6 text-zinc-100">Group Round</h3>
-                      <ul className="space-y-4">
+                      <ol className="space-y-4 list-none">
                         {weeklyContent.find(week => week.week === activeWeek)?.gdQuestions.map((question, index) => (
                           <li key={index} className="flex items-start text-zinc-200 leading-relaxed text-lg">
-                            <span className="text-orange-400 mr-3 mt-1">•</span>
+                            <span className="text-orange-400 mr-3 mt-1 font-semibold">{index + 1}.</span>
                             <span>{question}</span>
                           </li>
                         ))}
-                      </ul>
+                      </ol>
                     </div>
 
                     {/* Bonus Round - Only visible to TAs and Admins */}
                     {canViewBonusQuestions && weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions && (
                       <div>
                         <h3 className="text-2xl font-bold mb-6 text-zinc-100">Bonus Round</h3>
-                        <ul className="space-y-4">
+                        <ol className="space-y-4 list-none">
                           {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((question, index) => (
                             <li key={index} className="flex items-start text-zinc-200 leading-relaxed text-lg">
-                              <span className="text-blue-400 mr-3 mt-1">•</span>
+                              <span className="text-blue-400 mr-3 mt-1 font-semibold">{index + 1}.</span>
                               <span>{question}</span>
                             </li>
                           ))}
-                        </ul>
+                        </ol>
                       </div>
                     )}
 

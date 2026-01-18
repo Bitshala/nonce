@@ -25,6 +25,18 @@ const MyStudentDashboard = () => {
         message: '',
         type: 'success',
     });
+    const [confirmationModal, setConfirmationModal] = useState<{
+        show: boolean;
+        cohortId: string;
+        cohortName: string;
+        isWaitlist: boolean;
+        cohortType?: CohortType;
+    }>({
+        show: false,
+        cohortId: '',
+        cohortName: '',
+        isWaitlist: false,
+    });
 
     useEffect(() => {
         if (allCohortsData) {
@@ -75,28 +87,13 @@ const MyStudentDashboard = () => {
             return;
         }
 
-        setLoadingCohortId(cohortId);
-        joinCohort(
-            { cohortId },
-            {
-                onSuccess: () => {
-                    setLoadingCohortId(null);
-                    setNotification({
-                        show: true,
-                        message: `Successfully joined ${cohortName} cohort!`,
-                        type: 'success',
-                    });
-                },
-                onError: (error: unknown) => {
-                    setLoadingCohortId(null);
-                    setNotification({
-                        show: true,
-                        message: extractErrorMessage(error),
-                        type: 'error',
-                    });
-                },
-            }
-        );
+        // Show confirmation modal
+        setConfirmationModal({
+            show: true,
+            cohortId,
+            cohortName,
+            isWaitlist: false,
+        });
     };
 
     const handleJoinWaitlist = (cohortId: string, cohortType: CohortType) => {
@@ -106,28 +103,70 @@ const MyStudentDashboard = () => {
             return;
         }
 
+        // Show confirmation modal
+        setConfirmationModal({
+            show: true,
+            cohortId,
+            cohortName: formatCohortType(cohortType),
+            isWaitlist: true,
+            cohortType,
+        });
+    };
+
+    const confirmJoinCohort = () => {
+        const { cohortId, cohortName, isWaitlist, cohortType } = confirmationModal;
+        setConfirmationModal({ show: false, cohortId: '', cohortName: '', isWaitlist: false });
         setLoadingCohortId(cohortId);
-        joinWaitlist(
-            { type: cohortType },
-            {
-                onSuccess: () => {
-                    setLoadingCohortId(null);
-                    setNotification({
-                        show: true,
-                        message: `Successfully joined the waitlist for ${formatCohortType(cohortType)}!`,
-                        type: 'success',
-                    });
-                },
-                onError: (error) => {
-                    setLoadingCohortId(null);
-                    setNotification({
-                        show: true,
-                        message: `Failed to join waitlist: ${extractErrorMessage(error)}`,
-                        type: 'error',
-                    });
-                },
-            }
-        );
+
+        if (isWaitlist && cohortType) {
+            joinWaitlist(
+                { type: cohortType },
+                {
+                    onSuccess: () => {
+                        setLoadingCohortId(null);
+                        setNotification({
+                            show: true,
+                            message: `Successfully joined the waitlist for ${cohortName}!`,
+                            type: 'success',
+                        });
+                    },
+                    onError: (error) => {
+                        setLoadingCohortId(null);
+                        setNotification({
+                            show: true,
+                            message: `Failed to join waitlist: ${extractErrorMessage(error)}`,
+                            type: 'error',
+                        });
+                    },
+                }
+            );
+        } else {
+            joinCohort(
+                { cohortId },
+                {
+                    onSuccess: () => {
+                        setLoadingCohortId(null);
+                        setNotification({
+                            show: true,
+                            message: `Successfully joined ${cohortName} cohort!`,
+                            type: 'success',
+                        });
+                    },
+                    onError: (error: unknown) => {
+                        setLoadingCohortId(null);
+                        setNotification({
+                            show: true,
+                            message: extractErrorMessage(error),
+                            type: 'error',
+                        });
+                    },
+                }
+            );
+        }
+    };
+
+    const cancelJoinCohort = () => {
+        setConfirmationModal({ show: false, cohortId: '', cohortName: '', isWaitlist: false });
     };
 
     const closeNotification = () => {
@@ -230,6 +269,36 @@ const MyStudentDashboard = () => {
                         </div>
                     </div>
                 )}
+            </div>
+        )}
+
+        {/* Confirmation Modal */}
+        {confirmationModal.show && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full mx-4 border border-zinc-700">
+                    <h3 className="text-xl font-bold text-white mb-4">
+                        {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
+                    </h3>
+                    <p className="text-zinc-300 mb-6">
+                        {confirmationModal.isWaitlist
+                            ? `Are you sure you want to join the waitlist for ${confirmationModal.cohortName}?`
+                            : `Are you sure you want to join the ${confirmationModal.cohortName} cohort?`}
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            onClick={cancelJoinCohort}
+                            className="px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmJoinCohort}
+                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                        >
+                            {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
+                        </button>
+                    </div>
+                </div>
             </div>
         )}
 
