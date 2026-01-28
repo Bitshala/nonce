@@ -37,6 +37,7 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 2,
     title: "Payment Channels and Lightning Network Operations",
+    assignmentLink: "https://classroom.github.com/a/a-Gdh-Qt",
     content: `
 ## Reading Material
 
