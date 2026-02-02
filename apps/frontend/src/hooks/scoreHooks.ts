@@ -55,6 +55,8 @@ export const useUpdateScoresForUserCohortAndWeek = createUseMutation<
     queryInvalidation: async ({variables: {userId, cohortId, weekId}}) => {
       await useScoresForCohortAndWeek.invalidate({cohortId, weekId});
       await useUserScores.invalidate(userId);
+      await useMyScores.invalidate();
+      await useCohortLeaderboard.invalidate({cohortId});
     },
   }
 );

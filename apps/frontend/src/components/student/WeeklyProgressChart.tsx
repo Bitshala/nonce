@@ -16,7 +16,7 @@ export const WeeklyProgressChart = ({ weeklyData }: WeeklyProgressChartProps) =>
 
       <div className="space-y-3">
         {weeklyData.map((week) => {
-          const percentage = Math.round(week.total * 100);
+          const totalScore = (week as { totalScore?: number }).totalScore || 0;
 
           return (
             <div key={week.week} className="flex items-center space-x-4">
@@ -27,17 +27,17 @@ export const WeeklyProgressChart = ({ weeklyData }: WeeklyProgressChartProps) =>
               <div className="flex-1 bg-zinc-700 border border-orange-400 h-6 relative">
                 <div
                   className="h-6 text-white bg-orange-400 transition-all duration-300"
-                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                  style={{ width: `${Math.min(totalScore, 100)}%` }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-sm font-semibold text-white">
-                    {percentage}%
+                    {totalScore}
                   </span>
                 </div>
               </div>
 
               <div className="text-sm font-medium text-orange-300 w-24 text-right">
-                {percentage}/100
+                {totalScore}/100
               </div>
             </div>
           );
