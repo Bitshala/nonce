@@ -66,6 +66,7 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 3,
     title: "Node Operations and Lightning Architecture",
+    assignmentLink: "https://classroom.github.com/a/BGJBaVCA",
     content: `
 ## Reading Material
 
