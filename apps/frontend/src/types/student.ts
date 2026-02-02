@@ -40,8 +40,6 @@ export interface BonusScore {
 export interface ExerciseScore {
   Submitted: boolean;
   privateTest: boolean;
-  goodDoc: boolean;
-  goodStructure: boolean;
 }
 
 // Table/UI Types

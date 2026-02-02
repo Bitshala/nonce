@@ -11,6 +11,11 @@ export const useUser = createUseQuery<GetUserResponse, void>(
   () => apiService.getUser
 );
 
+export const useUserById = createUseQuery<GetUserResponse, string>(
+  (id) => ['user', id],
+  (id) => () => apiService.getUserById(id)
+);
+
 // ===============
 // Mutations
 // ===============

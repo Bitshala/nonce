@@ -15,6 +15,7 @@ import {
   getScoreColorClass,
   getRankStyling,
 } from "../utils/resultHelper";
+import { cohortHasExercises } from "../utils/calculations";
 
 /* ------------------------------
    Component
@@ -63,6 +64,11 @@ export const ResultPage: React.FC = () => {
       userData?.role === UserRole.TEACHING_ASSISTANT
     );
   }, [userData?.role]);
+
+  const hasExercises = useMemo(
+    () => cohortHasExercises(cohortData?.type || ""),
+    [cohortData?.type]
+  );
 
   /* ------------------------------
      Transform Leaderboard Data
@@ -161,7 +167,7 @@ export const ResultPage: React.FC = () => {
               <col className="min-w-[200px]" />
               {canViewAttendance && <col className="w-40" />}
               <col className="w-32" />
-              <col className="w-40" />
+              {hasExercises && <col className="w-40" />}
             </colgroup>
 
             <thead>
@@ -184,9 +190,11 @@ export const ResultPage: React.FC = () => {
                   Score
                 </th>
 
-                <th className="p-4 text-left text-sm text-zinc-300 font-semibold">
-                  Exercises Completed
-                </th>
+                {hasExercises && (
+                  <th className="p-4 text-left text-sm text-zinc-300 font-semibold">
+                    Exercises Completed
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -229,9 +237,11 @@ export const ResultPage: React.FC = () => {
                     </td>
 
                     {/* Exercises */}
-                    <td className="p-4 text-zinc-300 font-semibold">
-                      {student.exercisesCompleted}
-                    </td>
+                    {hasExercises && (
+                      <td className="p-4 text-zinc-300 font-semibold">
+                        {student.exercisesCompleted}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

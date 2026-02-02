@@ -8,7 +8,7 @@ import { ScoreEditModal } from '../components/table/ScoreEditModal';
 import { TableContextMenu } from '../components/table/TableContextMenu';
 import { Modal, InputField, Button, ModalRow } from '../components/Modal';
 
-import { computeTotal } from '../utils/calculations';
+import { computeTotal, cohortHasExercises } from '../utils/calculations';
 import type { TableRowData } from '../types/student';
 
 import {
@@ -144,8 +144,6 @@ const TableView: React.FC = () => {
         exerciseScore: {
           Submitted: Boolean(score.exerciseScores?.isSubmitted),
           privateTest: Boolean(score.exerciseScores?.isPassing),
-          goodDoc: Boolean(score.exerciseScores?.hasGoodDocumentation),
-          goodStructure: Boolean(score.exerciseScores?.hasGoodStructure),
         },
         week: weekIndex,
         total: score.totalScore ?? 0,
@@ -266,7 +264,7 @@ const TableView: React.FC = () => {
           onSuccess: () => {
             setData((prev) =>
               prev.map((p) =>
-                p.id === updated.id ? { ...updated, total: computeTotal(updated) } : p
+                p.id === updated.id ? { ...updated, total: computeTotal(updated, cohortHasExercises(cohortData?.type || '')) } : p
               )
             );
             setShowScoreEditModal(false);

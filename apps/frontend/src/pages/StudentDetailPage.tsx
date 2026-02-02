@@ -7,11 +7,13 @@ import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
 import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
+import { ProfileDataCard } from '../components/student/ProfileDataCard';
 
 import { useCohort } from '../hooks/cohortHooks';
 import { useUserScores, useMyScores } from '../hooks/scoreHooks';
-import { useUser } from '../hooks/userHooks';
+import { useUser, useUserById } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
+import { cohortHasExercises } from '../utils/calculations';
 
 interface GroupDiscussionScores {
   id: string;
@@ -38,8 +40,6 @@ interface ExerciseScores {
   id: string;
   isSubmitted: boolean;
   isPassing: boolean;
-  hasGoodDocumentation: boolean;
-  hasGoodStructure: boolean;
   totalScore: number;
   maxTotalScore: number;
 }
@@ -101,6 +101,9 @@ const StudentDetailPage = () => {
   // Use the appropriate scores data
   const scoresData = isViewingOwnProfile ? myScoresData : userScoresData;
 
+  // Fetch student profile data by ID (only for TAs and Admins)
+  const { data: studentProfileData } = useUserById(studentId || '', { enabled: canViewOtherScores && !!studentId });
+
   useEffect(() => {
     const studentName = searchParams.get('studentName');
     const studentEmail = searchParams.get('studentEmail');
@@ -154,6 +157,9 @@ const StudentDetailPage = () => {
   const totalWeeks = sortedWeeklyScores.length || 0;
   const attendedWeeks = sortedWeeklyScores.filter(w => w.groupDiscussionScores.attendance).length || 0;
 
+  // Check if cohort has exercises
+  const hasExercises = cohortHasExercises(selectedCohort?.cohortType || '');
+
   const stats = {
     totalScore: selectedCohort?.totalScore || 0,
     maxPossibleScore: selectedCohort?.maxTotalScore || 0,
@@ -198,10 +204,8 @@ const StudentDetailPage = () => {
         followUp: weekScore.groupDiscussionScores.bonusFollowupScore,
       },
       exerciseScore: {
-        Submitted: weekScore.exerciseScores.isSubmitted,
-        privateTest: weekScore.exerciseScores.isPassing,
-        goodDoc: weekScore.exerciseScores.hasGoodDocumentation,
-        goodStructure: weekScore.exerciseScores.hasGoodStructure,
+        Submitted: weekScore.exerciseScores?.isSubmitted ?? false,
+        privateTest: weekScore.exerciseScores?.isPassing ?? false,
       },
       total: weekScore.totalScore / weekScore.maxTotalScore,
       totalScore: weekScore.totalScore,
@@ -294,7 +298,7 @@ const StudentDetailPage = () => {
 
             {/* Summary Stats */}
             <div className="mb-6">
-              <StudentSummary stats={stats} />
+              <StudentSummary stats={stats} hasExercises={hasExercises} />
             </div>
             
             {/* Progress Chart */}
@@ -346,6 +350,10 @@ const StudentDetailPage = () => {
             />
           )}
         </div>
+
+        {canViewOtherScores && studentProfileData && (
+          <ProfileDataCard profile={studentProfileData} />
+        )}
       </div>
     </div>
   );

@@ -91,6 +91,15 @@ class ApiService {
     });
   };
 
+  public getUserById = async (id: string): Promise<GetUserResponse> => {
+    const { data } = await this.request<GetUserResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/users/${id}`,
+    });
+    return data;
+  };
+
   // =========================
   // Cohorts
   // =========================

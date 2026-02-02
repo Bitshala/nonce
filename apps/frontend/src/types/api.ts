@@ -23,6 +23,7 @@ export interface CreateCohortRequestDto {
   startDate: string;
   endDate: string;
   registrationDeadline: string;
+  hasExercises: boolean;
 }
 
 export interface UpdateCohortWeekRequestDto {
@@ -70,8 +71,6 @@ export interface UpdateScoresRequestDto {
   bonusFollowupScore?: number;
   isSubmitted?: boolean;
   isPassing?: boolean;
-  hasGoodDocumentation?: boolean;
-  hasGoodStructure?: boolean;
 }
 
 
@@ -106,8 +105,6 @@ export interface ExerciseScore {
   id: string;
   isSubmitted: boolean;
   isPassing: boolean;
-  hasGoodDocumentation: boolean;
-  hasGoodStructure: boolean;
   totalScore: number;
   maxTotalScore: number;
 }

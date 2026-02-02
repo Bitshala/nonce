@@ -29,8 +29,6 @@ const transformStudentData = (rawData: ApiStudentRecord[]): StudentData | null =
       exerciseScore: {
         Submitted: record.exercise_submitted === 'yes',
         privateTest: record.exercise_test_passing === 'yes',
-        goodStructure: record.exercise_good_structure === 'yes',
-        goodDoc: record.exercise_good_documentation === 'yes'
       },
       total: record.total,
       group: record.group_id,
@@ -132,8 +130,6 @@ export interface UpdateScoresPayload {
   exerciseScore?: {
     Submitted?: boolean;
     privateTest?: boolean;
-    goodStructure?: boolean;
-    goodDoc?: boolean;
   };
   bonusScore?: {
     attempt?: number;

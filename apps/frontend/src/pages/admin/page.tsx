@@ -37,6 +37,7 @@ const AdminPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [registrationDeadline, setRegistrationDeadline] = useState<string>('');
+  const [hasExercises, setHasExercises] = useState<boolean>(true);
   const [lastChangedField, setLastChangedField] = useState<'startDate' | 'endDate' | null>(null);
 
   const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
@@ -176,6 +177,7 @@ const AdminPage: React.FC = () => {
     setStartDate('');
     setEndDate('');
     setRegistrationDeadline('');
+    setHasExercises(true);
     setLastChangedField(null);
   };
 
@@ -220,6 +222,7 @@ const AdminPage: React.FC = () => {
           startDate,
           endDate,
           registrationDeadline,
+          hasExercises,
         });
         // Refetch to ensure we have the latest data
         await refetch();
@@ -484,6 +487,22 @@ const AdminPage: React.FC = () => {
                   required
                 />
               </div>
+
+              {/* Has Exercises - Only show in create mode */}
+              {!isEditMode && (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="hasExercises"
+                    checked={hasExercises}
+                    onChange={(e) => setHasExercises(e.target.checked)}
+                    className="w-5 h-5 bg-zinc-700 border border-zinc-600 rounded text-blue-600 focus:ring-2 focus:ring-zinc-500 focus:ring-offset-0"
+                  />
+                  <label htmlFor="hasExercises" className="text-sm font-medium text-zinc-300">
+                    Has Exercises
+                  </label>
+                </div>
+              )}
 
               {/* Buttons */}
               <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-4">

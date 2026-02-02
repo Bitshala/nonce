@@ -17,8 +17,6 @@ export const WeeklyProgressChart = ({ weeklyData }: WeeklyProgressChartProps) =>
       <div className="space-y-3">
         {weeklyData.map((week) => {
           const percentage = Math.round(week.total * 100);
-          const totalScore = (week as { totalScore?: number }).totalScore || 0;
-          const maxTotalScore = (week as { maxTotalScore?: number }).maxTotalScore || 1;
 
           return (
             <div key={week.week} className="flex items-center space-x-4">
@@ -39,7 +37,7 @@ export const WeeklyProgressChart = ({ weeklyData }: WeeklyProgressChartProps) =>
               </div>
 
               <div className="text-sm font-medium text-orange-300 w-24 text-right">
-                {totalScore}/{maxTotalScore}
+                {percentage}/100
               </div>
             </div>
           );
