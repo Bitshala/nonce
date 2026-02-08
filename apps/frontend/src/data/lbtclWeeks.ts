@@ -4,7 +4,10 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 1,
     title: "Bitcoin Fundamentals & Cryptographic Primitives",
-    assignmentLink: "https://classroom.github.com/a/oN8k0rIa",
+    assignmentLinks: {
+      3: "https://classroom.github.com/a/oN8k0rIa",
+      4: "https://classroom.github.com/a/CM72zb_K",
+    },
     content: `
 ## Reading Material
 
@@ -37,7 +40,10 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 2,
     title: "Transactions, Fees & Advanced Transaction Mechanics",
-    assignmentLink: "https://classroom.github.com/a/TgnG1KAK",
+    assignmentLinks: {
+      3: "https://classroom.github.com/a/TgnG1KAK",
+      4: "https://classroom.github.com/a/mxaOSEym",
+    },
     content: `
 ## Reading Material
 
@@ -67,7 +73,10 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 3,
     title: "Multisig, PSBT & Hardware Wallet Integration",
-    assignmentLink: "https://classroom.github.com/a/4thH_A9_",
+    assignmentLinks: {
+      3: "https://classroom.github.com/a/4thH_A9_",
+      4: "https://classroom.github.com/a/ad63KAOn",
+    },
     content: `
 ## Reading Material
 
@@ -93,7 +102,10 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 4,
     title: "Bitcoin Script & Transaction Verification",
-    assignmentLink: "https://classroom.github.com/a/4A6Gnplj",
+    assignmentLinks: {
+      3: "https://classroom.github.com/a/4A6Gnplj",
+      4: "https://classroom.github.com/a/yqzdrthX",
+    },
     content: `
 ## Reading Material
 
@@ -120,7 +132,10 @@ export const lbtclWeeks: WeekContent[] = [
   {
     week: 5,
     title: "Advanced Scripts & Time Locks",
-    assignmentLink: "https://classroom.github.com/a/fAF7mVe4",
+    assignmentLinks: {
+      3: "https://classroom.github.com/a/fAF7mVe4",
+      4: "https://classroom.github.com/a/MinM_C2P",
+    },
     content: `
 ## Reading Material
 

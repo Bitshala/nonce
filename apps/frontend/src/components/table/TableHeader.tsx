@@ -33,6 +33,7 @@ interface TableHeaderProps {
   onClearFilters: () => void;
   navigate: (path: string) => void;
   cohortType?: string;
+  cohortId?: string;
   isTA?: boolean;
 }
 
@@ -58,6 +59,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   onClearFilters,
   navigate,
   cohortType,
+  cohortId,
   isTA,
 }) => {
   return (
@@ -164,7 +166,9 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           {(cohortType === 'MASTERING_BITCOIN' || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE' || cohortType === 'MASTERING_LIGHTNING_NETWORK') && (
             <button
               onClick={() => {
-                if (cohortType === 'MASTERING_BITCOIN') {
+                if (cohortId) {
+                  navigate(`/${cohortId}/instructions`);
+                } else if (cohortType === 'MASTERING_BITCOIN') {
                   navigate('/mb-instructions');
                 } else if (cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE') {
                   navigate('/lbtcl-instructions');

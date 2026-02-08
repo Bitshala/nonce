@@ -9,6 +9,7 @@ interface InstructionsLayoutProps {
   activeWeek: number | 'links' | 'exercises';
   setActiveWeek: (week: number | 'links' | 'exercises') => void;
   canViewBonusQuestions: boolean;
+  seasonNumber?: number;
 }
 
 const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
@@ -18,8 +19,22 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   activeWeek,
   setActiveWeek,
   canViewBonusQuestions,
+  seasonNumber,
 }) => {
   const navigate = useNavigate();
+
+  // Resolve the assignment link for a given week based on the user's season
+  const getAssignmentLink = (week: WeekContent): string | undefined => {
+    if (!week.assignmentLinks) return undefined;
+    if (seasonNumber && week.assignmentLinks[seasonNumber]) {
+      return week.assignmentLinks[seasonNumber];
+    }
+    // Fallback to the latest season's link if season is unknown
+    const seasons = Object.keys(week.assignmentLinks).map(Number);
+    if (seasons.length === 0) return undefined;
+    const latestSeason = Math.max(...seasons);
+    return week.assignmentLinks[latestSeason];
+  };
 
   const handleGeneralInstructionsClick = () => {
     navigate('/general-instructions');
@@ -36,7 +51,7 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
             {/* General Instructions Button */}
             <button
               onClick={handleGeneralInstructionsClick}
-              className="w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors text-zinc-400 hover:text-orange-400 hover:bg-zinc-800/50"
+              className="w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors text-black hover:text-orange-400 hover:bg-zinc-800/50"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -50,7 +65,7 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
               className={`w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors ${
                 activeWeek === 'links'
                   ? 'bg-zinc-800 text-orange-400'
-                  : 'text-zinc-400 hover:text-orange-400 hover:bg-zinc-800/50'
+                  : 'text-black hover:text-orange-400 hover:bg-zinc-800/50'
               }`}
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +81,7 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                 className={`w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors ${
                   activeWeek === 'exercises'
                     ? 'bg-zinc-800 text-orange-400'
-                    : 'text-zinc-400 hover:text-orange-400 hover:bg-zinc-800/50'
+                    : 'text-black hover:text-orange-400 hover:bg-zinc-800/50'
                 }`}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +98,7 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                 className={`w-full text-left px-4 py-2 rounded border-none flex items-center transition-colors ${
                   activeWeek === week.week
                     ? 'bg-zinc-800 text-orange-400'
-                    : 'text-zinc-400 hover:text-orange-400 hover:bg-zinc-800/50'
+                    : 'text-black hover:text-orange-400 hover:bg-zinc-800/50'
                 }`}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,6 +121,19 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                   {/* Exercise 1 */}
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6">
                     <h3 className="text-2xl font-bold mb-4 text-orange-400">Exercise 1: First Node Setup and Invoice Generation</h3>
+                    {(() => {
+                      const week1 = weeklyContent.find(w => w.week === 1);
+                      const link = week1 ? getAssignmentLink(week1) : undefined;
+                      if (!link) return null;
+                      return (
+                        <div className="mb-4">
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="no-underline text-blue-400 hover:underline flex items-center gap-2 text-lg">
+                            Exercise 1 Assignment
+                            <img src="/link-icon.svg" alt="Link" className="w-5 h-5" style={{ filter: 'invert(1)' }} />
+                          </a>
+                        </div>
+                      );
+                    })()}
                     <div className="mb-4">
                       <p className="text-zinc-300 mb-2"><strong className="text-zinc-100">Concepts:</strong> Node initialization, wallet funding, invoice creation</p>
                     </div>
@@ -126,6 +154,19 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                   {/* Exercise 2 */}
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6">
                     <h3 className="text-2xl font-bold mb-4 text-orange-400">Exercise 2: Peer Connection and Channel Establishment</h3>
+                    {(() => {
+                      const week2 = weeklyContent.find(w => w.week === 2);
+                      const link = week2 ? getAssignmentLink(week2) : undefined;
+                      if (!link) return null;
+                      return (
+                        <div className="mb-4">
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="no-underline text-blue-400 hover:underline flex items-center gap-2 text-lg">
+                            Exercise 2 Assignment
+                            <img src="/link-icon.svg" alt="Link" className="w-5 h-5" style={{ filter: 'invert(1)' }} />
+                          </a>
+                        </div>
+                      );
+                    })()}
                     <div className="mb-4">
                       <p className="text-zinc-300 mb-2"><strong className="text-zinc-100">Concepts:</strong> Node discovery, peer connection, channel opening, channel capacity</p>
                     </div>
@@ -146,6 +187,19 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                   {/* Exercise 3 */}
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6">
                     <h3 className="text-2xl font-bold mb-4 text-orange-400">Exercise 3: Multi-Hop Payment Routing</h3>
+                    {(() => {
+                      const week3 = weeklyContent.find(w => w.week === 3);
+                      const link = week3 ? getAssignmentLink(week3) : undefined;
+                      if (!link) return null;
+                      return (
+                        <div className="mb-4">
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="no-underline text-blue-400 hover:underline flex items-center gap-2 text-lg">
+                            Exercise 3 Assignment
+                            <img src="/link-icon.svg" alt="Link" className="w-5 h-5" style={{ filter: 'invert(1)' }} />
+                          </a>
+                        </div>
+                      );
+                    })()}
                     <div className="mb-4">
                       <p className="text-zinc-300 mb-2"><strong className="text-zinc-100">Concepts:</strong> Network topology, pathfinding, multi-hop payments, routing fees</p>
                     </div>
@@ -167,6 +221,19 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                   {/* Exercise 4 */}
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6">
                     <h3 className="text-2xl font-bold mb-4 text-orange-400">Exercise 4: Circular Rebalancing</h3>
+                    {(() => {
+                      const week4 = weeklyContent.find(w => w.week === 4);
+                      const link = week4 ? getAssignmentLink(week4) : undefined;
+                      if (!link) return null;
+                      return (
+                        <div className="mb-4">
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="no-underline text-blue-400 hover:underline flex items-center gap-2 text-lg">
+                            Exercise 4 Assignment
+                            <img src="/link-icon.svg" alt="Link" className="w-5 h-5" style={{ filter: 'invert(1)' }} />
+                          </a>
+                        </div>
+                      );
+                    })()}
                     <div className="mb-4">
                       <p className="text-zinc-300 mb-2"><strong className="text-zinc-100">Concepts:</strong> Channel liquidity, circular payments, channel balance management</p>
                     </div>
@@ -282,27 +349,32 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                     </h2>
 
                     {/* Assignment Link Section */}
-                    {weeklyContent.find(week => week.week === activeWeek)?.assignmentLink && (
-                      <div>
-                        <h3 className="text-2xl font-bold mb-6 text-blue-400">Assignment</h3>
-                        <div className="flex flex-col space-y-6 text-lg">
-                          <a
-                            href={weeklyContent.find(week => week.week === activeWeek)?.assignmentLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="no-underline text-white hover:underline flex items-center gap-2"
-                          >
-                            Week {activeWeek} Assignment
-                            <img
-                              src="/link-icon.svg"
-                              alt="Link"
-                              className="w-5 h-5"
-                              style={{ filter: 'invert(1)' }}
-                            />
-                          </a>
+                    {(() => {
+                      const currentWeek = weeklyContent.find(week => week.week === activeWeek);
+                      const assignmentLink = currentWeek ? getAssignmentLink(currentWeek) : undefined;
+                      if (!assignmentLink) return null;
+                      return (
+                        <div>
+                          <h3 className="text-2xl font-bold mb-6 text-blue-400">Assignment</h3>
+                          <div className="flex flex-col space-y-6 text-lg">
+                            <a
+                              href={assignmentLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="no-underline text-white hover:underline flex items-center gap-2"
+                            >
+                              Week {activeWeek} Assignment
+                              <img
+                                src="/link-icon.svg"
+                                alt="Link"
+                                className="w-5 h-5"
+                                style={{ filter: 'invert(1)' }}
+                              />
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Reading Material Section - Before Questions */}
                     {weeklyContent.find(week => week.week === activeWeek)?.content && (() => {

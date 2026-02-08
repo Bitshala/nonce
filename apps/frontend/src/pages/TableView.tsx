@@ -454,6 +454,7 @@ const TableView: React.FC = () => {
           }}
           navigate={navigate}
           cohortType={cohortData?.type}
+          cohortId={cohortIdParam}
           isTA={isTA}
         />
 

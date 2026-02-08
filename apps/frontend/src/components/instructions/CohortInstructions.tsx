@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
+import { useMyCohorts } from '../../hooks/cohortHooks';
 import { UserRole } from '../../types/enums';
 import InstructionsLayout from './InstructionsLayout';
 import type { WeekContent } from '../../types/instructions';
@@ -24,6 +25,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   // Use hooks for data fetching
   const { data: userData, isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
+  const { data: myCohortsData, isLoading: isLoadingCohorts } = useMyCohorts({ page: 0, pageSize: 100 });
 
   // Check if user is TA or Admin
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
@@ -36,7 +38,13 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   // Admins and TAs can view bonus questions
   const canViewBonusQuestions = isAdminOrTA;
 
-  const isLoading = isLoadingUser || isLoadingScores;
+  // Get the user's season number from their latest enrolled cohort via API
+  const myCohort = myCohortsData?.records
+    .filter((c) => c.type === cohortType)
+    .sort((a, b) => b.season - a.season)[0];
+  const seasonNumber = myCohort?.season;
+
+  const isLoading = isLoadingUser || isLoadingScores || isLoadingCohorts;
 
   // Set error if user doesn't have access
   useEffect(() => {
@@ -100,6 +108,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
       activeWeek={activeWeek}
       setActiveWeek={setActiveWeek}
       canViewBonusQuestions={canViewBonusQuestions}
+      seasonNumber={seasonNumber}
     />
   );
 };

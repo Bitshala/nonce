@@ -266,7 +266,9 @@ const StudentDetailPage = () => {
                     {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") && (
                       <button
                         onClick={() => {
-                          if (selectedCohort.cohortType === "MASTERING_BITCOIN") {
+                          if (selectedCohort.cohortId) {
+                            navigate(`/${selectedCohort.cohortId}/instructions`);
+                          } else if (selectedCohort.cohortType === "MASTERING_BITCOIN") {
                             navigate('/mb-instructions');
                           } else if (selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE") {
                             navigate('/lbtcl-instructions');

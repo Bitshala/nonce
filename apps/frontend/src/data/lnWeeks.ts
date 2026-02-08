@@ -4,7 +4,10 @@ export const lnWeeks: WeekContent[] = [
   {
     week: 1,
     title: "Introduction to Lightning Network",
-    assignmentLink: "https://classroom.github.com/a/UtmQhOi5",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/UtmQhOi5",
+      2: "https://classroom.github.com/a/djNG7OtA",
+    },
     content: `
 ## Reading Material
 
@@ -37,7 +40,10 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 2,
     title: "Payment Channels and Lightning Network Operations",
-    assignmentLink: "https://classroom.github.com/a/a-Gdh-Qt",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/a-Gdh-Qt",
+      2: "https://classroom.github.com/a/igHFIz8x",
+    },
     content: `
 ## Reading Material
 
@@ -66,7 +72,10 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 3,
     title: "Node Operations and Lightning Architecture",
-    assignmentLink: "https://classroom.github.com/a/BGJBaVCA",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/BGJBaVCA",
+      2: "https://classroom.github.com/a/29dYwLIq",
+    },
     content: `
 ## Reading Material
 
@@ -93,6 +102,10 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 4,
     title: "Payment Channels and Routing with HTLCs",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/Y-Dv1lyW",
+      2: "https://classroom.github.com/a/paU54jYP",
+    },
     content: `
 ## Reading Material
 
