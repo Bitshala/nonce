@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import FloatingNavbar from './FloatingNavbar';
+import Sidebar from './Sidebar';
 import { useAuth } from '../hooks/useAuth';
 
 interface LayoutProps {
@@ -11,15 +11,18 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  // Don't show navbar on login page, unauthorized page, or error pages
   const hideNavbarRoutes = ['/login', '/unauthorized', '/*'];
-  const shouldShowNavbar = isAuthenticated && !hideNavbarRoutes.includes(location.pathname);
+  const showSidebar = isAuthenticated && !hideNavbarRoutes.includes(location.pathname);
+
+  if (!showSidebar) {
+    return <>{children}</>;
+  }
 
   return (
-    <>
-      {children}
-      {shouldShowNavbar && <FloatingNavbar />}
-    </>
+    <div className="flex h-screen">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">{children}</main>
+    </div>
   );
 };
 
