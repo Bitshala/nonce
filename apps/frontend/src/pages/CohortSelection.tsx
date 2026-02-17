@@ -4,85 +4,15 @@ import { useQueries } from '@tanstack/react-query';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole, CohortType } from '../types/enums';
-import type { GetCohortResponseDto, GetCohortLeaderboardResponseDto, LeaderboardEntryDto } from '../types/api';
+import type { GetCohortResponseDto, LeaderboardEntryDto } from '../types/api';
+import type { ApiCohort, CohortStatus } from '../types/cohort';
 import apiService from '../services/apiService';
 import Tabs from '../components/ui/Tabs';
 import CohortTable from '../components/ui/CohortTable';
 import type { CohortRow } from '../components/ui/CohortTable';
-
-type ApiCohortWeek = {
-  id: string;
-  week: number;
-};
-
-type ApiCohort = {
-  id: string;
-  type: string;
-  season: number;
-  startDate: string;
-  endDate: string;
-  registrationDeadline: string;
-  weeks: ApiCohortWeek[];
-};
-
-type CohortStatus = 'Active' | 'Upcoming' | 'Completed';
-
-const prettifyType = (t: string) =>
-  t
-    .toLowerCase()
-    .split('_')
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ');
-
-const computeStatus = (startISO: string, endISO: string): CohortStatus => {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
-  const now = new Date();
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'Completed';
-  if (now < start) return 'Upcoming';
-  if (now > end) return 'Completed';
-  return 'Active';
-};
-
-const formatDateForInput = (isoDate: string | null | undefined): string => {
-  if (!isoDate) return '';
-  try {
-    return isoDate.split('T')[0];
-  } catch {
-    return '';
-  }
-};
-
-const getTodayDate = (): string => new Date().toISOString().split('T')[0];
-
-const calculateEndDate = (start: string, weeks: number): string => {
-  if (!start) return '';
-  const d = new Date(start);
-  d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().split('T')[0];
-};
-
-const calculateRegistrationDeadline = (start: string): string => {
-  if (!start) return '';
-  const d = new Date(start);
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
-};
-
-const calculateStartDate = (end: string, weeks: number): string => {
-  if (!end) return '';
-  const d = new Date(end);
-  d.setDate(d.getDate() - weeks * 7);
-  return d.toISOString().split('T')[0];
-};
-
-const COHORT_TYPES = [
-  CohortType.MASTERING_BITCOIN,
-  CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE,
-  CohortType.BITCOIN_PROTOCOL_DEVELOPMENT,
-  CohortType.PROGRAMMING_BITCOIN,
-  CohortType.MASTERING_LIGHTNING_NETWORK,
-];
+import { cohortTypeToName } from '../helpers/cohortHelpers';
+import { computeStatus, COHORT_TYPES } from '../utils/cohortUtils';
+import { getTodayDate, calculateEndDate, calculateStartDate, calculateRegistrationDeadline, formatDateForInput } from '../utils/dateUtils';
 
 export const CohortSelection = () => {
   const navigate = useNavigate();
@@ -176,7 +106,7 @@ export const CohortSelection = () => {
     const records: ApiCohort[] = data?.records ?? [];
     return records.map((c) => ({
       id: c.id,
-      name: prettifyType(c.type),
+      name: cohortTypeToName(c.type as CohortType),
       type: c.type,
       season: c.season,
       status: computeStatus(c.startDate, c.endDate),
@@ -230,7 +160,6 @@ export const CohortSelection = () => {
   };
 
   const openEditModal = (cohort: CohortRow) => {
-    const raw = cohort.raw as ApiCohort;
     const dto = data?.records?.find((r) => r.id === cohort.id);
     if (!dto) return;
 
@@ -309,12 +238,28 @@ export const CohortSelection = () => {
 
   return (
     <div className="min-h-screen bg-zinc-900 px-4 md:px-10 lg:px-16 py-6" style={{ fontFamily: 'Sora, sans-serif' }}>
+      {/* Admin accent bar */}
+      <div className="h-1 bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 rounded-full mb-6" />
+
       <div className="mx-auto">
         {/* Page header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-zinc-100">Cohort Selection</h1>
-            <p className="text-zinc-400 text-sm mt-1">Select a cohort to manage students.</p>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-xl bg-orange-500/15 border border-orange-500/25">
+              <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-zinc-100">Cohort Selection</h1>
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-400 border border-orange-500/25">
+                  Admin
+                </span>
+              </div>
+              <p className="text-zinc-400 text-sm mt-1">Select a cohort to manage students.</p>
+            </div>
           </div>
         </div>
 
@@ -325,7 +270,7 @@ export const CohortSelection = () => {
         )}
 
         {/* Tabs + Table card */}
-        <div className="bg-zinc-800/50 rounded-xl border border-zinc-700/50 overflow-hidden">
+        <div className="bg-zinc-800/50 rounded-xl border border-orange-500/20 overflow-hidden">
           {/* Tab bar + Create button */}
           <div className="flex items-end justify-between px-4 pt-3">
             <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
@@ -381,7 +326,7 @@ export const CohortSelection = () => {
 
             <p className="text-zinc-400 text-sm mb-8">
               {isEditMode
-                ? `Update the details for ${selectedCohortType ? prettifyType(selectedCohortType) : ''} cohort.`
+                ? `Update the details for ${selectedCohortType ? cohortTypeToName(selectedCohortType) : ''} cohort.`
                 : 'Fill out the information below to create a new cohort.'}
             </p>
 
@@ -401,14 +346,14 @@ export const CohortSelection = () => {
                       setFormSeason(maxSeason + 1);
                     }}
                     required
-                    className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg pl-2 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   >
                     <option value="" disabled>
                       Select a cohort type
                     </option>
                     {COHORT_TYPES.map((ct) => (
                       <option key={ct} value={ct} className="bg-zinc-800">
-                        {prettifyType(ct)}
+                        {cohortTypeToName(ct)}
                       </option>
                     ))}
                   </select>
@@ -425,7 +370,7 @@ export const CohortSelection = () => {
                       value={formSeason}
                       onChange={(e) => setFormSeason(parseInt(e.target.value))}
                       min="1"
-                      className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                      className="w-32 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -436,7 +381,7 @@ export const CohortSelection = () => {
                       onChange={(e) => setFormWeeks(parseInt(e.target.value))}
                       min="1"
                       max="52"
-                      className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                      className="w-32 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -452,7 +397,7 @@ export const CohortSelection = () => {
                     type="number"
                     value={formWeeks}
                     disabled
-                    className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               )}
@@ -470,7 +415,7 @@ export const CohortSelection = () => {
                     }}
                     min={getTodayDate()}
                     required
-                    className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                     style={{ colorScheme: 'dark' }}
                   />
                 </div>
@@ -488,7 +433,7 @@ export const CohortSelection = () => {
                     min={formStartDate ? calculateEndDate(formStartDate, 1) : getTodayDate()}
                     disabled={!isEditMode}
                     required
-                    className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ colorScheme: 'dark' }}
                   />
                 </div>
@@ -502,7 +447,7 @@ export const CohortSelection = () => {
                   value={formRegDeadline}
                   onChange={(e) => setFormRegDeadline(e.target.value)}
                   required
-                  className="w-full b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   style={{ colorScheme: 'dark' }}
                 />
               </div>

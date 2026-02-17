@@ -8,6 +8,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
+  ChevronDown,
 } from 'lucide-react';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
@@ -30,6 +32,13 @@ const studentNavItems: NavItem[] = [
   { label: 'Feedback', path: '/cohortfeedback', icon: MessageSquare },
 ];
 
+const instructionLinks = [
+  { label: 'General', path: '/general-instructions' },
+  { label: 'Mastering Bitcoin', path: '/mb-instructions' },
+  { label: 'Learning Bitcoin CLI', path: '/lbtcl-instructions' },
+  { label: 'Lightning Network', path: '/ln-instructions' },
+];
+
 const getInitial = (name: string | null | undefined): string => {
   if (!name) return '?';
   return name.charAt(0).toUpperCase();
@@ -40,6 +49,8 @@ const Sidebar = () => {
   const location = useLocation();
   const { data: user } = useUser();
   const { logout } = useAuth();
+
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -109,6 +120,50 @@ const Sidebar = () => {
             </button>
           );
         })}
+
+        {/* Instructions section */}
+        <div className="mt-2 pt-2 border-t border-zinc-800/50">
+          <button
+            onClick={() => collapsed ? navigate('/general-instructions') : setInstructionsOpen(!instructionsOpen)}
+            title={collapsed ? 'Instructions' : undefined}
+            className={`b-0 w-full flex items-center gap-3 rounded-lg transition-all duration-150 ${
+              collapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5'
+            } ${
+              instructionLinks.some((l) => isActive(l.path))
+                ? 'bg-orange-500/10 text-orange-400'
+                : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            }`}
+          >
+            <BookOpen size={20} strokeWidth={instructionLinks.some((l) => isActive(l.path)) ? 2.2 : 1.8} />
+            {!collapsed && (
+              <>
+                <span className="text-sm font-medium whitespace-nowrap flex-1 text-left">Instructions</span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${instructionsOpen ? 'rotate-180' : ''}`}
+                />
+              </>
+            )}
+          </button>
+
+          {!collapsed && instructionsOpen && (
+            <div className="ml-5 mt-1 space-y-0.5 border-l border-zinc-700/50 pl-3">
+              {instructionLinks.map((link) => (
+                <button
+                  key={link.path}
+                  onClick={() => navigate(link.path)}
+                  className={`b-0 w-full text-left px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 ${
+                    isActive(link.path)
+                      ? 'text-orange-400 bg-orange-500/10'
+                      : 'text-zinc-500 hover:text-zinc-300 bg-transparent hover:bg-zinc-800/50'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* Bottom: user info + logout */}

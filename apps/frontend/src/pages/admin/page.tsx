@@ -4,21 +4,9 @@ import { useCohorts, useCreateCohort, useUpdateCohort } from '../../hooks/cohort
 import { CohortType } from '../../types/enums';
 import type { GetCohortResponseDto } from '../../types/api';
 import CohortCardV2 from '../../components/dashboard/CohortCardV2';
-
-const getCohortImage = (cohortType: string): string => {
-  const imageMap: Record<string, string> = {
-    'MASTERING_BITCOIN': 'https://bitshala.org/cohort/mb.webp',
-    'LEARNING_BITCOIN_FROM_COMMAND_LINE': 'https://bitshala.org/cohort/lbtcl.webp',
-    'BITCOIN_PROTOCOL_DEVELOPMENT': 'https://bitshala.org/cohort/bpd.webp',
-    'PROGRAMMING_BITCOIN': 'https://bitshala.org/cohort/pb.webp',
-    'MASTERING_LIGHTNING_NETWORK': 'https://bitshala.org/cohort/ln.webp',
-  };
-  return imageMap[cohortType] || 'https://bitshala.org/cohort/mb.webp';
-};
-
-const getCohortDisplayName = (cohortType: string): string => {
-  return cohortType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-};
+import { getCohortImage, COHORT_TYPES } from '../../utils/cohortUtils';
+import { cohortTypeToName } from '../../helpers/cohortHelpers';
+import { getTodayDate, calculateEndDate, calculateStartDate, calculateRegistrationDeadline, formatDateForInput } from '../../utils/dateUtils';
 
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -46,56 +34,6 @@ const AdminPage: React.FC = () => {
     type: 'success',
   });
 
-  const cohortTypes = [
-    CohortType.MASTERING_BITCOIN,
-    CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE,
-    CohortType.BITCOIN_PROTOCOL_DEVELOPMENT,
-    CohortType.PROGRAMMING_BITCOIN,
-    CohortType.MASTERING_LIGHTNING_NETWORK,
-  ];
-
-  // Format date to YYYY-MM-DD for input
-  const formatDateForInput = (isoDate: string | null | undefined): string => {
-    if (!isoDate) return '';
-    try {
-      return isoDate.split('T')[0];
-    } catch {
-      return '';
-    }
-  };
-
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = (): string => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-
-  // Calculate end date based on start date and weeks
-  const calculateEndDate = (startDate: string, weeks: number): string => {
-    if (!startDate) return '';
-    const start = new Date(startDate);
-    const end = new Date(start);
-    end.setDate(end.getDate() + (weeks * 7));
-    return end.toISOString().split('T')[0];
-  };
-
-  // Calculate registration deadline (one day before start date)
-  const calculateRegistrationDeadline = (startDate: string): string => {
-    if (!startDate) return '';
-    const start = new Date(startDate);
-    const deadline = new Date(start);
-    deadline.setDate(deadline.getDate() - 1);
-    return deadline.toISOString().split('T')[0];
-  };
-
-  // Calculate start date based on end date and weeks (for edit mode)
-  const calculateStartDate = (endDate: string, weeks: number): string => {
-    if (!endDate) return '';
-    const end = new Date(endDate);
-    const start = new Date(end);
-    start.setDate(start.getDate() - (weeks * 7));
-    return start.toISOString().split('T')[0];
-  };
 
   // Update end date when start date or weeks change (only in create mode)
   useEffect(() => {
@@ -304,7 +242,7 @@ const AdminPage: React.FC = () => {
             <>
               {/* Mobile List View */}
               <div className="flex flex-col gap-3 md:hidden">
-                {cohortTypes.map((cohortType) => {
+                {COHORT_TYPES.map((cohortType) => {
                   const status = getCohortStatus(cohortType);
                   const existingCohort = cohortsData?.records?.find((c) => c.type === cohortType);
                   const isCompleted = existingCohort && new Date() > new Date(existingCohort.endDate);
@@ -314,7 +252,7 @@ const AdminPage: React.FC = () => {
                     <CohortCardV2
                       key={cohortType}
                       cohortType={cohortType}
-                      cohortDisplayName={getCohortDisplayName(cohortType)}
+                      cohortDisplayName={cohortTypeToName(cohortType)}
                       imageUrl={getCohortImage(cohortType)}
                       status={status}
                       season={displaySeason}
@@ -327,7 +265,7 @@ const AdminPage: React.FC = () => {
 
               {/* Desktop Grid View */}
               <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {cohortTypes.map((cohortType) => {
+                {COHORT_TYPES.map((cohortType) => {
                   const status = getCohortStatus(cohortType);
                   const existingCohort = cohortsData?.records?.find((c) => c.type === cohortType);
                   const isCompleted = existingCohort && new Date() > new Date(existingCohort.endDate);
@@ -337,7 +275,7 @@ const AdminPage: React.FC = () => {
                     <CohortCardV2
                       key={cohortType}
                       cohortType={cohortType}
-                      cohortDisplayName={getCohortDisplayName(cohortType)}
+                      cohortDisplayName={cohortTypeToName(cohortType)}
                       imageUrl={getCohortImage(cohortType)}
                       status={status}
                       season={displaySeason}
@@ -374,8 +312,8 @@ const AdminPage: React.FC = () => {
             {/* Description */}
             <p className="text-zinc-400 text-sm mb-8">
               {isEditMode
-                ? `Update the details for ${getCohortDisplayName(selectedCohortType)} cohort.`
-                : `Please fill out the information below to create a new ${getCohortDisplayName(selectedCohortType)} cohort.`
+                ? `Update the details for ${cohortTypeToName(selectedCohortType)} cohort.`
+                : `Please fill out the information below to create a new ${cohortTypeToName(selectedCohortType)} cohort.`
               }
             </p>
 

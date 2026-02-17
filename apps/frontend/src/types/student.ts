@@ -48,6 +48,7 @@ export interface TableRowData {
   id: number;
   name: string;
   email: string;
+  userEmail: string;
   group: string;
   ta: string;
   attendance: boolean;
