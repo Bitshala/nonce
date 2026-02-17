@@ -10,6 +10,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 import { Modal, InputField, Button, ModalRow } from '../components/Modal';
 
 import { computeTotal, cohortHasExercises } from '../utils/calculations';
+import { downloadCSV } from '../utils/csvUtils';
 import type { TableRowData } from '../types/student';
 
 import {
@@ -358,8 +359,30 @@ const TableView: React.FC = () => {
   }, [cohortData?.id, removeUserMutation]);
 
   const handleDownloadCSV = useCallback(() => {
-    // TODO: add support later
-  }, []);
+    const rows = sortedFilteredData;
+    if (rows.length === 0) return;
+
+    const hasExercises = cohortHasExercises(cohortData?.type || '');
+
+    const headers = [
+      'Name', 'Discord Name', 'Email', 'Group', 'TA', 'Attendance',
+      'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
+      'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
+      ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
+      'Total',
+    ];
+
+    const csvRows = rows.map((r) => [
+      r.name, r.email, r.userEmail, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.gdScore.fa, r.gdScore.fb, r.gdScore.fc, r.gdScore.fd,
+      r.bonusScore.attempt, r.bonusScore.good, r.bonusScore.followUp,
+      ...(hasExercises ? [r.exerciseScore.Submitted ? 'Yes' : 'No', r.exerciseScore.privateTest ? 'Yes' : 'No'] : []),
+      r.total,
+    ]);
+
+    const weekLabel = weekIndex !== undefined ? `week${weekIndex}` : 'all';
+    downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
+  }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
   const handleAssignGroups = useCallback(() => {
     setShowAssignGroupsModal(true);

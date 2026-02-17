@@ -4,7 +4,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   User,
-  MessageSquare,
+
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -29,7 +29,6 @@ const adminNavItems: NavItem[] = [
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/myDashboard', icon: LayoutDashboard },
   { label: 'Profile', path: '/me', icon: User },
-  { label: 'Feedback', path: '/cohortfeedback', icon: MessageSquare },
 ];
 
 const instructionLinks = [
