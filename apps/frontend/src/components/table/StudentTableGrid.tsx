@@ -63,6 +63,13 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
               >
                 Discord Name
               </th>
+              <th
+                scope="col"
+                rowSpan={2}
+                className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 uppercase hover:bg-orange-50 tracking-wider align-middle bg-orange-200 hidden sm:table-cell border-b border-zinc-200"
+              >
+                Email
+              </th>
               {week > 0 && (
                 <th
                   scope="col"

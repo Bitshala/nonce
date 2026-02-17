@@ -1,3 +1,6 @@
+import type { CohortStatus } from '../types/cohort';
+import { CohortType } from '../types/enums';
+
 export const getCohortImage = (cohortType: string): string => {
   const imageMap: Record<string, string> = {
     'MASTERING_BITCOIN': 'https://bitshala.org/cohort/mb.webp',
@@ -24,3 +27,21 @@ export const isCohortActive = (endDate: string): boolean => {
 export const formatCohortType = (cohortType: string): string => {
   return cohortType.replace(/_/g, ' ');
 };
+
+export const computeStatus = (startISO: string, endISO: string): CohortStatus => {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  const now = new Date();
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'Completed';
+  if (now < start) return 'Upcoming';
+  if (now > end) return 'Completed';
+  return 'Active';
+};
+
+export const COHORT_TYPES = [
+  CohortType.MASTERING_BITCOIN,
+  CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE,
+  CohortType.BITCOIN_PROTOCOL_DEVELOPMENT,
+  CohortType.PROGRAMMING_BITCOIN,
+  CohortType.MASTERING_LIGHTNING_NETWORK,
+];

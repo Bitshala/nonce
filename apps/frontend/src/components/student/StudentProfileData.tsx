@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser, useUpdateUser } from '../../hooks/userHooks';
 
 interface UserProfile {
@@ -63,6 +63,7 @@ const BITCOIN_BOOKS_OPTIONS = [
 
 const StudentProfileData: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
   const [booksDropdownOpen, setBooksDropdownOpen] = useState(false);
@@ -154,6 +155,7 @@ const StudentProfileData: React.FC = () => {
         console.log('Update successful, received data:', data);
         // Don't set profile here - let the query invalidation handle it
         alert('Profile updated successfully!');
+        navigate('/myDashboard');
       },
       onError: (error) => {
         console.error('Error updating profile:', error);

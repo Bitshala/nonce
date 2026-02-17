@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
 
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
@@ -9,6 +10,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 import { Modal, InputField, Button, ModalRow } from '../components/Modal';
 
 import { computeTotal, cohortHasExercises } from '../utils/calculations';
+import { downloadCSV } from '../utils/csvUtils';
 import type { TableRowData } from '../types/student';
 
 import {
@@ -21,6 +23,7 @@ import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
+import apiService from '../services/apiService';
 
 const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'];
 
@@ -127,6 +130,7 @@ const TableView: React.FC = () => {
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
         email: score.discordUsername ?? '', // discord username
+        userEmail: '',
         group: `Group ${groupNumber}`,
         ta: taName,
         attendance: Boolean(score.groupDiscussionScores?.attendance),
@@ -154,6 +158,47 @@ const TableView: React.FC = () => {
     setTotalCount(scoresData.scores.length);
     setWeeklyData({week: weekIndex, attended: transformed.filter(s => s.attendance).length});
   }, [scoresData, scoresError, weekIndex]);
+
+  // === Fetch user emails ===
+  const userIds = useMemo(
+    () => (scoresData?.scores ?? []).map((s: any) => String(s.userId)).filter(Boolean),
+    [scoresData],
+  );
+
+  const userQueries = useQueries({
+    queries: userIds.map((uid) => ({
+      queryKey: ['user', uid],
+      queryFn: () => apiService.getUserById(uid),
+      staleTime: 10 * 60 * 1000,
+      enabled: userIds.length > 0,
+    })),
+  });
+
+  const emailMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    userIds.forEach((uid, i) => {
+      const result = userQueries[i];
+      if (result?.data?.email) {
+        map[uid] = result.data.email;
+      }
+    });
+    return map;
+  }, [userIds, userQueries]);
+
+  // Merge emails into table data when available
+  useEffect(() => {
+    if (Object.keys(emailMap).length === 0) return;
+    setData((prev) =>
+      prev.map((row) => {
+        const uid = String(row.userId ?? row.id);
+        const email = emailMap[uid];
+        if (email && email !== row.userEmail) {
+          return { ...row, userEmail: email };
+        }
+        return row;
+      }),
+    );
+  }, [emailMap]);
 
   // === Derived options ===
   const taOptions = useMemo(() => {
@@ -314,8 +359,30 @@ const TableView: React.FC = () => {
   }, [cohortData?.id, removeUserMutation]);
 
   const handleDownloadCSV = useCallback(() => {
-    // TODO: add support later
-  }, []);
+    const rows = sortedFilteredData;
+    if (rows.length === 0) return;
+
+    const hasExercises = cohortHasExercises(cohortData?.type || '');
+
+    const headers = [
+      'Name', 'Discord Name', 'Email', 'Group', 'TA', 'Attendance',
+      'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
+      'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
+      ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
+      'Total',
+    ];
+
+    const csvRows = rows.map((r) => [
+      r.name, r.email, r.userEmail, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.gdScore.fa, r.gdScore.fb, r.gdScore.fc, r.gdScore.fd,
+      r.bonusScore.attempt, r.bonusScore.good, r.bonusScore.followUp,
+      ...(hasExercises ? [r.exerciseScore.Submitted ? 'Yes' : 'No', r.exerciseScore.privateTest ? 'Yes' : 'No'] : []),
+      r.total,
+    ]);
+
+    const weekLabel = weekIndex !== undefined ? `week${weekIndex}` : 'all';
+    downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
+  }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
   const handleAssignGroups = useCallback(() => {
     setShowAssignGroupsModal(true);
