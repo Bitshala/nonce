@@ -347,7 +347,7 @@ export const CohortSelection = () => {
               <>
                 <button
                   onClick={() => openEditModal(cohort)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-700/50 hover:bg-zinc-600/50 rounded-md transition-colors duration-150 whitespace-nowrap"
+                  className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-700/50 hover:bg-zinc-600/50 rounded-md transition-colors duration-150 whitespace-nowrap"
                   title="Edit Cohort"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,15 +355,15 @@ export const CohortSelection = () => {
                   </svg>
                   Edit
                 </button>
-                {cohort.status === 'Completed' && user?.role === UserRole.ADMIN && (
+                {cohort.status === 'Completed'  && (
                   <button
                     onClick={() => handleGenerateCertificates(cohort.id, cohort.name)}
                     disabled={isGeneratingCerts && generatingCohortId === cohort.id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-md transition-colors duration-150 disabled:opacity-50 whitespace-nowrap"
+                    className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-md transition-colors duration-150 disabled:opacity-50 whitespace-nowrap"
                     title="Generate Certificates"
                   >
                     {isGeneratingCerts && generatingCohortId === cohort.id ? (
-                      <div className="animate-spin rounded-full h-3.5 w-3.5 border border-amber-400 border-t-transparent" />
+                      <div className=" animate-spin rounded-full h-3.5 w-3.5 border border-amber-400 border-t-transparent" />
                     ) : (
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />

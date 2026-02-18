@@ -323,7 +323,7 @@ const MyStudentDashboard = () => {
                       </svg>
                       View
                     </button>
-                    {row.status === 'Completed' && certificate && (
+                    {row.status === 'Completed' && certificate && row.type !== 'MASTERING_LIGHTNING_NETWORK' && (
                       <button
                         onClick={() => handleDownloadCertificate(certificate.id, `${row.name}-S${row.season}-certificate`)}
                         disabled={isDownloading && downloadingCertId === certificate.id}
