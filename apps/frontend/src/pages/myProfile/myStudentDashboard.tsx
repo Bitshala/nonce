@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
+import { useMyCertificates, useDownloadCertificate } from '../../hooks/certificateHooks';
 import { CohortType } from '../../types/enums';
 import NotificationModal from '../../components/NotificationModal';
 import Tabs from '../../components/ui/Tabs';
@@ -26,8 +27,11 @@ const MyStudentDashboard = () => {
   const { mutate: joinCohort } = useJoinCohort();
   const { mutate: joinWaitlist } = useJoinCohortWaitlist();
   const { data: userData } = useUser();
+  const { data: myCertificates } = useMyCertificates();
+  const { mutate: downloadCertificate, isPending: isDownloading } = useDownloadCertificate();
 
   const [activeTab, setActiveTab] = useState<string>('Active');
+  const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
   const [loadingCohortId, setLoadingCohortId] = useState<string | null>(null);
   const [notification, setNotification] = useState<NotificationState>({
     show: false,
@@ -204,6 +208,34 @@ const MyStudentDashboard = () => {
     setNotification({ show: false, message: '', type: 'success' });
   };
 
+  const handleDownloadCertificate = (certificateId: string, certificateName: string) => {
+    setDownloadingCertId(certificateId);
+    downloadCertificate(
+      { id: certificateId },
+      {
+        onSuccess: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${certificateName}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          setDownloadingCertId(null);
+        },
+        onError: (error) => {
+          setDownloadingCertId(null);
+          setNotification({
+            show: true,
+            message: `Failed to download certificate: ${extractErrorMessage(error)}`,
+            type: 'error',
+          });
+        },
+      },
+    );
+  };
+
   return (
     <div className="min-h-screen bg-zinc-900 text-zinc-100 px-4 md:px-10 lg:px-16 py-6" style={{ fontFamily: 'Sora, sans-serif' }}>
       {/* Student accent bar */}
@@ -267,28 +299,47 @@ const MyStudentDashboard = () => {
               const isJoining = loadingCohortId === row.id;
 
               if (row.enrolled) {
+                const certificate = myCertificates?.find((c) => c.cohortId === row.id);
                 return (
-                  <button
-                    onClick={() => {
-                      if (userData?.id) {
-                        const params = new URLSearchParams({
-                          studentId: userData.id,
-                          cohortType: row.type,
-                          cohortId: row.id,
-                          ...(userData.name && { studentName: userData.name }),
-                          ...(userData.email && { studentEmail: userData.email }),
-                        });
-                        navigate(`/detailPage?${params.toString()}`);
-                      }
-                    }}
-                    className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-md transition-colors duration-150"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    View
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        if (userData?.id) {
+                          const params = new URLSearchParams({
+                            studentId: userData.id,
+                            cohortType: row.type,
+                            cohortId: row.id,
+                            ...(userData.name && { studentName: userData.name }),
+                            ...(userData.email && { studentEmail: userData.email }),
+                          });
+                          navigate(`/detailPage?${params.toString()}`);
+                        }
+                      }}
+                      className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-md transition-colors duration-150"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      View
+                    </button>
+                    {row.status === 'Completed' && certificate && (
+                      <button
+                        onClick={() => handleDownloadCertificate(certificate.id, `${row.name}-S${row.season}-certificate`)}
+                        disabled={isDownloading && downloadingCertId === certificate.id}
+                        className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 rounded-md transition-colors duration-150 disabled:opacity-50"
+                      >
+                        {isDownloading && downloadingCertId === certificate.id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border border-teal-400 border-t-transparent" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        )}
+                        Certificate
+                      </button>
+                    )}
+                  </>
                 );
               }
 

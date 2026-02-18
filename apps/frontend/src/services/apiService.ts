@@ -22,7 +22,9 @@ import type // Users
   UpdateScoresRequestDto,
   GetCohortLeaderboardResponseDto,
   // Teaching Assistants
-  GetTeachingAssistantResponseDto
+  GetTeachingAssistantResponseDto,
+  // Certificates
+  GetCertificateResponseDto
 } from '../types/api.ts';
 
 const COMMON_REQUEST_HEADERS = {
@@ -314,6 +316,54 @@ class ApiService {
       headers: this.getRequestHeaders(),
       method: 'GET',
       url: `/teaching-assistants/${id}`,
+    });
+    return data;
+  };
+  // =========================
+  // Certificates
+  // =========================
+
+  public generateCohortCertificates = async (cohortId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/certificates/cohort/${cohortId}/generate`,
+    });
+  };
+
+  public getMyCertificateForCohort = async (cohortId: string): Promise<GetCertificateResponseDto> => {
+    const { data } = await this.request<GetCertificateResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}/me`,
+    });
+    return data;
+  };
+
+  public getMyCertificates = async (): Promise<GetCertificateResponseDto[]> => {
+    const { data } = await this.request<GetCertificateResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/certificates/me',
+    });
+    return data;
+  };
+
+  public getCohortCertificates = async (cohortId: string): Promise<GetCertificateResponseDto[]> => {
+    const { data } = await this.request<GetCertificateResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}`,
+    });
+    return data;
+  };
+
+  public downloadCertificate = async (id: string): Promise<Blob> => {
+    const { data } = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/${id}/download`,
+      responseType: 'blob',
     });
     return data;
   };

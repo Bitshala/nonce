@@ -208,3 +208,20 @@ export interface LeaderboardEntryDto {
 }
 
 export type GetCohortLeaderboardResponseDto = LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] };
+
+// =========================
+// Certificates
+// =========================
+
+export type CertificateType = 'PARTICIPANT' | 'PERFORMER';
+
+export interface GetCertificateResponseDto {
+  id: string;
+  userId: string;
+  cohortId: string;
+  name: string;
+  certificateType: CertificateType;
+  withExercises: boolean;
+  rank: 1 | 2 | 3 | null;
+  createdAt: string;
+}
