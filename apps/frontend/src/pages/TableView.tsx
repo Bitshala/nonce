@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
 
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
@@ -23,7 +22,6 @@ import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
-import apiService from '../services/apiService';
 
 const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'];
 
@@ -130,7 +128,6 @@ const TableView: React.FC = () => {
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
         email: score.discordUsername ?? '', // discord username
-        userEmail: '',
         group: `Group ${groupNumber}`,
         ta: taName,
         attendance: Boolean(score.groupDiscussionScores?.attendance),
@@ -159,47 +156,6 @@ const TableView: React.FC = () => {
     setWeeklyData({week: weekIndex, attended: transformed.filter(s => s.attendance).length});
   }, [scoresData, scoresError, weekIndex]);
 
-  // === Fetch user emails ===
-  const userIds = useMemo(
-    () => (scoresData?.scores ?? []).map((s: any) => String(s.userId)).filter(Boolean),
-    [scoresData],
-  );
-
-  const userQueries = useQueries({
-    queries: userIds.map((uid) => ({
-      queryKey: ['user', uid],
-      queryFn: () => apiService.getUserById(uid),
-      staleTime: 10 * 60 * 1000,
-      enabled: userIds.length > 0,
-    })),
-  });
-
-  const emailMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    userIds.forEach((uid, i) => {
-      const result = userQueries[i];
-      if (result?.data?.email) {
-        map[uid] = result.data.email;
-      }
-    });
-    return map;
-  }, [userIds, userQueries]);
-
-  // Merge emails into table data when available
-  useEffect(() => {
-    if (Object.keys(emailMap).length === 0) return;
-    setData((prev) =>
-      prev.map((row) => {
-        const uid = String(row.userId ?? row.id);
-        const email = emailMap[uid];
-        if (email && email !== row.userEmail) {
-          return { ...row, userEmail: email };
-        }
-        return row;
-      }),
-    );
-  }, [emailMap]);
-
   // === Derived options ===
   const taOptions = useMemo(() => {
     if (!data || data.length === 0) return ['All TAs'];
@@ -222,7 +178,7 @@ const TableView: React.FC = () => {
     if (attendanceFilter === 'Absent') rows = rows.filter((p) => !p.attendance);
     if (searchTerm) rows = rows.filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchTerm.toLowerCase())
+      p.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (sortConfig.key) {
@@ -270,8 +226,7 @@ const TableView: React.FC = () => {
     const cohortType = cohortData?.type;
     const cohortId = cohortData?.id;
     const studentName = encodeURIComponent(student.name);
-    const studentEmail = encodeURIComponent(student.email || 'N/A');
-    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&studentEmail=${studentEmail}&from=table`);
+    navigate(`/detailPage?studentId=${studentId}&cohortType=${cohortType}&cohortId=${cohortId}&studentName=${studentName}&from=table`);
   }, [navigate, cohortData?.type, cohortData?.id]);
 
   const handleEditStudent = useCallback((student: TableRowData) => {
@@ -365,7 +320,7 @@ const TableView: React.FC = () => {
     const hasExercises = cohortHasExercises(cohortData?.type || '');
 
     const headers = [
-      'Name', 'Discord Name', 'Email', 'Group', 'TA', 'Attendance',
+      'Name', 'Discord Name', 'Group', 'TA', 'Attendance',
       'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
       'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
       ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
@@ -373,7 +328,7 @@ const TableView: React.FC = () => {
     ];
 
     const csvRows = rows.map((r) => [
-      r.name, r.email, r.userEmail, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.name, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
       r.gdScore.fa, r.gdScore.fb, r.gdScore.fc, r.gdScore.fd,
       r.bonusScore.attempt, r.bonusScore.good, r.bonusScore.followUp,
       ...(hasExercises ? [r.exerciseScore.Submitted ? 'Yes' : 'No', r.exerciseScore.privateTest ? 'Yes' : 'No'] : []),

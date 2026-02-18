@@ -91,10 +91,6 @@ export const StudentRow: React.FC<StudentRowProps> = ({
         <div className="text-sm text-zinc-900">{person.email || '-'}</div>
       </td>
 
-      <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
-        <div className="text-sm text-zinc-900">{person.userEmail || '-'}</div>
-      </td>
-
       {week > 0 && (
         <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
           <div className="text-sm text-zinc-900">{person.group}</div>
