@@ -153,7 +153,7 @@ const CohortTable = ({
               </td>
               {actions && (
                 <td className="px-6 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2 flex-nowrap" onClick={(e) => e.stopPropagation()}>
                     {actions(cohort)}
                   </div>
                 </td>
