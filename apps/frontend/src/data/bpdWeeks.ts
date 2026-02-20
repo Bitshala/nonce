@@ -3,7 +3,7 @@ import type { WeekContent } from '../types/instructions';
 export const bpdWeeks: WeekContent[] = [
   {
     week: 1,
-    title: "Welcome to the Bitcoin Protocol Development Seminar",
+    title: "Bitcoin Protocol Development Cohort",
     content: "## Reading Material\n- [Welcome to the Bitcoin Protocol Development Seminar](https://chaincode.gitbook.io/seminars/bitcoin-protocol-development/welcome-to-the-bitcoin-protocol)",
     gdQuestions: [
       "Why did Satoshi put so much stress on the irreversibility of transactions?",
