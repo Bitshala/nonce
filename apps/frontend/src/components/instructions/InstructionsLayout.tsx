@@ -4,7 +4,7 @@ import type { WeekContent } from '../../types/instructions';
 
 interface InstructionsLayoutProps {
   cohortName: string;
-  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK';
+  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK' | 'BITCOIN_PROTOCOL_DEVELOPMENT';
   weeklyContent: WeekContent[];
   activeWeek: number | 'links' | 'exercises';
   setActiveWeek: (week: number | 'links' | 'exercises') => void;
@@ -443,12 +443,23 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                       <div>
                         <h3 className="text-2xl font-bold mb-6 text-zinc-100">Bonus Round</h3>
                         <ol className="space-y-4 list-none">
-                          {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((question, index) => (
-                            <li key={index} className="flex items-start text-zinc-200 leading-relaxed text-lg">
-                              <span className="text-blue-400 mr-3 mt-1 font-semibold">{index + 1}.</span>
-                              <span>{question}</span>
-                            </li>
-                          ))}
+                          {weeklyContent.find(week => week.week === activeWeek)?.bonusQuestions?.map((item, index) => {
+                            const question = typeof item === 'string' ? item : item.question;
+                            const image = typeof item === 'string' ? undefined : item.image;
+                            return (
+                              <li key={index} className="text-zinc-200 leading-relaxed text-lg">
+                                <div className="flex items-start">
+                                  <span className="text-blue-400 mr-3 mt-1 font-semibold">{index + 1}.</span>
+                                  <span>{question}</span>
+                                </div>
+                                {image && (
+                                  <div className="mt-3 ml-8">
+                                    <img src={image} alt={`Question ${index + 1} reference`} className="max-w-full rounded-lg border border-zinc-700" />
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ol>
                       </div>
                     )}

@@ -7,11 +7,13 @@ import InstructionsLayout from '../../components/instructions/InstructionsLayout
 import { lnWeeks } from '../../data/lnWeeks';
 import { lbtclWeeks } from '../../data/lbtclWeeks';
 import { mbWeeks } from '../../data/mbWeeks';
+import { bpdWeeks } from '../../data/bpdWeeks';
 
 const cohortTypeToContent = {
   MASTERING_BITCOIN: { name: 'MB', weeks: mbWeeks },
   LEARNING_BITCOIN_FROM_COMMAND_LINE: { name: 'LBTCL', weeks: lbtclWeeks },
   MASTERING_LIGHTNING_NETWORK: { name: 'LN', weeks: lnWeeks },
+  BITCOIN_PROTOCOL_DEVELOPMENT: { name: 'BPD', weeks: bpdWeeks },
 } as const;
 
 const MyCohortInstructions: React.FC = () => {
@@ -77,7 +79,7 @@ const MyCohortInstructions: React.FC = () => {
   return (
     <InstructionsLayout
       cohortName={content.name}
-      cohortType={cohortData.type as 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK'}
+      cohortType={cohortData.type as 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK' | 'BITCOIN_PROTOCOL_DEVELOPMENT'}
       weeklyContent={content.weeks}
       activeWeek={activeWeek}
       setActiveWeek={setActiveWeek}

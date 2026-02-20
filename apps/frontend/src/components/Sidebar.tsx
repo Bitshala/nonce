@@ -36,6 +36,7 @@ const instructionLinks = [
   { label: 'Mastering Bitcoin', path: '/mb-instructions' },
   { label: 'Learning Bitcoin CLI', path: '/lbtcl-instructions' },
   { label: 'Lightning Network', path: '/ln-instructions' },
+  { label: 'Bitcoin Protocol Dev', path: '/bpd-instructions' },
 ];
 
 const getInitial = (name: string | null | undefined): string => {

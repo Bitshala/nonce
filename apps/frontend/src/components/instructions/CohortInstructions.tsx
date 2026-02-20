@@ -8,7 +8,7 @@ import InstructionsLayout from './InstructionsLayout';
 import type { WeekContent } from '../../types/instructions';
 
 interface CohortInstructionsProps {
-  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK';
+  cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK' | 'BITCOIN_PROTOCOL_DEVELOPMENT';
   cohortName: string;
   weeklyContent: WeekContent[];
 }

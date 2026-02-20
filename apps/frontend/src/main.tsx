@@ -22,6 +22,7 @@ import StudentCohortSelector from './pages/Students/studentCohortSelector.tsx';
 import MBInstructions from './pages/Students/MBInstructions.tsx';
 import LBTCLInstructions from './pages/Students/LBTCLInstructions.tsx';
 import LNInstructions from './pages/Students/LNInstructions.tsx';
+import BPDInstructions from './pages/Students/BPDInstructions.tsx';
 import GeneralInstructions from './pages/Students/GeneralInstructions.tsx';
 import StudentProfileData from './components/student/StudentProfileData.tsx';
 
@@ -71,6 +72,10 @@ const router = createBrowserRouter([
   {
     path: '/ln-instructions',
     element: <Layout><LNInstructions /></Layout>,
+  },
+  {
+    path: '/bpd-instructions',
+    element: <Layout><BPDInstructions /></Layout>,
   },
   {
     path: '/general-instructions',
