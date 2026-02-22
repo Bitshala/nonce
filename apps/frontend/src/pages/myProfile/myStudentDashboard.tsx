@@ -1,10 +1,24 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Button,
+  Chip,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Alert,
+  CircularProgress,
+} from '@mui/material';
+import { BookOpen, User, Eye, Download, UserPlus, Clock } from 'lucide-react';
 import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
 import { useMyCertificates, useDownloadCertificate } from '../../hooks/certificateHooks';
 import { CohortType } from '../../types/enums';
-import NotificationModal from '../../components/NotificationModal';
 import Tabs from '../../components/ui/Tabs';
 import CohortTable from '../../components/ui/CohortTable';
 import type { CohortRow } from '../../components/ui/CohortTable';
@@ -53,7 +67,6 @@ const MyStudentDashboard = () => {
 
   const myCohorts = data?.records || [];
 
-  // Build available cohorts (same logic as before)
   const availableCohorts = useMemo(() => {
     const filtered =
       allCohortsData?.records
@@ -77,7 +90,6 @@ const MyStudentDashboard = () => {
     });
   }, [allCohortsData, myCohorts]);
 
-  // Map all cohorts to table rows
   const allRows: DashboardCohortRow[] = useMemo(() => {
     const enrolledRows: DashboardCohortRow[] = myCohorts.map((c) => ({
       id: c.id,
@@ -237,191 +249,255 @@ const MyStudentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 px-4 md:px-10 lg:px-16 py-6" style={{ fontFamily: 'Sora, sans-serif' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#000', color: '#fafafa', px: { xs: 2, md: 5, lg: 8 }, py: 3 }}>
       {/* Student accent bar */}
-      <div className="h-1 bg-gradient-to-r from-teal-500 via-cyan-400 to-blue-500 rounded-full mb-6" />
+      <Box sx={{ height: 4, background: 'linear-gradient(to right, #14b8a6, #22d3ee, #3b82f6)', borderRadius: 2, mb: 3 }} />
 
       {/* Header */}
-      <div className="mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-xl bg-teal-500/15 border border-teal-500/25">
-              <svg className="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <div className=''>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-bold">My Dashboard</h1>
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/25">
-                  Student
-                </span>
-              </div>
-              <p className="text-zinc-400 text-sm mt-1">View and manage your cohorts.</p>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/me')}
-            className="b-0 inline-flex items-center gap-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 text-sm font-medium px-5 py-2.5 rounded-lg border border-teal-500/25 transition-colors duration-200"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Profile
-          </button>
-        </header>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(20,184,166,0.15)', border: '1px solid rgba(20,184,166,0.25)' }}>
+            <BookOpen size={24} color="#2dd4bf" />
+          </Box>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', md: '1.875rem' } }}>
+                My Dashboard
+              </Typography>
+              <Chip
+                label="Student"
+                size="small"
+                sx={{
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  bgcolor: 'rgba(20,184,166,0.15)',
+                  color: '#2dd4bf',
+                  border: '1px solid rgba(20,184,166,0.25)',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
+              />
+            </Box>
+            <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>
+              View and manage your cohorts.
+            </Typography>
+          </Box>
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<User size={16} />}
+          onClick={() => navigate('/me')}
+          sx={{
+            color: '#5eead4',
+            borderColor: 'rgba(20,184,166,0.25)',
+            bgcolor: 'rgba(20,184,166,0.1)',
+            textTransform: 'none',
+            fontWeight: 500,
+            fontSize: '0.875rem',
+            px: 2.5,
+            '&:hover': { bgcolor: 'rgba(20,184,166,0.2)', borderColor: 'rgba(20,184,166,0.4)' },
+          }}
+        >
+          Profile
+        </Button>
+      </Box>
 
-        {/* Tabs + Table */}
-        <div className="bg-zinc-800/50 rounded-xl border border-teal-500/20 overflow-hidden">
-          <div className="px-4 pt-3">
-            <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-          </div>
+      {/* Tabs + Table */}
+      <Paper sx={{ bgcolor: 'rgba(39,39,42,0.5)', borderRadius: 3, border: '1px solid rgba(20,184,166,0.2)', overflow: 'hidden' }}>
+        <Box sx={{ px: 2, pt: 1.5 }}>
+          <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+        </Box>
 
-          <CohortTable
-            cohorts={filteredCohorts}
-            loading={isLoading}
-            emptyMessage={`No ${activeTab.toLowerCase()} cohorts.`}
-            onRowClick={(cohort) => {
-              const row = cohort as DashboardCohortRow;
-              if (row.enrolled && userData?.id) {
-                const params = new URLSearchParams({
-                  studentId: userData.id,
-                  cohortType: row.type,
-                  cohortId: row.id,
-                  ...(userData.name && { studentName: userData.name }),
-                  ...(userData.email && { studentEmail: userData.email }),
-                });
-                navigate(`/detailPage?${params.toString()}`);
-              }
-            }}
-            actions={(cohort) => {
-              const row = cohort as DashboardCohortRow;
-              const isJoining = loadingCohortId === row.id;
+        <CohortTable
+          cohorts={filteredCohorts}
+          loading={isLoading}
+          emptyMessage={`No ${activeTab.toLowerCase()} cohorts.`}
+          onRowClick={(cohort) => {
+            const row = cohort as DashboardCohortRow;
+            if (row.enrolled && userData?.id) {
+              const params = new URLSearchParams({
+                studentId: userData.id,
+                cohortType: row.type,
+                cohortId: row.id,
+                ...(userData.name && { studentName: userData.name }),
+                ...(userData.email && { studentEmail: userData.email }),
+              });
+              navigate(`/detailPage?${params.toString()}`);
+            }
+          }}
+          actions={(cohort) => {
+            const row = cohort as DashboardCohortRow;
+            const isJoining = loadingCohortId === row.id;
 
-              if (row.enrolled) {
-                const certificate = myCertificates?.find((c) => c.cohortId === row.id);
-                return (
-                  <>
-                    <button
-                      onClick={() => {
-                        if (userData?.id) {
-                          const params = new URLSearchParams({
-                            studentId: userData.id,
-                            cohortType: row.type,
-                            cohortId: row.id,
-                            ...(userData.name && { studentName: userData.name }),
-                            ...(userData.email && { studentEmail: userData.email }),
-                          });
-                          navigate(`/detailPage?${params.toString()}`);
-                        }
-                      }}
-                      className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-md transition-colors duration-150"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      View
-                    </button>
-                    {row.status === 'Completed' && certificate && row.type !== 'MASTERING_LIGHTNING_NETWORK' && (
-                      <button
-                        onClick={() => handleDownloadCertificate(certificate.id, `${row.name}-S${row.season}-certificate`)}
-                        disabled={isDownloading && downloadingCertId === certificate.id}
-                        className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 rounded-md transition-colors duration-150 disabled:opacity-50"
-                      >
-                        {isDownloading && downloadingCertId === certificate.id ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border border-teal-400 border-t-transparent" />
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        )}
-                        Certificate
-                      </button>
-                    )}
-                  </>
-                );
-              }
-
-              // Available cohort - show Join or Waitlist
-              if (row.registrationOpen) {
-                return (
-                  <button
-                    onClick={() => handleJoinCohort(row.id, formatCohortType(row.type))}
-                    disabled={isJoining}
-                    className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-400 bg-green-500/10 hover:bg-green-500/20 rounded-md transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {isJoining ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border border-green-400 border-t-transparent" />
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                      </svg>
-                    )}
-                    Join
-                  </button>
-                );
-              }
-
+            if (row.enrolled) {
+              const certificate = myCertificates?.find((c) => c.cohortId === row.id);
               return (
-                <button
-                  onClick={() => row.cohortType && handleJoinWaitlist(row.id, row.cohortType)}
-                  disabled={isJoining}
-                  className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-md transition-colors duration-150 disabled:opacity-50"
-                >
-                  {isJoining ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border border-blue-400 border-t-transparent" />
-                  ) : (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <>
+                  <Button
+                    size="small"
+                    startIcon={<Eye size={14} />}
+                    onClick={() => {
+                      if (userData?.id) {
+                        const params = new URLSearchParams({
+                          studentId: userData.id,
+                          cohortType: row.type,
+                          cohortId: row.id,
+                          ...(userData.name && { studentName: userData.name }),
+                          ...(userData.email && { studentEmail: userData.email }),
+                        });
+                        navigate(`/detailPage?${params.toString()}`);
+                      }
+                    }}
+                    sx={{
+                      color: '#fb923c',
+                      bgcolor: 'rgba(249,115,22,0.1)',
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      fontSize: '0.75rem',
+                      px: 1.5,
+                      minWidth: 'auto',
+                      '&:hover': { bgcolor: 'rgba(249,115,22,0.2)' },
+                    }}
+                  >
+                    View
+                  </Button>
+                  {row.status === 'Completed' && certificate && row.type !== 'MASTERING_LIGHTNING_NETWORK' && (
+                    <Button
+                      size="small"
+                      startIcon={
+                        isDownloading && downloadingCertId === certificate.id
+                          ? <CircularProgress size={14} sx={{ color: '#2dd4bf' }} />
+                          : <Download size={14} />
+                      }
+                      disabled={isDownloading && downloadingCertId === certificate.id}
+                      onClick={() => handleDownloadCertificate(certificate.id, `${row.name}-S${row.season}-certificate`)}
+                      sx={{
+                        color: '#2dd4bf',
+                        bgcolor: 'rgba(20,184,166,0.1)',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        fontSize: '0.75rem',
+                        px: 1.5,
+                        minWidth: 'auto',
+                        '&:hover': { bgcolor: 'rgba(20,184,166,0.2)' },
+                        '&.Mui-disabled': { color: '#2dd4bf', opacity: 0.5 },
+                      }}
+                    >
+                      Certificate
+                    </Button>
                   )}
-                  Waitlist
-                </button>
+                </>
               );
-            }}
-          />
-        </div>
-      </div>
+            }
 
-      {/* Confirmation Modal */}
-      {confirmationModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-800 rounded-xl p-6 max-w-md w-full mx-4 border border-zinc-700">
-            <h3 className="text-lg font-bold text-white mb-3">
-              {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
-            </h3>
-            <p className="text-zinc-300 text-sm mb-6">
-              {confirmationModal.isWaitlist
-                ? `Are you sure you want to join the waitlist for ${confirmationModal.cohortName}?`
-                : `Are you sure you want to join the ${confirmationModal.cohortName} cohort?`}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={cancelJoinCohort}
-                className="b-0 px-4 py-2 bg-zinc-700 text-zinc-300 text-sm rounded-lg hover:bg-zinc-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmJoinCohort}
-                className="b-0 px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
-              >
-                {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            if (row.registrationOpen) {
+              return (
+                <Button
+                  size="small"
+                  startIcon={
+                    isJoining
+                      ? <CircularProgress size={14} sx={{ color: '#4ade80' }} />
+                      : <UserPlus size={14} />
+                  }
+                  disabled={isJoining}
+                  onClick={() => handleJoinCohort(row.id, formatCohortType(row.type))}
+                  sx={{
+                    color: '#4ade80',
+                    bgcolor: 'rgba(34,197,94,0.1)',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    px: 1.5,
+                    minWidth: 'auto',
+                    '&:hover': { bgcolor: 'rgba(34,197,94,0.2)' },
+                    '&.Mui-disabled': { color: '#4ade80', opacity: 0.5 },
+                  }}
+                >
+                  Join
+                </Button>
+              );
+            }
 
-      {/* Notification Modal */}
-      <NotificationModal
-        show={notification.show}
-        message={notification.message}
-        type={notification.type}
+            return (
+              <Button
+                size="small"
+                startIcon={
+                  isJoining
+                    ? <CircularProgress size={14} sx={{ color: '#60a5fa' }} />
+                    : <Clock size={14} />
+                }
+                disabled={isJoining}
+                onClick={() => row.cohortType && handleJoinWaitlist(row.id, row.cohortType)}
+                sx={{
+                  color: '#60a5fa',
+                  bgcolor: 'rgba(59,130,246,0.1)',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  px: 1.5,
+                  minWidth: 'auto',
+                  '&:hover': { bgcolor: 'rgba(59,130,246,0.2)' },
+                  '&.Mui-disabled': { color: '#60a5fa', opacity: 0.5 },
+                }}
+              >
+                Waitlist
+              </Button>
+            );
+          }}
+        />
+      </Paper>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmationModal.show}
+        onClose={cancelJoinCohort}
+        PaperProps={{
+          sx: { bgcolor: '#27272a', borderRadius: 3, border: '1px solid #3f3f46', maxWidth: 440 },
+        }}
+      >
+        <DialogTitle sx={{ color: '#fafafa', fontWeight: 700, fontSize: '1.125rem', pb: 1 }}>
+          {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
+            {confirmationModal.isWaitlist
+              ? `Are you sure you want to join the waitlist for ${confirmationModal.cohortName}?`
+              : `Are you sure you want to join the ${confirmationModal.cohortName} cohort?`}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button
+            onClick={cancelJoinCohort}
+            sx={{ color: '#d4d4d8', bgcolor: '#3f3f46', textTransform: 'none', '&:hover': { bgcolor: '#52525b' } }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmJoinCohort}
+            variant="contained"
+            sx={{ bgcolor: '#ea580c', textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&:hover': { bgcolor: '#c2410c' } }}
+          >
+            {confirmationModal.isWaitlist ? 'Join Waitlist' : 'Join Cohort'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.show}
+        autoHideDuration={5000}
         onClose={closeNotification}
-      />
-    </div>
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={closeNotification}
+          severity={notification.type === 'success' ? 'success' : 'error'}
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 500 }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+} from '@mui/material';
+import { AlertTriangle } from 'lucide-react';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
 import { useMyCohorts } from '../../hooks/cohortHooks';
@@ -22,23 +29,18 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   const [activeWeek, setActiveWeek] = useState<number | 'links' | 'exercises'>(1);
   const [error, setError] = useState<string | null>(null);
 
-  // Use hooks for data fetching
   const { data: userData, isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
   const { data: myCohortsData, isLoading: isLoadingCohorts } = useMyCohorts({ page: 0, pageSize: 100 });
 
-  // Check if user is TA or Admin
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
-  // Derive access from scoresData or admin/TA role
   const hasAccess = isAdminOrTA || (scoresData?.cohorts.some(
     (record) => record.cohortType === cohortType
   ) ?? false);
 
-  // Admins and TAs can view bonus questions
   const canViewBonusQuestions = isAdminOrTA;
 
-  // Get the user's season number from their latest enrolled cohort via API
   const myCohort = myCohortsData?.records
     .filter((c) => c.type === cohortType)
     .sort((a, b) => b.season - a.season)[0];
@@ -46,7 +48,6 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
 
   const isLoading = isLoadingUser || isLoadingScores || isLoadingCohorts;
 
-  // Set error if user doesn't have access
   useEffect(() => {
     if (!isLoading && scoresData && !hasAccess) {
       setError(`You need to be enrolled in a ${cohortType.replace(/_/g, ' ')} cohort to access these instructions.`);
@@ -55,48 +56,43 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
-        <div className="flex items-center space-x-3">
-          <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-white font-medium">Loading...</div>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', bgcolor: '#000' }}>
+        <CircularProgress sx={{ color: '#f97316' }} />
+      </Box>
     );
   }
 
   if (error || !hasAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 px-4 py-6">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-white">Access Restricted</h1>
-              <p className="text-zinc-300 max-w-md mx-auto">
-                {error || `You need to be enrolled in a ${cohortType.replace(/_/g, ' ')} cohort to access these instructions.`}
-              </p>
-              <div className="flex justify-center space-x-4 mt-6">
-                <button
-                  onClick={() => navigate('/me')}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-orange-800 focus:ring-2 focus:ring-orange-500/50 focus:outline-none transition-all duration-200"
-                >
-                  View Profile & Cohorts
-                </button>
-                <button
-                  onClick={() => navigate('/me')}
-                  className="px-6 py-3 bg-zinc-700 text-white font-semibold rounded-xl hover:bg-zinc-600 focus:ring-2 focus:ring-zinc-500/50 focus:outline-none transition-all duration-200"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#000', px: 2, py: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ textAlign: 'center', maxWidth: 480 }}>
+          <Box sx={{ width: 64, height: 64, mx: 'auto', mb: 3, bgcolor: 'rgba(239,68,68,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertTriangle size={32} color="#f87171" />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#fafafa', mb: 1.5 }}>
+            Access Restricted
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#a1a1aa', mb: 4, lineHeight: 1.6 }}>
+            {error || `You need to be enrolled in a ${cohortType.replace(/_/g, ' ')} cohort to access these instructions.`}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/me')}
+              sx={{ bgcolor: '#ea580c', '&:hover': { bgcolor: '#c2410c' }, textTransform: 'none', fontWeight: 600, boxShadow: 'none' }}
+            >
+              View Profile & Cohorts
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(-1 as any)}
+              sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}
+            >
+              Go Back
+            </Button>
+          </Box>
+        </Box>
+      </Box>
     );
   }
 

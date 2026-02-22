@@ -1,9 +1,45 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Button } from '@mui/material';
+import { ArrowLeft } from 'lucide-react';
 
 interface GeneralInstructionsProps {
   cohortName: string;
 }
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <Typography
+    variant="h5"
+    sx={{ fontWeight: 700, color: '#fb923c', mb: 2, fontSize: { xs: '1.4rem', sm: '1.65rem' } }}
+  >
+    {children}
+  </Typography>
+);
+
+const SubTitle = ({ children }: { children: React.ReactNode }) => (
+  <Typography sx={{ fontWeight: 600, color: '#fafafa', mb: 1, fontSize: '1.1rem' }}>
+    {children}
+  </Typography>
+);
+
+const Paragraph = ({ children }: { children: React.ReactNode }) => (
+  <Typography sx={{ color: '#d4d4d8', fontSize: '1rem', lineHeight: 1.8 }}>
+    {children}
+  </Typography>
+);
+
+const Highlight = ({ children, color = '#fb923c' }: { children: React.ReactNode; color?: string }) => (
+  <Box component="span" sx={{ color, fontWeight: 600 }}>
+    {children}
+  </Box>
+);
+
+const BulletItem = ({ children, color = '#fb923c' }: { children: React.ReactNode; color?: string }) => (
+  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
+    <Typography sx={{ color, fontSize: '1rem', lineHeight: 1.8, flexShrink: 0 }}>•</Typography>
+    <Typography sx={{ color: '#d4d4d8', fontSize: '1rem', lineHeight: 1.8 }}>{children}</Typography>
+  </Box>
+);
 
 const GeneralInstructions: React.FC<GeneralInstructionsProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -12,169 +48,142 @@ const GeneralInstructions: React.FC<GeneralInstructionsProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white">
-      <div className="max-w-4xl mx-auto px-8 py-12">
+    <Box sx={{ minHeight: '100vh', bgcolor: '#000', color: '#fafafa' }}>
+      <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, sm: 4, md: 6 }, py: { xs: 3, sm: 5 } }}>
+        {/* Back button */}
+        <Button
+          startIcon={<ArrowLeft size={18} />}
+          onClick={() => navigate(-1)}
+          sx={{
+            color: '#a1a1aa',
+            textTransform: 'none',
+            fontWeight: 500,
+            mb: 4,
+            px: 1.5,
+            '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.05)' },
+          }}
+        >
+          Back
+        </Button>
+
         {/* Header */}
-        <div className="mb-12">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-zinc-400 hover:text-white transition-colors mb-8 border-0 bg-transparent"
+        <Box sx={{ mb: 5 }}>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 800,
+              color: '#fb923c',
+              mb: 2,
+              fontSize: { xs: '2rem', sm: '2.5rem' },
+            }}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-          </button>
-
-          <h1 className="text-4xl font-bold mb-6 text-orange-400">Welcome to Bitshala Cohort</h1>
-          <p className="text-xl text-zinc-300 leading-relaxed">
+            Welcome to Bitshala Cohort
+          </Typography>
+          <Typography sx={{ color: '#a1a1aa', fontSize: '1.1rem', lineHeight: 1.7 }}>
             These general instructions are aimed at helping you navigate through the program successfully.
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
-        {/* Main Content */}
-        <div className="space-y-12">
+        {/* Sections */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {/* Introduction Session */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Introduction Session</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed space-y-4">
-              <p>
-                The program begins with an introductory session. This is an ice-breaker between participants and the Bitshala team where we share what to expect in the coming <span className="text-orange-400 font-semibold">8 weeks</span>. It would be a great place to introduce oneself, get to know each other, and discuss the course structure. We will also have an intro session by Bitshala Team on <span className="text-orange-400 font-semibold">Bitcoin dev career</span>!
-              </p>
-            </div>
-          </section>
+          <Box>
+            <SectionTitle>Introduction Session</SectionTitle>
+            <Paragraph>
+              The program begins with an introductory session. This is an ice-breaker between participants and the Bitshala team where we share what to expect in the coming <Highlight>8 weeks</Highlight>. It would be a great place to introduce oneself, get to know each other, and discuss the course structure. We will also have an intro session by Bitshala Team on <Highlight>Bitcoin dev career</Highlight>!
+            </Paragraph>
+          </Box>
 
           {/* Communication & Attendance */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Communication & Attendance</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed space-y-4">
-              <p>
-                <span className="text-blue-400 font-semibold">Discord</span> will be the primary means of communication. We will host all our sessions, discussions and doubt clearing on Discord, every week at the same time and same day. This will also be visible over your google calendar. Participants are expected to attend every week. We allow <span className="text-green-400 font-semibold">one absence</span> for emergencies or previous conflicts. If you miss more than <span className="text-red-400 font-semibold">2 meetings</span>, we advise you to re-join the next cohort. We do it every 2 months i.e. 8 weeks.
-              </p>
-              <p>
-                To begin with please introduce yourself at Bitshala Discord (in the <span className="text-blue-400 font-semibold">#Intro channel</span>). Say a little bit about yourself, what you do for work and something you do for fun. These groups work best when we get to know each other. If you don't want to use your personal photo as your icon, that is totally fine. Just please change it to a unique image.
-              </p>
-            </div>
-          </section>
+          <Box>
+            <SectionTitle>Communication & Attendance</SectionTitle>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Paragraph>
+                <Highlight color="#60a5fa">Discord</Highlight> will be the primary means of communication. We will host all our sessions, discussions and doubt clearing on Discord, every week at the same time and same day. This will also be visible over your google calendar. Participants are expected to attend every week. We allow <Highlight color="#4ade80">one absence</Highlight> for emergencies or previous conflicts. If you miss more than <Highlight color="#f87171">2 meetings</Highlight>, we advise you to re-join the next cohort. We do it every 2 months i.e. 8 weeks.
+              </Paragraph>
+              <Paragraph>
+                To begin with please introduce yourself at Bitshala Discord (in the <Highlight color="#60a5fa">#Intro channel</Highlight>). Say a little bit about yourself, what you do for work and something you do for fun. These groups work best when we get to know each other. If you don't want to use your personal photo as your icon, that is totally fine. Just please change it to a unique image.
+              </Paragraph>
+            </Box>
+          </Box>
 
           {/* Overview */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Overview of the Study Cohort</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Duration</h3>
-                <p>Weekly sessions.</p>
-              </div>
+          <Box>
+            <SectionTitle>Overview of the Study Cohort</SectionTitle>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box>
+                <SubTitle>Duration</SubTitle>
+                <Paragraph>Weekly sessions.</Paragraph>
+              </Box>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Registered Participants</h3>
-                <ul className="space-y-2 ml-6">
-                  <li className="flex items-start">
-                    <span className="text-orange-400 mr-3">•</span>
-                    <span>Registered participants will be enrolled</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-orange-400 mr-3">•</span>
-                    <span>Participants will be provided with weekly question sets</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-orange-400 mr-3">•</span>
-                    <span>They are required to prepare by reading designated chapters and completing any practice examples in the book</span>
-                  </li>
-                </ul>
-              </div>
+              <Box>
+                <SubTitle>Registered Participants</SubTitle>
+                <Box sx={{ pl: 1 }}>
+                  <BulletItem>Registered participants will be enrolled</BulletItem>
+                  <BulletItem>Participants will be provided with weekly question sets</BulletItem>
+                  <BulletItem>They are required to prepare by reading designated chapters and completing any practice examples in the book</BulletItem>
+                </Box>
+              </Box>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Open Participation</h3>
-                <ul className="space-y-2 ml-6">
-                  <li className="flex items-start">
-                    <span className="text-orange-400 mr-3">•</span>
-                    <span>Non-registered participants are welcome to attend and benefit from the discussions but will not be profiled or receive certificates.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </section>
+              <Box>
+                <SubTitle>Open Participation</SubTitle>
+                <Box sx={{ pl: 1 }}>
+                  <BulletItem>Non-registered participants are welcome to attend and benefit from the discussions but will not be profiled or receive certificates.</BulletItem>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
 
           {/* Session Structure */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Session Structure</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed space-y-4">
-              <h3 className="text-xl font-semibold mb-3 text-zinc-100">60-Minute Group Discussion</h3>
-              <ul className="space-y-2 ml-6">
-                <li className="flex items-start">
-                  <span className="text-green-400 mr-3">•</span>
-                  <span>All the participants will show up in one voice channel with the Teaching Assistants (TAs)</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-400 mr-3">•</span>
-                  <span>Questions will be allocated to participants within each group, with priority given to registered participants</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-purple-400 mr-3">•</span>
-                  <span>TAs will facilitate the discussion, assess answers, and provide feedback</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-orange-400 mr-3">•</span>
-                  <span>Participants can seek clarification on concepts and exercises from the chapter</span>
-                </li>
-              </ul>
-            </div>
-          </section>
+          <Box>
+            <SectionTitle>Session Structure</SectionTitle>
+            <SubTitle>60-Minute Group Discussion</SubTitle>
+            <Box sx={{ pl: 1 }}>
+              <BulletItem color="#4ade80">All the participants will show up in one voice channel with the Teaching Assistants (TAs)</BulletItem>
+              <BulletItem color="#60a5fa">Questions will be allocated to participants within each group, with priority given to registered participants</BulletItem>
+              <BulletItem color="#a78bfa">TAs will facilitate the discussion, assess answers, and provide feedback</BulletItem>
+              <BulletItem color="#fb923c">Participants can seek clarification on concepts and exercises from the chapter</BulletItem>
+            </Box>
+          </Box>
 
           {/* Participant Profiling */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Participant Profiling and Evaluation</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Grading</h3>
-                <p>Participants will be evaluated by TAs based on their answers and demonstrated technical competency.</p>
-              </div>
+          <Box>
+            <SectionTitle>Participant Profiling and Evaluation</SectionTitle>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box>
+                <SubTitle>Grading</SubTitle>
+                <Paragraph>Participants will be evaluated by TAs based on their answers and demonstrated technical competency.</Paragraph>
+              </Box>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Performance Profiling</h3>
-                <ul className="space-y-2 ml-6">
-                  <li className="flex items-start">
-                    <span className="text-green-400 mr-3">•</span>
-                    <span>Profiles will include strengths, areas for improvement, and overall progress.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-400 mr-3">•</span>
-                    <span>These profiles will serve as feedback for the participants and guide TAs in providing targeted support.</span>
-                  </li>
-                </ul>
-              </div>
+              <Box>
+                <SubTitle>Performance Profiling</SubTitle>
+                <Box sx={{ pl: 1 }}>
+                  <BulletItem color="#4ade80">Profiles will include strengths, areas for improvement, and overall progress.</BulletItem>
+                  <BulletItem color="#60a5fa">These profiles will serve as feedback for the participants and guide TAs in providing targeted support.</BulletItem>
+                </Box>
+              </Box>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-3 text-zinc-100">Completion Certificate</h3>
-                <p>Certificates will be awarded to <span className="text-green-400 font-semibold">registered participants</span> who actively participate and perform satisfactorily throughout the cohort.</p>
-              </div>
-            </div>
-          </section>
+              <Box>
+                <SubTitle>Completion Certificate</SubTitle>
+                <Paragraph>
+                  Certificates will be awarded to <Highlight color="#4ade80">registered participants</Highlight> who actively participate and perform satisfactorily throughout the cohort.
+                </Paragraph>
+              </Box>
+            </Box>
+          </Box>
 
           {/* Open Participation Policy */}
-          <section>
-            <h2 className="text-3xl font-bold mb-6 text-orange-400">Open Participation Policy</h2>
-            <div className="text-zinc-200 text-lg leading-relaxed">
-              <ul className="space-y-2 ml-6">
-                <li className="flex items-start">
-                  <span className="text-green-400 mr-3">•</span>
-                  <span>Non-registered participants are encouraged to join and benefit from the discussions.</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-400 mr-3">•</span>
-                  <span>However, they will not be profiled, graded, or eligible for completion certificates.</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-400 mr-3">•</span>
-                  <span>Priority to answer questions will be given to registered participants.</span>
-                </li>
-              </ul>
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
+          <Box>
+            <SectionTitle>Open Participation Policy</SectionTitle>
+            <Box sx={{ pl: 1 }}>
+              <BulletItem color="#4ade80">Non-registered participants are encouraged to join and benefit from the discussions.</BulletItem>
+              <BulletItem color="#f87171">However, they will not be profiled, graded, or eligible for completion certificates.</BulletItem>
+              <BulletItem color="#60a5fa">Priority to answer questions will be given to registered participants.</BulletItem>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

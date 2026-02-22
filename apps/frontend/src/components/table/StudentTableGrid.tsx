@@ -1,4 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TableSortLabel,
+  Paper,
+  Typography,
+  Box,
+} from '@mui/material';
 import { StudentRow } from './StudentRow';
 import type { TableRowData } from '../../types/student';
 
@@ -16,6 +28,17 @@ interface StudentTableGridProps {
   onContextMenu: (menu: { visible: boolean; x: number; y: number; targetId: number | null }) => void;
 }
 
+const headerSx = {
+  backgroundColor: '#fed7aa',
+  color: '#3f3f46',
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.05em',
+  borderBottom: '1px solid #e4e4e7',
+  whiteSpace: 'nowrap' as const,
+};
+
 export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
   data,
   week,
@@ -26,7 +49,18 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
   onEditStudent,
   onContextMenu,
 }) => {
+  const isOrientation = week === 0;
   const showExerciseScores = cohortType !== 'MASTERING_BITCOIN';
+
+  // Determine which score columns to show based on whether any row has data
+  // For week 0 (Orientation), only show attendance — hide GD, Bonus, Exercise
+  const hasGdScores = useMemo(() => !isOrientation && data.some(d => d.gdScore !== null), [data, isOrientation]);
+  const hasBonusScores = useMemo(() => !isOrientation && data.some(d => d.bonusScore !== null), [data, isOrientation]);
+  const hasExerciseScores = useMemo(
+    () => !isOrientation && showExerciseScores && data.some(d => d.exerciseScore !== null),
+    [data, showExerciseScores, isOrientation]
+  );
+
   const requestSort = (key: keyof TableRowData) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -35,155 +69,177 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
     onSort({ key, direction });
   };
 
-  const getSortIndicator = (key: keyof TableRowData) =>
-    sortConfig.key === key
-      ? sortConfig.direction === 'ascending'
-        ? ' 🔼'
-        : ' 🔽'
-      : '';
+  const getSortDirection = (key: keyof TableRowData): 'asc' | 'desc' | undefined => {
+    if (sortConfig.key !== key) return undefined;
+    return sortConfig.direction === 'ascending' ? 'asc' : 'desc';
+  };
 
   return (
-    <div className="shadow-lg overflow-hidden bg-white rounded-lg border border-zinc-200">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-zinc-200">
-          <thead className="bg-zinc-50 sticky top-0 z-10 shadow-sm">
-            <tr>
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 uppercase hover:bg-orange-50 tracking-wider align-middle cursor-pointer bg-orange-200 transition-colors duration-200 border-b border-zinc-200"
+    <Paper
+      elevation={3}
+      sx={{
+        borderRadius: 2,
+        overflow: 'hidden',
+        border: '1px solid #e4e4e7',
+      }}
+    >
+      <TableContainer>
+        <Table stickyHeader sx={{ minWidth: 650 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell
+                sx={{ ...headerSx, cursor: 'pointer', '&:hover': { backgroundColor: '#fff7ed' }, position: 'sticky', top: 0, zIndex: 3 }}
                 onClick={() => requestSort('name')}
               >
-                Name{getSortIndicator('name')}
-              </th>
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 uppercase hover:bg-orange-50 tracking-wider align-middle bg-orange-200 hidden sm:table-cell border-b border-zinc-200"
+                <TableSortLabel
+                  active={sortConfig.key === 'name'}
+                  direction={getSortDirection('name') || 'asc'}
+                  sx={{
+                    color: 'inherit !important',
+                    '& .MuiTableSortLabel-icon': { color: '#3f3f46 !important' },
+                  }}
+                >
+                  Name
+                </TableSortLabel>
+              </TableCell>
+
+              <TableCell
+                sx={{
+                  ...headerSx,
+                  position: 'sticky', top: 0, zIndex: 3,
+                  display: { xs: 'none', sm: 'table-cell' },
+                }}
               >
                 Discord Name
-              </th>
+              </TableCell>
+
               {week > 0 && (
-                <th
-                  scope="col"
-                  rowSpan={2}
-                  className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 hover:bg-orange-50 bg-orange-200 uppercase tracking-wider hidden sm:table-cell align-middle cursor-pointer transition-colors duration-200 border-b border-zinc-200"
+                <TableCell
+                  sx={{
+                    ...headerSx,
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: '#fff7ed' },
+                    position: 'sticky', top: 0, zIndex: 3,
+                    display: { xs: 'none', sm: 'table-cell' },
+                  }}
                   onClick={() => requestSort('group')}
                 >
-                  Group{getSortIndicator('group')}
-                </th>
+                  <TableSortLabel
+                    active={sortConfig.key === 'group'}
+                    direction={getSortDirection('group') || 'asc'}
+                    sx={{
+                      color: 'inherit !important',
+                      '& .MuiTableSortLabel-icon': { color: '#3f3f46 !important' },
+                    }}
+                  >
+                    Group
+                  </TableSortLabel>
+                </TableCell>
               )}
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 hover:bg-orange-50 bg-orange-200 uppercase tracking-wider hidden md:table-cell align-middle border-b border-zinc-200"
+
+              <TableCell
+                sx={{
+                  ...headerSx,
+                  position: 'sticky', top: 0, zIndex: 3,
+                  display: { xs: 'none', md: 'table-cell' },
+                }}
               >
                 TA
-              </th>
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-left text-xs font-semibold text-zinc-700 hover:bg-orange-50 bg-orange-200 uppercase tracking-wider hidden lg:table-cell align-middle border-b border-zinc-200"
-              >
-                Attendance
-              </th>
-              <th
-                scope="col"
-                colSpan={4}
-                className="px-8 py-4 text-center text-xs font-semibold hover:bg-orange-50 uppercase tracking-wider bg-orange-200 text-zinc-700 border-b border-zinc-200"
-              >
-                GD SCORE
-              </th>
-              <th
-                scope="col"
-                colSpan={3}
-                className="px-8 py-4 text-center text-xs font-semibold hover:bg-orange-50 uppercase tracking-wider bg-orange-200 text-zinc-700 border-b border-zinc-200"
-              >
-                BONUS SCORE
-              </th>
-              {showExerciseScores && (
-                <th
-                  scope="col"
-                  colSpan={2}
-                  className="px-8 py-4 text-center text-xs font-semibold hover:bg-orange-50 text-orange-700 uppercase tracking-wider bg-orange-200 text-zinc-700 border-b border-zinc-200"
+              </TableCell>
+
+              {hasGdScores && (
+                <TableCell
+                  sx={{
+                    ...headerSx,
+                    position: 'sticky', top: 0, zIndex: 3,
+                    display: { xs: 'none', lg: 'table-cell' },
+                  }}
                 >
-                  EXERCISE SCORES
-                </th>
+                  Attendance
+                </TableCell>
               )}
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-center text-xs font-semibold text-zinc-700 uppercase tracking-wider align-middle cursor-pointer hover:bg-orange-50 bg-orange-200 text-zinc-700 transition-colors duration-200 border-b border-zinc-200"
+
+              {hasGdScores && (
+                <TableCell
+                  align="center"
+                  sx={{ ...headerSx, position: 'sticky', top: 0, zIndex: 3 }}
+                >
+                  GD Score
+                </TableCell>
+              )}
+
+              {hasBonusScores && (
+                <TableCell
+                  align="center"
+                  sx={{ ...headerSx, position: 'sticky', top: 0, zIndex: 3 }}
+                >
+                  Bonus
+                </TableCell>
+              )}
+
+              {hasExerciseScores && (
+                <TableCell
+                  align="center"
+                  sx={{ ...headerSx, position: 'sticky', top: 0, zIndex: 3 }}
+                >
+                  Exercise
+                </TableCell>
+              )}
+
+              <TableCell
+                align="center"
+                sx={{
+                  ...headerSx,
+                  cursor: 'pointer',
+                  '&:hover': { backgroundColor: '#fff7ed' },
+                  position: 'sticky', top: 0, zIndex: 3,
+                }}
                 onClick={() => requestSort('total')}
               >
-                Total{getSortIndicator('total')}
-              </th>
-              <th
-                scope="col"
-                rowSpan={2}
-                className="px-8 py-4 text-center text-xs font-semibold text-zinc-700 uppercase tracking-wider align-middle bg-orange-200 border-b border-zinc-200"
+                <TableSortLabel
+                  active={sortConfig.key === 'total'}
+                  direction={getSortDirection('total') || 'asc'}
+                  sx={{
+                    color: 'inherit !important',
+                    '& .MuiTableSortLabel-icon': { color: '#3f3f46 !important' },
+                  }}
+                >
+                  Total
+                </TableSortLabel>
+              </TableCell>
+
+              <TableCell
+                align="center"
+                sx={{ ...headerSx, position: 'sticky', top: 0, zIndex: 3 }}
               >
                 Actions
-              </th>
-            </tr>
-            <tr className="bg-zinc-50">
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Communication
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Depth Of Answer
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Technical Bitcoin Fluency
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Engagement
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Attempt
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Good
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                Follow Up
-              </th>
-              {showExerciseScores && (
-                <>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                    Submitted
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-600 uppercase tracking-wider bg-orange-100 border-b border-zinc-200">
-                    Github Test
-                  </th>
-                </>
-              )}
-            </tr>
-          </thead>
+              </TableCell>
+            </TableRow>
+          </TableHead>
 
-          <tbody className="bg-white divide-y divide-zinc-200">
+          <TableBody>
             {data.map(person => (
               <StudentRow
                 key={person.id}
                 person={person}
                 week={week}
-                showExerciseScores={showExerciseScores}
+                showGdScores={hasGdScores}
+                showBonusScores={hasBonusScores}
+                showExerciseScores={hasExerciseScores}
                 onStudentClick={onStudentClick}
                 onEditStudent={onEditStudent}
                 onContextMenu={onContextMenu}
               />
             ))}
-          </tbody>
-        </table>
-      </div>
-      
-      {data.length === 0 && (
-        <div className="text-center py-10 text-zinc-500">
-          No data available.
-        </div>
-      )}
-      
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-    </div>
+      {data.length === 0 && (
+        <Box sx={{ textAlign: 'center', py: 5 }}>
+          <Typography color="text.secondary">No data available.</Typography>
+        </Box>
+      )}
+    </Paper>
   );
 };

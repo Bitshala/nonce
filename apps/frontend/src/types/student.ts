@@ -47,13 +47,14 @@ export interface TableRowData {
   userId: number;
   id: number;
   name: string;
+  discordGlobalName: string;
   email: string;
   group: string;
   ta: string;
   attendance: boolean;
-  gdScore: GdScore;
-  bonusScore: BonusScore;
-  exerciseScore: ExerciseScore;
+  gdScore: GdScore | null;
+  bonusScore: BonusScore | null;
+  exerciseScore: ExerciseScore | null;
   week?: number;
   total: number;
 }

@@ -1,4 +1,15 @@
 import type { ReactNode } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Box,
+  CircularProgress,
+} from '@mui/material';
 import StatusBadge from './StatusBadge';
 
 export type CohortRow = {
@@ -34,6 +45,24 @@ const formatDate = (iso: string): string => {
   }
 };
 
+const headerCellSx = {
+  color: '#71717a',
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.05em',
+  borderBottom: '1px solid rgba(63,63,70,0.5)',
+  py: 2,
+  px: 3,
+  whiteSpace: 'nowrap' as const,
+};
+
+const bodyCellSx = {
+  borderBottom: '1px solid rgba(63,63,70,0.3)',
+  py: 2.5,
+  px: 3,
+};
+
 const CohortTable = ({
   cohorts,
   onRowClick,
@@ -43,20 +72,18 @@ const CohortTable = ({
 }: CohortTableProps) => {
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-zinc-600 border-t-orange-500" />
-          <p className="text-zinc-400 text-base">Loading cohorts...</p>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, py: 10 }}>
+        <CircularProgress size={36} sx={{ color: '#f97316' }} />
+        <Typography variant="body2" sx={{ color: '#71717a' }}>Loading cohorts...</Typography>
+      </Box>
     );
   }
 
   if (cohorts.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-zinc-500 text-base">{emptyMessage}</p>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+        <Typography variant="body2" sx={{ color: '#71717a' }}>{emptyMessage}</Typography>
+      </Box>
     );
   }
 
@@ -65,104 +92,92 @@ const CohortTable = ({
   const hasApplications = cohorts.some((c) => c.applications !== undefined);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-zinc-700/50">
-            <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-              Cohort
-            </th>
-            <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-              Season
-            </th>
-            <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-              Status
-            </th>
+    <TableContainer>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={headerCellSx}>Cohort</TableCell>
+            <TableCell sx={headerCellSx}>Season</TableCell>
+            <TableCell sx={headerCellSx}>Status</TableCell>
             {hasWeeks && (
-              <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider hidden sm:table-cell">
-                Weeks
-              </th>
+              <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Weeks</TableCell>
             )}
             {hasParticipants && (
-              <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider hidden sm:table-cell">
-                Participants
-              </th>
+              <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Participants</TableCell>
             )}
             {hasApplications && (
-              <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider hidden sm:table-cell">
-                Applications
-              </th>
+              <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Applications</TableCell>
             )}
-            <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider hidden md:table-cell">
-              Start Date
-            </th>
-            <th className="text-left px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider hidden md:table-cell">
-              End Date
-            </th>
-            {actions && (
-              <th className="text-right px-6 py-4 text-sm font-semibold text-zinc-500 uppercase tracking-wider">
-                Actions
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-700/30">
+            <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>Start Date</TableCell>
+            <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>End Date</TableCell>
+            {actions && <TableCell sx={{ ...headerCellSx, textAlign: 'right' }}>Actions</TableCell>}
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {cohorts.map((cohort) => (
-            <tr
+            <TableRow
               key={cohort.id}
+              hover
               onClick={() => onRowClick?.(cohort)}
-              className={`transition-colors duration-150 ${
-                onRowClick ? 'cursor-pointer hover:bg-zinc-700/30' : ''
-              }`}
+              sx={{
+                cursor: onRowClick ? 'pointer' : 'default',
+                '&:hover': { bgcolor: 'rgba(63,63,70,0.3)' },
+                transition: 'background-color 150ms',
+              }}
             >
-              <td className="px-6 py-5">
-                <span className="text-base font-medium text-zinc-100">{cohort.name}</span>
-              </td>
-              <td className="px-6 py-5">
-                <span className="text-base text-zinc-300">S{cohort.season}</span>
-              </td>
-              <td className="px-6 py-5">
+              <TableCell sx={bodyCellSx}>
+                <Typography variant="body2" sx={{ fontWeight: 500, color: '#fafafa' }}>
+                  {cohort.name}
+                </Typography>
+              </TableCell>
+              <TableCell sx={bodyCellSx}>
+                <Typography variant="body2" sx={{ color: '#d4d4d8' }}>S{cohort.season}</Typography>
+              </TableCell>
+              <TableCell sx={bodyCellSx}>
                 <StatusBadge status={cohort.status} />
-              </td>
+              </TableCell>
               {hasWeeks && (
-                <td className="px-6 py-5 hidden sm:table-cell">
-                  <span className="text-base text-zinc-300">
+                <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                  <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
                     {cohort.weeks !== undefined ? cohort.weeks : '-'}
-                  </span>
-                </td>
+                  </Typography>
+                </TableCell>
               )}
               {hasParticipants && (
-                <td className="px-6 py-5 hidden sm:table-cell">
-                  <span className="text-base text-zinc-300">
+                <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                  <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
                     {cohort.participants !== undefined ? cohort.participants : '-'}
-                  </span>
-                </td>
+                  </Typography>
+                </TableCell>
               )}
               {hasApplications && (
-                <td className="px-6 py-5 hidden sm:table-cell">
-                  <span className="text-base text-zinc-300">
+                <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                  <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
                     {cohort.applications !== undefined ? cohort.applications : '-'}
-                  </span>
-                </td>
+                  </Typography>
+                </TableCell>
               )}
-              <td className="px-6 py-5 hidden md:table-cell">
-                <span className="text-base text-zinc-400">{formatDate(cohort.startDate)}</span>
-              </td>
-              <td className="px-6 py-5 hidden md:table-cell">
-                <span className="text-base text-zinc-400">{formatDate(cohort.endDate)}</span>
-              </td>
+              <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', md: 'table-cell' } }}>
+                <Typography variant="body2" sx={{ color: '#a1a1aa' }}>{formatDate(cohort.startDate)}</Typography>
+              </TableCell>
+              <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', md: 'table-cell' } }}>
+                <Typography variant="body2" sx={{ color: '#a1a1aa' }}>{formatDate(cohort.endDate)}</Typography>
+              </TableCell>
               {actions && (
-                <td className="px-6 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+                <TableCell sx={{ ...bodyCellSx, textAlign: 'right' }}>
+                  <Box
+                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {actions(cohort)}
-                  </div>
-                </td>
+                  </Box>
+                </TableCell>
               )}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 

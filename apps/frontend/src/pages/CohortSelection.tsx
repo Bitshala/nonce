@@ -1,6 +1,36 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Chip,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
+  CircularProgress,
+  Snackbar,
+} from '@mui/material';
+import {
+  Settings,
+  Download,
+  Plus,
+  X,
+  Pencil,
+  Award,
+} from 'lucide-react';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { useGenerateCohortCertificates } from '../hooks/certificateHooks';
@@ -15,6 +45,24 @@ import { cohortTypeToName } from '../helpers/cohortHelpers';
 import { computeStatus, COHORT_TYPES } from '../utils/cohortUtils';
 import { getTodayDate, calculateEndDate, calculateStartDate, calculateRegistrationDeadline, formatDateForInput } from '../utils/dateUtils';
 import { downloadCSV } from '../utils/csvUtils';
+
+const inputSx = {
+  '& .MuiOutlinedInput-root': {
+    bgcolor: '#18181b',
+    color: '#fafafa',
+    '& fieldset': { borderColor: '#52525b' },
+    '&:hover fieldset': { borderColor: '#f97316' },
+    '&.Mui-focused fieldset': { borderColor: '#f97316' },
+    '&.Mui-disabled': { bgcolor: '#18181b' },
+    '&.Mui-disabled fieldset': { borderColor: '#3f3f46' },
+  },
+  '& .MuiInputLabel-root': { color: '#d4d4d8' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+  '& .MuiInputLabel-root.Mui-disabled': { color: '#a1a1aa' },
+  '& .MuiInputBase-input': { color: '#fafafa' },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#a1a1aa' },
+  '& .MuiSelect-icon': { color: '#d4d4d8' },
+};
 
 export const CohortSelection = () => {
   const navigate = useNavigate();
@@ -44,11 +92,11 @@ export const CohortSelection = () => {
   const [formHasExercises, setFormHasExercises] = useState<boolean>(true);
   const [lastChangedField, setLastChangedField] = useState<'startDate' | 'endDate' | null>(null);
 
-  // Popup state
-  const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
-    show: false,
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
     message: '',
-    type: 'success',
+    severity: 'success',
   });
 
   // Auto-calculate end date in create mode
@@ -78,8 +126,7 @@ export const CohortSelection = () => {
     }
   }, [lastChangedField, formStartDate, formEndDate, formWeeks, isEditMode]);
 
-  // ── Participant counts via leaderboard ──
-
+  // Participant counts via leaderboard
   const cohortIds = useMemo(() => (data?.records ?? []).map((r) => r.id), [data]);
 
   const leaderboardQueries = useQueries({
@@ -104,8 +151,7 @@ export const CohortSelection = () => {
     return counts;
   }, [cohortIds, leaderboardQueries]);
 
-  // ── Table data ──
-
+  // Table data
   const cohorts = useMemo(() => {
     const records: ApiCohort[] = data?.records ?? [];
     return records.map((c) => ({
@@ -156,8 +202,7 @@ export const CohortSelection = () => {
     );
   }, [grouped, activeTab]);
 
-  // ── Modal helpers ──
-
+  // Modal helpers
   const openCreateModal = () => {
     setIsEditMode(false);
     setSelectedCohort(null);
@@ -175,7 +220,6 @@ export const CohortSelection = () => {
   const openEditModal = (cohort: CohortRow) => {
     const dto = data?.records?.find((r) => r.id === cohort.id);
     if (!dto) return;
-
     setIsEditMode(true);
     setSelectedCohort(dto);
     setSelectedCohortType(dto.type as CohortType);
@@ -196,11 +240,7 @@ export const CohortSelection = () => {
       {
         onSuccess: () => {
           setGeneratingCohortId(null);
-          setPopup({
-            show: true,
-            message: `Certificates generated successfully for ${cohortName}!`,
-            type: 'success',
-          });
+          setSnackbar({ open: true, message: `Certificates generated for ${cohortName}!`, severity: 'success' });
         },
         onError: (error) => {
           setGeneratingCohortId(null);
@@ -209,7 +249,7 @@ export const CohortSelection = () => {
             const re = error as { response?: { data?: { message?: string } } };
             if (re.response?.data?.message) errorMessage = re.response.data.message;
           }
-          setPopup({ show: true, message: errorMessage, type: 'error' });
+          setSnackbar({ open: true, message: errorMessage, severity: 'error' });
         },
       },
     );
@@ -232,12 +272,12 @@ export const CohortSelection = () => {
     e.preventDefault();
 
     if (!isEditMode && !selectedCohortType) {
-      setPopup({ show: true, message: 'Please select a cohort type.', type: 'error' });
+      setSnackbar({ open: true, message: 'Please select a cohort type.', severity: 'error' });
       return;
     }
 
     if (!formStartDate || !formEndDate || !formRegDeadline) {
-      setPopup({ show: true, message: 'Please fill in all required fields.', type: 'error' });
+      setSnackbar({ open: true, message: 'Please fill in all required fields.', severity: 'error' });
       return;
     }
 
@@ -248,7 +288,7 @@ export const CohortSelection = () => {
           body: { startDate: formStartDate, endDate: formEndDate, registrationDeadline: formRegDeadline },
         });
         await refetch();
-        setPopup({ show: true, message: 'Cohort updated successfully!', type: 'success' });
+        setSnackbar({ open: true, message: 'Cohort updated successfully!', severity: 'success' });
       } else if (selectedCohortType) {
         await createCohortMutation.mutateAsync({
           type: selectedCohortType,
@@ -260,7 +300,7 @@ export const CohortSelection = () => {
           hasExercises: formHasExercises,
         });
         await refetch();
-        setPopup({ show: true, message: 'Cohort created successfully!', type: 'success' });
+        setSnackbar({ open: true, message: 'Cohort created successfully!', severity: 'success' });
       }
       closeModal();
     } catch (err) {
@@ -269,75 +309,129 @@ export const CohortSelection = () => {
         const re = err as { response?: { data?: { message?: string } } };
         if (re.response?.data?.message) errorMessage = re.response.data.message;
       }
-      setPopup({ show: true, message: errorMessage, type: 'error' });
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
   };
 
-  // ── Render ──
-
+  // Render
   return (
-    <div className="min-h-screen bg-zinc-900 px-4 md:px-10 lg:px-16 py-6" style={{ fontFamily: 'Sora, sans-serif' }}>
-      {/* Admin accent bar */}
-      <div className="h-1 bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 rounded-full mb-6" />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#000', px: { xs: 2, md: 5, lg: 8 }, py: 3, fontFamily: 'Sora, sans-serif' }}>
+      {/* Accent bar */}
+      <Box sx={{ height: 4, background: 'linear-gradient(to right, #f97316, #fb923c, #f59e0b)', borderRadius: 2, mb: 4 }} />
 
-      <div className="mx-auto">
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-xl bg-orange-500/15 border border-orange-500/25">
-              <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-bold text-zinc-100">Cohort Selection</h1>
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-500/15 text-orange-400 border border-orange-500/25">
-                  Admin
-                </span>
-              </div>
-              <p className="text-zinc-400 text-sm mt-1">Select a cohort to manage students.</p>
-            </div>
-          </div>
-        </div>
+      <Box sx={{ mx: 'auto' }}>
+        {/* Page Header */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 4 }}>
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'flex' },
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 48,
+              height: 48,
+              borderRadius: 2.5,
+              bgcolor: 'rgba(249,115,22,0.15)',
+              border: '1px solid rgba(249,115,22,0.25)',
+              flexShrink: 0,
+            }}
+          >
+            <Settings size={24} color="#fb923c" />
+          </Box>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#fafafa', fontSize: { xs: '1.5rem', md: '1.75rem' } }}>
+                Cohort Selection
+              </Typography>
+              <Chip
+                label="Admin"
+                size="small"
+                sx={{
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  bgcolor: 'rgba(249,115,22,0.15)',
+                  color: '#fb923c',
+                  border: '1px solid rgba(249,115,22,0.25)',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 24,
+                }}
+              />
+            </Box>
+            <Typography variant="body2" sx={{ color: '#71717a', mt: 0.5 }}>
+              Select a cohort to manage students.
+            </Typography>
+          </Box>
+        </Box>
 
+        {/* Error */}
         {error && (
-          <div className="mb-6 rounded-lg bg-red-900/30 border border-red-700/50 px-4 py-3 text-red-300 text-sm">
+          <Alert severity="error" sx={{ mb: 3, bgcolor: 'rgba(239,68,68,0.1)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)', '& .MuiAlert-icon': { color: '#ef4444' } }}>
             {(error as Error)?.message ?? 'Failed to load cohorts.'}
-          </div>
+          </Alert>
         )}
 
-        {/* Tabs + Table card */}
-        <div className="bg-zinc-800/50 rounded-xl border border-orange-500/20 overflow-hidden">
-          {/* Tab bar + Create button */}
-          <div className="flex items-end justify-between px-4 pt-3">
+        {/* Main Card */}
+        <Paper
+          elevation={0}
+          sx={{
+            bgcolor: 'rgba(39,39,42,0.5)',
+            borderRadius: 3,
+            border: '1px solid rgba(249,115,22,0.2)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Tab bar + Action buttons */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'flex-end' },
+              justifyContent: 'space-between',
+              px: { xs: 2, sm: 3 },
+              pt: 1.5,
+              gap: 1.5,
+            }}
+          >
             <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-            <div className="flex items-center gap-2 mb-1">
-              <button
-                onClick={handleDownloadCSV}
-                className="b-0 flex items-center gap-2 bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 text-sm font-medium px-4 py-2.5 rounded-lg border border-zinc-600 transition-colors duration-200"
-                title="Download CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                CSV
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={openCreateModal}
-                  className="b-0 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Create Cohort
-                </button>
-              )}
-            </div>
-          </div>
 
+            <Box sx={{ display: 'flex', gap: 1, mb: { xs: 0, sm: 0.5 }, flexShrink: 0 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Download size={15} />}
+                onClick={handleDownloadCSV}
+                sx={{
+                  color: '#d4d4d8',
+                  borderColor: '#52525b',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.8rem',
+                  '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+                }}
+              >
+                CSV
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<Plus size={15} />}
+                  onClick={openCreateModal}
+                  sx={{
+                    bgcolor: '#f97316',
+                    '&:hover': { bgcolor: '#ea580c' },
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '0.8rem',
+                    boxShadow: 'none',
+                  }}
+                >
+                  Create Cohort
+                </Button>
+              )}
+            </Box>
+          </Box>
+
+          {/* Table */}
           <CohortTable
             cohorts={filteredCohorts}
             onRowClick={handleRowClick}
@@ -345,257 +439,229 @@ export const CohortSelection = () => {
             emptyMessage={`No ${activeTab.toLowerCase()} cohorts found.`}
             actions={isAdmin ? (cohort) => (
               <>
-                <button
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Pencil size={13} />}
                   onClick={() => openEditModal(cohort)}
-                  className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 bg-zinc-700/50 hover:bg-zinc-600/50 rounded-md transition-colors duration-150 whitespace-nowrap"
-                  title="Edit Cohort"
+                  sx={{
+                    color: '#d4d4d8',
+                    borderColor: '#52525b',
+                    textTransform: 'none',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    py: 0.5,
+                    '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+                  }}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
                   Edit
-                </button>
-                {cohort.status === 'Completed'  && (
-                  <button
-                    onClick={() => handleGenerateCertificates(cohort.id, cohort.name)}
+                </Button>
+                {cohort.status === 'Completed' && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={
+                      isGeneratingCerts && generatingCohortId === cohort.id
+                        ? <CircularProgress size={13} sx={{ color: '#f59e0b' }} />
+                        : <Award size={13} />
+                    }
                     disabled={isGeneratingCerts && generatingCohortId === cohort.id}
-                    className="b-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-md transition-colors duration-150 disabled:opacity-50 whitespace-nowrap"
-                    title="Generate Certificates"
+                    onClick={() => handleGenerateCertificates(cohort.id, cohort.name)}
+                    sx={{
+                      color: '#fbbf24',
+                      borderColor: 'rgba(245,158,11,0.3)',
+                      textTransform: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      py: 0.5,
+                      '&:hover': { borderColor: 'rgba(245,158,11,0.5)', bgcolor: 'rgba(245,158,11,0.08)' },
+                      '&.Mui-disabled': { color: '#92400e', borderColor: 'rgba(245,158,11,0.15)' },
+                    }}
                   >
-                    {isGeneratingCerts && generatingCohortId === cohort.id ? (
-                      <div className=" animate-spin rounded-full h-3.5 w-3.5 border border-amber-400 border-t-transparent" />
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                      </svg>
-                    )}
                     Generate Certs
-                  </button>
+                  </Button>
                 )}
               </>
             ) : undefined}
           />
-        </div>
-      </div>
+        </Paper>
+      </Box>
 
-      {/* ── Create / Edit Modal ── */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6">
-          <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-3">
-              <h2 className="text-xl md:text-2xl font-bold text-zinc-100">
-                {isEditMode ? 'Edit Cohort' : 'Create Cohort'}
-              </h2>
-              <button onClick={closeModal} className="b-0 bg-transparent text-zinc-400 hover:text-zinc-100 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <p className="text-zinc-400 text-sm mb-8">
+      {/* Create / Edit Modal */}
+      <Dialog
+        open={isModalOpen}
+        onClose={closeModal}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.7)' } },
+        }}
+        PaperProps={{
+          sx: {
+            bgcolor: '#1c1c1e',
+            backgroundImage: 'none',
+            borderRadius: 3,
+            border: '1px solid #3f3f46',
+            maxHeight: '90vh',
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa' }}>
+              {isEditMode ? 'Edit Cohort' : 'Create Cohort'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#a1a1aa' }}>
               {isEditMode
-                ? `Update the details for ${selectedCohortType ? cohortTypeToName(selectedCohortType) : ''} cohort.`
-                : 'Fill out the information below to create a new cohort.'}
-            </p>
+                ? `Update details for ${selectedCohortType ? cohortTypeToName(selectedCohortType) : ''} cohort.`
+                : 'Fill out the information to create a new cohort.'}
+            </Typography>
+          </Box>
+          <IconButton onClick={closeModal} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Cohort type selector - create mode only */}
-              {!isEditMode && (
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">Cohort Type</label>
-                  <select
-                    value={selectedCohortType ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value as CohortType;
-                      setSelectedCohortType(val);
-                      // Auto-set next season
-                      const existing = data?.records?.filter((r) => r.type === val) ?? [];
-                      const maxSeason = existing.length > 0 ? Math.max(...existing.map((c) => c.season)) : 0;
-                      setFormSeason(maxSeason + 1);
-                    }}
-                    required
-                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg pl-2 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                  >
-                    <option value="" disabled>
-                      Select a cohort type
-                    </option>
-                    {COHORT_TYPES.map((ct) => (
-                      <option key={ct} value={ct} className="bg-zinc-800">
-                        {cohortTypeToName(ct)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Season + Weeks - create mode */}
-              {!isEditMode && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-zinc-300">Season</label>
-                    <input
-                      type="number"
-                      value={formSeason}
-                      onChange={(e) => setFormSeason(parseInt(e.target.value))}
-                      min="1"
-                      className="w-32 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-zinc-300">Number of Weeks</label>
-                    <input
-                      type="number"
-                      value={formWeeks}
-                      onChange={(e) => setFormWeeks(parseInt(e.target.value))}
-                      min="1"
-                      max="52"
-                      className="w-32 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Weeks - edit mode (readonly) */}
-              {isEditMode && (
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    Number of Weeks <span className="text-zinc-500 text-xs">(Fixed)</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formWeeks}
-                    disabled
-                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              )}
-
-              {/* Start / End dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">Start Date</label>
-                  <input
-                    type="date"
-                    value={formStartDate}
-                    onChange={(e) => {
-                      setFormStartDate(e.target.value);
-                      if (isEditMode) setLastChangedField('startDate');
-                    }}
-                    min={getTodayDate()}
-                    required
-                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                    style={{ colorScheme: 'dark' }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    End Date {!isEditMode && <span className="text-zinc-500 text-xs">(Auto-calculated)</span>}
-                  </label>
-                  <input
-                    type="date"
-                    value={formEndDate}
-                    onChange={(e) => {
-                      setFormEndDate(e.target.value);
-                      if (isEditMode) setLastChangedField('endDate');
-                    }}
-                    min={formStartDate ? calculateEndDate(formStartDate, 1) : getTodayDate()}
-                    disabled={!isEditMode}
-                    required
-                    className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ colorScheme: 'dark' }}
-                  />
-                </div>
-              </div>
-
-              {/* Registration deadline */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-zinc-300">Registration Deadline</label>
-                <input
-                  type="date"
-                  value={formRegDeadline}
-                  onChange={(e) => setFormRegDeadline(e.target.value)}
+        <form onSubmit={handleSubmit}>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
+            {/* Cohort Type */}
+            {!isEditMode && (
+              <FormControl fullWidth sx={inputSx}>
+                <InputLabel>Cohort Type</InputLabel>
+                <Select
+                  value={selectedCohortType ?? ''}
+                  label="Cohort Type"
+                  onChange={(e) => {
+                    const val = e.target.value as CohortType;
+                    setSelectedCohortType(val);
+                    const existing = data?.records?.filter((r) => r.type === val) ?? [];
+                    const maxSeason = existing.length > 0 ? Math.max(...existing.map((c) => c.season)) : 0;
+                    setFormSeason(maxSeason + 1);
+                  }}
                   required
-                  className="w-64 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                  style={{ colorScheme: 'dark' }}
-                />
-              </div>
+                  MenuProps={{ PaperProps: { sx: { bgcolor: '#18181b', border: '1px solid #27272a', color: '#fafafa' } } }}
+                >
+                  {COHORT_TYPES.map((ct) => (
+                    <MenuItem key={ct} value={ct} sx={{ '&:hover': { bgcolor: '#52525b' } }}>
+                      {cohortTypeToName(ct)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
-              {/* Has exercises - create mode only */}
-              {!isEditMode && (
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="hasExercises"
+            {/* Season + Weeks */}
+            {!isEditMode && (
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField label="Season" type="number" value={formSeason} onChange={(e) => setFormSeason(parseInt(e.target.value))} slotProps={{ htmlInput: { min: 1 } }} sx={{ ...inputSx, flex: 1 }} />
+                <TextField label="Weeks" type="number" value={formWeeks} onChange={(e) => setFormWeeks(parseInt(e.target.value))} slotProps={{ htmlInput: { min: 1, max: 52 } }} sx={{ ...inputSx, flex: 1 }} />
+              </Box>
+            )}
+
+            {/* Weeks readonly in edit mode */}
+            {isEditMode && (
+              <TextField label="Number of Weeks (Fixed)" type="number" value={formWeeks} disabled sx={inputSx} />
+            )}
+
+            {/* Dates */}
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Start Date"
+                type="date"
+                value={formStartDate}
+                onChange={(e) => { setFormStartDate(e.target.value); if (isEditMode) setLastChangedField('startDate'); }}
+                slotProps={{ htmlInput: { min: getTodayDate() }, inputLabel: { shrink: true } }}
+                required
+                sx={{ ...inputSx, flex: 1, '& input': { colorScheme: 'dark' } }}
+              />
+              <TextField
+                label={isEditMode ? 'End Date' : 'End Date (Auto)'}
+                type="date"
+                value={formEndDate}
+                onChange={(e) => { setFormEndDate(e.target.value); if (isEditMode) setLastChangedField('endDate'); }}
+                slotProps={{ htmlInput: { min: formStartDate ? calculateEndDate(formStartDate, 1) : getTodayDate() }, inputLabel: { shrink: true } }}
+                disabled={!isEditMode}
+                required
+                sx={{ ...inputSx, flex: 1, '& input': { colorScheme: 'dark' } }}
+              />
+            </Box>
+
+            {/* Registration Deadline */}
+            <TextField
+              label="Registration Deadline"
+              type="date"
+              value={formRegDeadline}
+              onChange={(e) => setFormRegDeadline(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              required
+              sx={{ ...inputSx, '& input': { colorScheme: 'dark' } }}
+            />
+
+            {/* Has exercises */}
+            {!isEditMode && (
+              <FormControlLabel
+                control={
+                  <Checkbox
                     checked={formHasExercises}
                     onChange={(e) => setFormHasExercises(e.target.checked)}
-                    className="w-5 h-5 bg-zinc-700 border border-zinc-600 rounded text-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-offset-0"
+                    sx={{ color: '#71717a', '&.Mui-checked': { color: '#f97316' } }}
                   />
-                  <label htmlFor="hasExercises" className="text-sm font-medium text-zinc-300">
-                    Has Exercises
-                  </label>
-                </div>
-              )}
+                }
+                label={<Typography variant="body2" sx={{ color: '#fafafa' }}>Has Exercises</Typography>}
+              />
+            )}
+          </DialogContent>
 
-              {/* Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="b-0 bg-transparent hover:bg-zinc-700 text-zinc-300 font-medium px-6 py-3 rounded-lg border border-zinc-600 transition-all duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createCohortMutation.isPending || updateCohortMutation.isPending}
-                  className="b-0 bg-orange-500 hover:bg-orange-600 text-white font-medium px-8 py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {createCohortMutation.isPending || updateCohortMutation.isPending
-                    ? 'Saving...'
-                    : isEditMode
-                      ? 'Update'
-                      : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+            <Button
+              onClick={closeModal}
+              variant="outlined"
+              sx={{
+                color: '#d4d4d8',
+                borderColor: '#52525b',
+                textTransform: 'none',
+                '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={createCohortMutation.isPending || updateCohortMutation.isPending}
+              sx={{
+                bgcolor: '#f97316',
+                '&:hover': { bgcolor: '#ea580c' },
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: 'none',
+                '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' },
+              }}
+            >
+              {createCohortMutation.isPending || updateCohortMutation.isPending
+                ? <CircularProgress size={20} sx={{ color: '#fff' }} />
+                : isEditMode ? 'Update' : 'Create'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
-      {/* ── Success / Error popup ── */}
-      {popup.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-zinc-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
-            <div className="flex flex-col items-center text-center">
-              {popup.type === 'success' ? (
-                <div className="w-14 h-14 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-7 h-7 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              ) : (
-                <div className="w-14 h-14 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-zinc-100 mb-2">
-                {popup.type === 'success' ? 'Success!' : 'Error'}
-              </h3>
-              <p className="text-zinc-300 text-sm mb-6">{popup.message}</p>
-              <button
-                onClick={() => setPopup({ show: false, message: '', type: 'success' })}
-                className="b-0 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-medium px-6 py-2.5 rounded-lg transition-colors duration-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };

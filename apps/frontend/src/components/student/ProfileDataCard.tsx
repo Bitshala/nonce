@@ -1,3 +1,4 @@
+import { Box, Typography, Chip, Link, Divider } from '@mui/material';
 import { User, MapPin, Github, Book, Clock, MessageSquare } from 'lucide-react';
 
 interface ProfileData {
@@ -25,128 +26,145 @@ interface ProfileDataCardProps {
 
 export const ProfileDataCard = ({ profile }: ProfileDataCardProps) => {
   return (
-    <div className="bg-zinc-900 border border-orange-300 font-mono rounded-lg overflow-hidden mt-8">
+    <Box sx={{ mt: 5 }}>
       {/* Header */}
-      <div className="bg-zinc-700 px-4 py-3 flex items-center border-b border-orange-300">
-        <User className="h-5 w-5 mr-2 text-orange-400" />
-        <span className="text-orange-300 font-semibold">Profile Data</span>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, pb: 1.5, borderBottom: '1px solid #27272a' }}>
+        <User size={22} color="#fb923c" />
+        <Typography sx={{ fontWeight: 700, color: '#fff', fontSize: '1.2rem' }}>Profile Data</Typography>
+      </Box>
 
-      {/* Content */}
-      <div className="p-6 space-y-6">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
         {/* Basic Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}>
           <ProfileRow label="Email" value={profile.email} />
           <ProfileRow label="Discord Username" value={profile.discordUsername} />
           <ProfileRow label="Discord Name" value={profile.discordGlobalName} />
           <ProfileRow label="Role" value={profile.role} />
           {profile.location && (
-            <ProfileRow label="Location" value={profile.location} icon={<MapPin className="h-4 w-4" />} />
+            <ProfileRow label="Location" value={profile.location} icon={<MapPin size={16} />} />
           )}
           {profile.weeklyCohortCommitmentHours && (
             <ProfileRow
               label="Weekly Commitment"
               value={`${profile.weeklyCohortCommitmentHours} hours`}
-              icon={<Clock className="h-4 w-4" />}
+              icon={<Clock size={16} />}
             />
           )}
-        </div>
+        </Box>
 
         {/* GitHub */}
         {profile.githubProfileUrl && (
-          <div className="pt-4 border-t border-zinc-700">
-            <div className="flex items-center space-x-2 text-orange-400 mb-2">
-              <Github className="h-4 w-4" />
-              <span className="font-semibold">GitHub</span>
-            </div>
-            <a
-              href={profile.githubProfileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 underline text-sm"
-            >
-              {profile.githubProfileUrl}
-            </a>
-          </div>
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Github size={18} color="#fb923c" />
+                <Typography sx={{ fontWeight: 600, color: '#fb923c', fontSize: '0.95rem' }}>GitHub</Typography>
+              </Box>
+              <Link
+                href={profile.githubProfileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ color: '#60a5fa', fontSize: '1rem', '&:hover': { color: '#93c5fd' } }}
+              >
+                {profile.githubProfileUrl}
+              </Link>
+            </Box>
+          </>
         )}
 
         {/* Skills */}
         {profile.skills && profile.skills.length > 0 && (
-          <div className="pt-4 border-t border-zinc-700">
-            <div className="text-orange-400 font-semibold mb-2">Skills</div>
-            <div className="flex flex-wrap gap-2">
-              {profile.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-zinc-700 text-orange-300 text-sm border border-orange-400"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box>
+              <Typography sx={{ fontWeight: 600, color: '#fb923c', mb: 1.5, fontSize: '0.95rem' }}>Skills</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {profile.skills.map((skill, index) => (
+                  <Chip
+                    key={index}
+                    label={skill}
+                    sx={{ bgcolor: 'rgba(249,115,22,0.15)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.3)', fontWeight: 500, fontSize: '0.9rem', height: 32 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </>
         )}
 
-        {/* Bitcoin Books Read */}
+        {/* Bitcoin Books */}
         {profile.bitcoinBooksRead && profile.bitcoinBooksRead.length > 0 && (
-          <div className="pt-4 border-t border-zinc-700">
-            <div className="flex items-center space-x-2 text-orange-400 mb-2">
-              <Book className="h-4 w-4" />
-              <span className="font-semibold">Bitcoin Books Read</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {profile.bitcoinBooksRead.map((book, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-zinc-700 text-orange-300 text-sm border border-orange-400"
-                >
-                  {book}
-                </span>
-              ))}
-            </div>
-          </div>
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                <Book size={18} color="#fb923c" />
+                <Typography sx={{ fontWeight: 600, color: '#fb923c', fontSize: '0.95rem' }}>Bitcoin Books Read</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {profile.bitcoinBooksRead.map((book, index) => (
+                  <Chip
+                    key={index}
+                    label={book}
+                    sx={{ bgcolor: 'rgba(249,115,22,0.15)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.3)', fontWeight: 500, fontSize: '0.9rem', height: 32 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </>
         )}
 
         {/* Description & Background */}
         {(profile.description || profile.background) && (
-          <div className="pt-4 border-t border-zinc-700 space-y-4">
-            {profile.description && (
-              <div>
-                <div className="text-orange-400 font-semibold mb-2">Description</div>
-                <p className="text-zinc-300 text-sm">{profile.description}</p>
-              </div>
-            )}
-            {profile.background && (
-              <div>
-                <div className="text-orange-400 font-semibold mb-2">Background</div>
-                <p className="text-zinc-300 text-sm">{profile.background}</p>
-              </div>
-            )}
-          </div>
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {profile.description && (
+                <Box>
+                  <Typography sx={{ fontWeight: 600, color: '#fb923c', mb: 0.5, fontSize: '0.95rem' }}>Description</Typography>
+                  <Typography sx={{ color: '#d4d4d8', fontSize: '0.95rem', lineHeight: 1.7 }}>{profile.description}</Typography>
+                </Box>
+              )}
+              {profile.background && (
+                <Box>
+                  <Typography sx={{ fontWeight: 600, color: '#fb923c', mb: 0.5, fontSize: '0.95rem' }}>Background</Typography>
+                  <Typography sx={{ color: '#d4d4d8', fontSize: '0.95rem', lineHeight: 1.7 }}>{profile.background}</Typography>
+                </Box>
+              )}
+            </Box>
+          </>
         )}
 
         {/* Why Bitcoin */}
         {profile.whyBitcoin && (
-          <div className="pt-4 border-t border-zinc-700">
-            <div className="flex items-center space-x-2 text-orange-400 mb-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="font-semibold">Why Bitcoin?</span>
-            </div>
-            <p className="text-zinc-300 text-sm">{profile.whyBitcoin}</p>
-          </div>
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <MessageSquare size={18} color="#fb923c" />
+                <Typography sx={{ fontWeight: 600, color: '#fb923c', fontSize: '0.95rem' }}>Why Bitcoin?</Typography>
+              </Box>
+              <Typography sx={{ color: '#d4d4d8', fontSize: '0.95rem', lineHeight: 1.7 }}>{profile.whyBitcoin}</Typography>
+            </Box>
+          </>
         )}
 
         {/* Additional Info */}
-        <div className="pt-4 border-t border-zinc-700 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {profile.firstHeardAboutBitcoinOn && (
-            <ProfileRow label="First Heard About Bitcoin" value={profile.firstHeardAboutBitcoinOn} />
-          )}
-          {profile.referral && (
-            <ProfileRow label="Referral" value={profile.referral} />
-          )}
-        </div>
-      </div>
-    </div>
+        {(profile.firstHeardAboutBitcoinOn || profile.referral) && (
+          <>
+            <Divider sx={{ borderColor: '#27272a' }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}>
+              {profile.firstHeardAboutBitcoinOn && (
+                <ProfileRow label="First Heard About Bitcoin" value={profile.firstHeardAboutBitcoinOn} />
+              )}
+              {profile.referral && (
+                <ProfileRow label="Referral" value={profile.referral} />
+              )}
+            </Box>
+          </>
+        )}
+      </Box>
+    </Box>
   );
 };
 
@@ -162,12 +180,12 @@ const ProfileRow = ({
   if (!value) return null;
 
   return (
-    <div className="flex flex-col space-y-1">
-      <span className="text-orange-400 text-xs font-semibold flex items-center space-x-1">
-        {icon && <span>{icon}</span>}
-        <span>{label}</span>
-      </span>
-      <span className="text-zinc-300 text-sm">{value}</span>
-    </div>
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+        {icon && <Box sx={{ color: '#fb923c', display: 'flex' }}>{icon}</Box>}
+        <Typography sx={{ fontWeight: 600, color: '#fb923c', fontSize: '0.85rem' }}>{label}</Typography>
+      </Box>
+      <Typography sx={{ color: '#d4d4d8', fontSize: '1rem' }}>{value}</Typography>
+    </Box>
   );
 };

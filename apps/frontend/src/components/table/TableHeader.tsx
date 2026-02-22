@@ -1,4 +1,33 @@
 import React from 'react';
+import {
+  Box,
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Button,
+  Chip,
+  Paper,
+  Typography,
+  Stack,
+  InputAdornment,
+  IconButton,
+  Divider,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import {
+  Search,
+  Download,
+  X,
+  Users,
+  UserCheck,
+  UserX,
+  Shuffle,
+  UserPlus,
+  BookOpen,
+} from 'lucide-react';
 
 interface Week {
   id: string;
@@ -37,6 +66,17 @@ interface TableHeaderProps {
   isTA?: boolean;
 }
 
+const selectSx = {
+  bgcolor: '#27272a',
+  color: '#d4d4d8',
+  borderRadius: 1,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#3f3f46' },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#f97316' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f97316' },
+  '& .MuiSvgIcon-root': { color: '#a1a1aa' },
+  '& .MuiSelect-select': { py: 1.25, fontSize: '0.875rem' },
+};
+
 export const TableHeader: React.FC<TableHeaderProps> = ({
   week,
   selectedWeekId,
@@ -63,154 +103,404 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   cohortId,
   isTA,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const absentees = totalCount != null && weeklyData.attended != null
+    ? totalCount - weeklyData.attended
+    : null;
+
+  const showInstructions = cohortType === 'MASTERING_BITCOIN'
+    || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE'
+    || cohortType === 'MASTERING_LIGHTNING_NETWORK'
+    || cohortType === 'BITCOIN_PROTOCOL_DEVELOPMENT';
+
   return (
-    <>
-      {/* Week Selection Buttons */}
-      <div className="flex gap-4 mb-4 items-center">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 3 }}>
+      {/* Week Selection */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {weeks.map(weekData => (
-          <button
+          <Chip
             key={weekData.id}
+            label={weekData.week === 0 ? 'Orientation' : `Week ${weekData.week}`}
             onClick={() => onWeekChange(weekData.week, weekData.id)}
-            className={`cursor-pointer font-light border-0 text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200 ${
-              selectedWeekId === weekData.id
-                ? 'bg-orange-600 text-white'
-                : 'bg-orange-400 hover:bg-orange-500 text-white'
-            }`}
-          >
-            Week {weekData.week}
-          </button>
+            sx={{
+              fontWeight: 500,
+              fontSize: '0.875rem',
+              px: 1,
+              height: 36,
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              ...(selectedWeekId === weekData.id
+                ? {
+                    bgcolor: '#ea580c',
+                    color: '#fff',
+                    '&:hover': { bgcolor: '#c2410c' },
+                  }
+                : {
+                    bgcolor: '#fb923c',
+                    color: '#fff',
+                    '&:hover': { bgcolor: '#f97316' },
+                  }),
+            }}
+          />
         ))}
-        {/*<button*/}
-        {/*  onClick={() => navigate('/result')}*/}
-        {/*  className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"*/}
-        {/*>*/}
-        {/*  Result*/}
-        {/*</button>*/}
-        {/*        <button*/}
-        {/*  onClick={() => navigate('/feedback')}*/}
-        {/*  className="cursor-pointer bg-orange-400 hover:bg-orange-500 text-white font-light text-xl px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"*/}
-        {/*>*/}
-        {/*  Feedback*/}
-        {/*</button>*/}
-      </div>
+      </Box>
 
-      {/* Filters */}
-      <div className="mb-4 flex flex-wrap gap-4 items-center">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={searchTerm}
-          onChange={e => onSearchChange(e.target.value)}
-          className="px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 flex-grow sm:flex-grow-0 sm:w-auto"
-        />
-
-        <select
-          value={selectedGroup}
-          onChange={e => onGroupChange(e.target.value)}
-          className="px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+      {/* Filters Row */}
+      <Paper
+        elevation={0}
+        sx={{
+          bgcolor: '#000',
+          border: '1px solid #27272a',
+          borderRadius: 2,
+          p: { xs: 1.5, sm: 2 },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 1.5,
+            alignItems: { xs: 'stretch', md: 'center' },
+            flexWrap: 'wrap',
+          }}
         >
-          {['All Groups', ...baseGroups].map(groupName => (
-            <option key={groupName} value={groupName}>
-              {groupName}
-            </option>
-          ))}
-        </select>
+          {/* Search */}
+          <TextField
+            size="small"
+            placeholder="Search by name..."
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={16} color="#a1a1aa" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => onSearchChange('')} sx={{ p: 0.25 }}>
+                      <X size={14} color="#a1a1aa" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              },
+            }}
+            sx={{
+              minWidth: { xs: '100%', sm: 200 },
+              flexGrow: { xs: 1, md: 0 },
+              '& .MuiOutlinedInput-root': {
+                bgcolor: '#27272a',
+                color: '#d4d4d8',
+                borderRadius: 1,
+                fontSize: '0.875rem',
+                '& fieldset': { borderColor: '#3f3f46' },
+                '&:hover fieldset': { borderColor: '#f97316' },
+                '&.Mui-focused fieldset': { borderColor: '#f97316' },
+              },
+              '& .MuiInputBase-input::placeholder': { color: '#71717a', opacity: 1 },
+            }}
+          />
 
-        <select
-          value={selectedTA}
-          onChange={e => onTAChange(e.target.value)}
-          className="px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+          {/* Group Filter */}
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 } }}>
+            <Select
+              value={selectedGroup}
+              onChange={e => onGroupChange(e.target.value)}
+              sx={selectSx}
+              MenuProps={{ PaperProps: { sx: { bgcolor: '#27272a', color: '#d4d4d8' } } }}
+            >
+              {['All Groups', ...baseGroups].map(g => (
+                <MenuItem key={g} value={g} sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: '#3f3f46' } }}>
+                  {g}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* TA Filter */}
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 140 } }}>
+            <Select
+              value={selectedTA}
+              onChange={e => onTAChange(e.target.value)}
+              sx={selectSx}
+              MenuProps={{ PaperProps: { sx: { bgcolor: '#27272a', color: '#d4d4d8' } } }}
+            >
+              {taOptions.map(ta => (
+                <MenuItem key={ta} value={ta} sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: '#3f3f46' } }}>
+                  {ta}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Attendance Filter */}
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+            <Select
+              value={attendanceFilter}
+              onChange={e => onAttendanceFilterChange(e.target.value as 'All' | 'Present' | 'Absent')}
+              sx={selectSx}
+              MenuProps={{ PaperProps: { sx: { bgcolor: '#27272a', color: '#d4d4d8' } } }}
+            >
+              <MenuItem value="All" sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: '#3f3f46' } }}>All Attendance</MenuItem>
+              <MenuItem value="Present" sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: '#3f3f46' } }}>Present</MenuItem>
+              <MenuItem value="Absent" sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: '#3f3f46' } }}>Absent</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Clear Filters */}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onClearFilters}
+            startIcon={<X size={14} />}
+            sx={{
+              color: '#a1a1aa',
+              borderColor: '#3f3f46',
+              textTransform: 'none',
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap',
+              '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+            }}
+          >
+            Clear Filters
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Stats + Actions Row */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 2,
+          alignItems: { xs: 'stretch', md: 'center' },
+          justifyContent: 'space-between',
+        }}
+      >
+        {/* Stats Cards */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 1.5,
+            flexGrow: 1,
+          }}
         >
-          {taOptions.map(taName => (
-            <option key={taName} value={taName}>
-              {taName}
-            </option>
-          ))}
-        </select>
+          {/* Total Participants */}
+          <Paper
+            elevation={0}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 2,
+              py: 1.5,
+              bgcolor: '#000',
+              border: '1px solid #27272a',
+              borderRadius: 2,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: '8px',
+                bgcolor: 'rgba(249,115,22,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              <Users size={18} color="#f97316" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Participants
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#fafafa', fontWeight: 600, lineHeight: 1.2, fontSize: '1.25rem' }}>
+                {totalCount ?? '...'}
+              </Typography>
+            </Box>
+          </Paper>
 
-        <select
-          value={attendanceFilter}
-          onChange={e =>
-            onAttendanceFilterChange(
-              e.target.value as 'All' | 'Present' | 'Absent'
-            )
-          }
-          className="px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+          {/* Attendees */}
+          <Paper
+            elevation={0}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 2,
+              py: 1.5,
+              bgcolor: '#000',
+              border: '1px solid #27272a',
+              borderRadius: 2,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: '8px',
+                bgcolor: 'rgba(34,197,94,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              <UserCheck size={18} color="#22c55e" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Attendees
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#22c55e', fontWeight: 600, lineHeight: 1.2, fontSize: '1.25rem' }}>
+                {weeklyData.attended ?? 0}
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Absentees */}
+          <Paper
+            elevation={0}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              px: 2,
+              py: 1.5,
+              bgcolor: '#000',
+              border: '1px solid #27272a',
+              borderRadius: 2,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: '8px',
+                bgcolor: 'rgba(239,68,68,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              <UserX size={18} color="#ef4444" />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" sx={{ color: '#71717a', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Absentees
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#ef4444', fontWeight: 600, lineHeight: 1.2, fontSize: '1.25rem' }}>
+                {absentees ?? '...'}
+              </Typography>
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* Action Buttons */}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          sx={{ flexShrink: 0 }}
         >
-          <option value="All">All Attendance</option>
-          <option value="Present">Present</option>
-          <option value="Absent">Absent</option>
-        </select>
-
-        <button
-          onClick={onClearFilters}
-          className="cursor-pointer px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 border border-zinc-300 rounded-md"
-        >
-          Clear Filters
-        </button>
-      </div>
-
-      {/* Stats and Actions */}
-      <div className="flex justify-between items-center gap-2 mb-4 mt-8">
-        <div className="flex gap-8 text-2xl">
-          <div>Total Participants: {totalCount ?? '...'}</div>
-          <div>Attendees: {weeklyData.attended ?? 0}</div>
-          <div>
-            Absentees:{' '}
-            {totalCount && weeklyData.attended !== undefined
-              ? totalCount - weeklyData.attended
-              : '...'}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {(cohortType === 'MASTERING_BITCOIN' || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE' || cohortType === 'MASTERING_LIGHTNING_NETWORK' || cohortType === 'BITCOIN_PROTOCOL_DEVELOPMENT') && (
-            <button
+          {showInstructions && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<BookOpen size={15} />}
               onClick={() => {
                 if (cohortId) {
                   navigate(`/${cohortId}/instructions`);
-                } else if (cohortType === 'MASTERING_BITCOIN') {
-                  navigate('/mb-instructions');
-                } else if (cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE') {
-                  navigate('/lbtcl-instructions');
-                } else if (cohortType === 'MASTERING_LIGHTNING_NETWORK') {
-                  navigate('/ln-instructions');
-                } else if (cohortType === 'BITCOIN_PROTOCOL_DEVELOPMENT') {
-                  navigate('/bpd-instructions');
                 }
               }}
-              className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
+              sx={{
+                bgcolor: '#fb923c',
+                '&:hover': { bgcolor: '#f97316' },
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.8rem',
+                boxShadow: 'none',
+                whiteSpace: 'nowrap',
+              }}
             >
-              Cohort Instructions
-            </button>
+              Instructions
+            </Button>
           )}
+
           {week > 0 && (
-            <button
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Shuffle size={15} />}
               onClick={onAssignGroups}
-              className="cursor-pointer px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white rounded"
+              sx={{
+                bgcolor: '#fb923c',
+                '&:hover': { bgcolor: '#f97316' },
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.8rem',
+                boxShadow: 'none',
+                whiteSpace: 'nowrap',
+              }}
             >
               Assign Groups
-            </button>
+            </Button>
           )}
+
           {isTA && onTASelfAssign && week > 0 && (
-            <button
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<UserPlus size={15} />}
               onClick={onTASelfAssign}
-              className="cursor-pointer px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+              sx={{
+                bgcolor: '#3b82f6',
+                '&:hover': { bgcolor: '#2563eb' },
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.8rem',
+                boxShadow: 'none',
+                whiteSpace: 'nowrap',
+              }}
             >
-              Assign Self to Group
-            </button>
+              Assign Self
+            </Button>
           )}
-          <button
+
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Download size={15} />}
             onClick={onDownloadCSV}
-            className="cursor-pointer px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 border border-zinc-600 rounded flex items-center gap-2"
+            sx={{
+              color: '#d4d4d8',
+              borderColor: '#3f3f46',
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.8rem',
+              boxShadow: 'none',
+              whiteSpace: 'nowrap',
+              '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+            }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
             CSV
-          </button>
-        </div>
-      </div>
-    </>
+          </Button>
+        </Stack>
+      </Box>
+    </Box>
   );
 };

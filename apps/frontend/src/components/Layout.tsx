@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Box } from '@mui/material';
 import Sidebar from './Sidebar';
 import { useAuth } from '../hooks/useAuth';
 
@@ -19,10 +20,12 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex h-screen">
+    <Box sx={{ display: 'flex', height: '100vh' }}>
       <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
+      <Box component="main" sx={{ flex: 1, overflow: 'auto' }}>
+        {children}
+      </Box>
+    </Box>
   );
 };
 

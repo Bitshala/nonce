@@ -1,12 +1,25 @@
 import React from 'react';
-
+import {
+  TableRow,
+  TableCell,
+  Avatar,
+  Chip,
+  Button,
+  Box,
+  Typography,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import { Info } from 'lucide-react';
 import type { TableRowData } from '../../types/student';
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface StudentRowProps {
   person: TableRowData;
   week: number;
+  showGdScores?: boolean;
+  showBonusScores?: boolean;
   showExerciseScores?: boolean;
   onStudentClick: (student: TableRowData) => void;
   onEditStudent: (student: TableRowData) => void;
@@ -18,9 +31,30 @@ interface StudentRowProps {
   }) => void;
 }
 
+const cellSx = {
+  whiteSpace: 'nowrap' as const,
+  py: 2,
+  px: 2,
+};
+
+const tooltipSx = {
+  tooltip: {
+    sx: {
+      bgcolor: '#18181b',
+      color: '#e4e4e7',
+      fontSize: '0.8rem',
+      p: 1.5,
+      maxWidth: 280,
+      '& .MuiTooltip-arrow': { color: '#18181b' },
+    },
+  },
+};
+
 export const StudentRow: React.FC<StudentRowProps> = ({
   person,
   week,
+  showGdScores = true,
+  showBonusScores = true,
   showExerciseScores = true,
   onStudentClick,
   onEditStudent,
@@ -35,7 +69,6 @@ export const StudentRow: React.FC<StudentRowProps> = ({
     event: React.MouseEvent<HTMLTableCellElement>
   ) => {
     event.preventDefault();
-    // Use the same logic as other handlers to get the actual student ID
     const studentId = person.userId ?? person.id;
     onContextMenu({
       visible: true,
@@ -65,134 +98,272 @@ export const StudentRow: React.FC<StudentRowProps> = ({
     }
   };
 
+  const initials = `${person.discordGlobalName.charAt(0)}${(person.discordGlobalName.split(' ')[1]?.charAt(0) || '').toUpperCase()}`;
+
+  // GD score summary
+  const gdTotal = person.gdScore
+    ? person.gdScore.fa + person.gdScore.fb + person.gdScore.fc + person.gdScore.fd
+    : null;
+
+  const gdTooltipContent = person.gdScore ? (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Typography variant="caption" fontWeight={600} sx={{ mb: 0.5, color: '#fed7aa' }}>
+        GD Score Breakdown
+      </Typography>
+      <Typography variant="caption">Communication: {person.gdScore.fa}/5</Typography>
+      <Typography variant="caption">Depth of Answer: {person.gdScore.fb}/5</Typography>
+      <Typography variant="caption">Technical Fluency: {person.gdScore.fc}/5</Typography>
+      <Typography variant="caption">Engagement: {person.gdScore.fd}/5</Typography>
+    </Box>
+  ) : null;
+
+  // Bonus score summary
+  const bonusTotal = person.bonusScore
+    ? person.bonusScore.good + person.bonusScore.followUp
+    : null;
+
+  const bonusTooltipContent = person.bonusScore ? (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Typography variant="caption" fontWeight={600} sx={{ mb: 0.5, color: '#fed7aa' }}>
+        Bonus Score Breakdown
+      </Typography>
+      <Typography variant="caption">
+        Attempted: {person.bonusScore.attempt > 0 ? 'Yes' : 'No'}
+      </Typography>
+      <Typography variant="caption">Answer Quality: {person.bonusScore.good}/5</Typography>
+      <Typography variant="caption">Follow Up: {person.bonusScore.followUp}/5</Typography>
+    </Box>
+  ) : null;
+
+  // Exercise score summary
+  const exerciseTooltipContent = person.exerciseScore ? (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      <Typography variant="caption" fontWeight={600} sx={{ mb: 0.5, color: '#fed7aa' }}>
+        Exercise Breakdown
+      </Typography>
+      <Typography variant="caption">
+        Submitted: {person.exerciseScore.Submitted ? 'Yes' : 'No'}
+      </Typography>
+      <Typography variant="caption">
+        Tests Passing: {person.exerciseScore.privateTest ? 'Yes' : 'No'}
+      </Typography>
+    </Box>
+  ) : null;
+
   return (
-    <tr className="cursor-pointer hover:bg-zinc-50 transition-colors duration-150">
-      <td
-        className="cursor-pointer px-8 py-6 whitespace-nowrap"
+    <TableRow
+      hover
+      sx={{
+        cursor: 'pointer',
+        '&:hover': { backgroundColor: '#fafafa' },
+        transition: 'background-color 150ms',
+      }}
+    >
+      {/* Name - shows discordGlobalName */}
+      <TableCell
+        sx={{ ...cellSx, cursor: 'pointer', px: 3 }}
         onClick={() => onStudentClick(person)}
         onContextMenu={handleNameRightClick}
       >
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-10 w-10">
-            <div className="h-10 w-10 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm font-medium">
-              {person.name.charAt(0)}
-              {(person.name.split(' ')[1]?.charAt(0) || '').toUpperCase()}
-            </div>
-          </div>
-          <div className="ml-4">
-            <div className="text-sm font-medium text-zinc-900">
-              {person.name}
-            </div>
-          </div>
-        </div>
-      </td>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Avatar
+            sx={{
+              bgcolor: '#f97316',
+              width: 36,
+              height: 36,
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            }}
+          >
+            {initials}
+          </Avatar>
+          <Typography variant="body2" fontWeight={500} color="text.primary">
+            {person.discordGlobalName}
+          </Typography>
+        </Box>
+      </TableCell>
 
-      <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
-        <div className="text-sm text-zinc-900">{person.email || '-'}</div>
-      </td>
+      {/* Discord Username */}
+      <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+        <Typography variant="body2" color="text.primary">
+          {person.email || '-'}
+        </Typography>
+      </TableCell>
 
+      {/* Group */}
       {week > 0 && (
-        <td className="px-8 py-6 whitespace-nowrap hidden sm:table-cell">
-          <div className="text-sm text-zinc-900">{person.group}</div>
-        </td>
+        <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+          <Typography variant="body2" color="text.primary">
+            {person.group}
+          </Typography>
+        </TableCell>
       )}
 
-      <td className="px-8 py-6 whitespace-nowrap hidden md:table-cell">
-        <div className="text-sm text-zinc-500">{person.ta || '-'}</div>
-      </td>
+      {/* TA */}
+      <TableCell sx={{ ...cellSx, display: { xs: 'none', md: 'table-cell' } }}>
+        <Typography variant="body2" color="text.secondary">
+          {person.ta || '-'}
+        </Typography>
+      </TableCell>
 
-      <td className="px-8 py-6 whitespace-nowrap text-sm text-zinc-500 hidden lg:table-cell">
-        <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
-          person.attendance
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {person.attendance ? 'Present' : 'Absent'}
-        </span>
-      </td>
+      {/* Attendance */}
+      {showGdScores && (
+        <TableCell sx={{ ...cellSx, display: { xs: 'none', lg: 'table-cell' } }}>
+          <Chip
+            label={person.attendance ? 'Present' : 'Absent'}
+            size="small"
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              backgroundColor: person.attendance ? '#dcfce7' : '#fee2e2',
+              color: person.attendance ? '#166534' : '#991b1b',
+            }}
+          />
+        </TableCell>
+      )}
 
-      {/* GD Scores */}
-      {(['fa', 'fb', 'fc', 'fd'] as const).map(key => (
-        <td
-          key={key}
-          className="px-4 py-6 whitespace-nowrap text-center text-sm"
-        >
-          <span className="text-sm font-medium text-zinc-900">
-            {person.gdScore[key] === 0 ? '-' : person.gdScore[key]}
-          </span>
-        </td>
-      ))}
-
-      {/* Bonus Scores */}
-      {(['attempt', 'good', 'followUp'] as const).map(key => (
-        <td
-          key={key}
-          className="px-4 py-6 whitespace-nowrap text-center text-sm"
-        >
-          {key === 'attempt' ? (
-            <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
-              person.bonusScore[key] > 0
-                ? 'bg-green-100 text-green-800'
-                : 'bg-gray-100 text-gray-800'
-            }`}>
-              {person.bonusScore[key] > 0 ? '✓' : '✗'}
-            </span>
+      {/* GD Score - collapsed */}
+      {showGdScores && (
+        <TableCell align="center" sx={cellSx}>
+          {person.gdScore ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {gdTotal}/20
+              </Typography>
+              <Tooltip title={gdTooltipContent} arrow placement="top" slotProps={tooltipSx}>
+                <IconButton size="small" sx={{ p: 0.25 }}>
+                  <Info size={14} color="#a1a1aa" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           ) : (
-            <span className="text-sm font-medium text-zinc-900">
-              {person.bonusScore[key] === 0 ? '-' : person.bonusScore[key]}
-            </span>
+            <Typography variant="body2" color="text.disabled">-</Typography>
           )}
-        </td>
-      ))}
+        </TableCell>
+      )}
 
-      {/* Exercise Scores */}
-      {showExerciseScores && (['Submitted', 'privateTest'] as const).map(
-        key => (
-          <td
-            key={key}
-            className="px-4 py-6 whitespace-nowrap text-center text-sm"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <span className={`inline-flex px-2 text-xs font-semibold rounded-full ${
-                person.exerciseScore[key]
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {person.exerciseScore[key] ? '✓' : '✗'}
-              </span>
-              {key === 'Submitted' && person.exerciseScore[key] === true && (
-                <svg
-                  onClick={() => fetchStudentRepoLink(week, person.name)}
-                  xmlns="http://www.w3.org/2000/svg"
-                  x="0px"
-                  y="0px"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 50 50"
-                  className="cursor-pointer"
+      {/* Bonus Score - collapsed */}
+      {showBonusScores && (
+        <TableCell align="center" sx={cellSx}>
+          {person.bonusScore ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+              <Chip
+                label={person.bonusScore.attempt > 0 ? '\u2713' : '\u2717'}
+                size="small"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 22,
+                  minWidth: 22,
+                  backgroundColor: person.bonusScore.attempt > 0 ? '#dcfce7' : '#f4f4f5',
+                  color: person.bonusScore.attempt > 0 ? '#166534' : '#3f3f46',
+                }}
+              />
+              <Typography variant="body2" fontWeight={500}>
+                {bonusTotal}/10
+              </Typography>
+              <Tooltip title={bonusTooltipContent} arrow placement="top" slotProps={tooltipSx}>
+                <IconButton size="small" sx={{ p: 0.25 }}>
+                  <Info size={14} color="#a1a1aa" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.disabled">-</Typography>
+          )}
+        </TableCell>
+      )}
+
+      {/* Exercise Score - collapsed */}
+      {showExerciseScores && (
+        <TableCell align="center" sx={cellSx}>
+          {person.exerciseScore ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+              <Chip
+                label={person.exerciseScore.Submitted && person.exerciseScore.privateTest ? '\u2713' : person.exerciseScore.Submitted ? 'Partial' : '\u2717'}
+                size="small"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 22,
+                  backgroundColor: person.exerciseScore.Submitted && person.exerciseScore.privateTest
+                    ? '#dcfce7'
+                    : person.exerciseScore.Submitted
+                      ? '#fef9c3'
+                      : '#f4f4f5',
+                  color: person.exerciseScore.Submitted && person.exerciseScore.privateTest
+                    ? '#166534'
+                    : person.exerciseScore.Submitted
+                      ? '#854d0e'
+                      : '#3f3f46',
+                }}
+              />
+              <Tooltip title={exerciseTooltipContent} arrow placement="top" slotProps={tooltipSx}>
+                <IconButton size="small" sx={{ p: 0.25 }}>
+                  <Info size={14} color="#a1a1aa" />
+                </IconButton>
+              </Tooltip>
+              {person.exerciseScore.Submitted && (
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fetchStudentRepoLink(week, person.name);
+                  }}
+                  sx={{ p: 0.25 }}
                 >
-                  <path d="M 25 2 C 12.309295 2 2 12.309295 2 25 C 2 37.690705 12.309295 48 25 48 C 37.690705 48 48 37.690705 48 25 C 48 12.309295 37.690705 2 25 2 z M 25 4 C 36.609824 4 46 13.390176 46 25 C 46 36.609824 36.609824 46 25 46 C 13.390176 46 4 36.609824 4 25 C 4 13.390176 13.390176 4 25 4 z M 25 11 A 3 3 0 0 0 22 14 A 3 3 0 0 0 25 17 A 3 3 0 0 0 28 14 A 3 3 0 0 0 25 11 z M 21 21 L 21 23 L 22 23 L 23 23 L 23 36 L 22 36 L 21 36 L 21 38 L 22 38 L 23 38 L 27 38 L 28 38 L 29 38 L 29 36 L 28 36 L 27 36 L 27 21 L 26 21 L 22 21 L 21 21 z"></path>
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#a1a1aa"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </IconButton>
               )}
-            </div>
-          </td>
-        )
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.disabled">-</Typography>
+          )}
+        </TableCell>
       )}
 
       {/* Total Score */}
-      <td className="px-8 py-6 text-center text-sm font-medium text-zinc-700">
-        {person.total}
-      </td>
+      <TableCell align="center" sx={cellSx}>
+        <Typography variant="body2" fontWeight={600} color="text.primary">
+          {person.total}
+        </Typography>
+      </TableCell>
 
       {/* Edit Button */}
-      <td className="px-8 py-6 text-center text-sm">
-        <button
+      <TableCell align="center" sx={cellSx}>
+        <Button
+          variant="contained"
+          size="small"
           onClick={handleEditClick}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200"
+          sx={{
+            textTransform: 'none',
+            backgroundColor: '#ea580c',
+            '&:hover': { backgroundColor: '#c2410c' },
+            fontWeight: 500,
+            fontSize: '0.75rem',
+            px: 2,
+            py: 0.5,
+            boxShadow: 'none',
+            '&:active': { boxShadow: 'none' },
+          }}
         >
           Edit
-        </button>
-      </td>
-    </tr>
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -1,3 +1,5 @@
+import { Box, Typography } from '@mui/material';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import type { WeeklyData } from '../../types/student';
 
@@ -5,44 +7,66 @@ interface WeeklyProgressChartProps {
   weeklyData: WeeklyData[];
 }
 
+const getBarColor = (score: number): string => {
+  if (score >= 80) return '#4ade80';
+  if (score >= 60) return '#facc15';
+  if (score >= 40) return '#fb923c';
+  if (score > 0) return '#f87171';
+  return '#52525b';
+};
+
 export const WeeklyProgressChart = ({ weeklyData }: WeeklyProgressChartProps) => {
+  const chartData = weeklyData.map((week) => ({
+    name: `W${week.week}`,
+    score: (week as { totalScore?: number }).totalScore || 0,
+    max: 100,
+  }));
+
   return (
-    <div className="bg-zinc-900 border border-orange-300 p-6 mb-8 font-mono">
-      <h2 className="text-lg font-semibold text-orange-300 mb-4 flex items-center border-b border-orange-300 pb-2">
-        <TrendingUp className="h-5 w-5 mr-2 text-orange-400" />
-        <span className="text-orange-400"></span>
-        <span className="ml-2">Weekly Progress</span>
-      </h2>
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <TrendingUp size={20} color="#fb923c" />
+        <Typography sx={{ fontWeight: 600, color: '#fafafa', fontSize: '1rem' }}>Weekly Progress</Typography>
+      </Box>
 
-      <div className="space-y-3">
-        {weeklyData.map((week) => {
-          const totalScore = (week as { totalScore?: number }).totalScore || 0;
-
-          return (
-            <div key={week.week} className="flex items-center space-x-4">
-              <div className="w-16 text-sm font-medium text-orange-300">
-                <span className="text-orange-400">[{week.week.toString().padStart(2, '0')}]</span>
-              </div>
-
-              <div className="flex-1 bg-zinc-700 border border-orange-400 h-6 relative">
-                <div
-                  className="h-6 text-white bg-orange-400 transition-all duration-300"
-                  style={{ width: `${Math.min(totalScore, 100)}%` }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-white">
-                    {totalScore}
-                  </span>
-                </div>
-              </div>
-
-              <div className="text-sm font-medium text-orange-300 w-24 text-right">
-                {totalScore}/100
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      <Box sx={{ width: '100%', height: { xs: 250, sm: 300 } }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: '#fb923c', fontSize: 12, fontWeight: 600 }}
+              axisLine={{ stroke: '#3f3f46' }}
+              tickLine={false}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fill: '#a1a1aa', fontSize: 12 }}
+              axisLine={{ stroke: '#3f3f46' }}
+              tickLine={false}
+            />
+            <Tooltip
+              cursor={{ fill: 'rgba(249,115,22,0.08)' }}
+              contentStyle={{
+                backgroundColor: '#18181b',
+                border: '1px solid #3f3f46',
+                borderRadius: 8,
+                color: '#fafafa',
+                fontSize: 13,
+              }}
+              labelStyle={{ color: '#fb923c', fontWeight: 600 }}
+              itemStyle={{ color: '#d4d4d8' }}
+              formatter={(value: number) => [`${value} / 100`, 'Score']}
+              labelFormatter={(label: string) => `Week ${label.replace('W', '')}`}
+            />
+            <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={48}>
+              {chartData.map((entry, index) => (
+                <Cell key={index} fill={getBarColor(entry.score)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    </Box>
   );
 };

@@ -1,12 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import {  Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-
+import {
+  Box,
+  Typography,
+  Button,
+  Chip,
+} from '@mui/material';
+import { ArrowLeft, Calendar, BookOpen, Trophy } from 'lucide-react';
 
 import { StudentSummary } from '../components/student/StudentSummary';
 import { WeeklyProgressChart } from '../components/student/WeeklyProgressChart';
-import { WeeklyBreakdownCard } from '../components/student/WeeklyBreakdownCard';
+import { WeeklyBreakdownList } from '../components/student/WeeklyBreakdownCard';
 import { ProfileDataCard } from '../components/student/ProfileDataCard';
 
 import { useCohort } from '../hooks/cohortHooks';
@@ -76,74 +80,54 @@ const StudentDetailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
 
-  // Get cohortId and studentId from URL params
   const cohortIdParam = searchParams.get('cohortId');
   const cohortTypeParam = searchParams.get('cohortType');
   const studentId = searchParams.get('studentId');
-  const fromSource = searchParams.get('from'); // 'table' or 'results'
+  const fromSource = searchParams.get('from');
 
-  // Fetch cohort data using the hook
   const { data: cohortData } = useCohort(cohortIdParam);
-
-  // Get current user to determine role
   const { data: currentUser } = useUser();
 
-  // Determine if we should use student's own scores or fetch another user's scores
   const isViewingOwnProfile = currentUser?.id === studentId;
   const canViewOtherScores = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.TEACHING_ASSISTANT;
 
-  // Fetch scores data - use appropriate hook based on whether viewing own profile
   const { data: myScoresData } = useMyScores(undefined, { enabled: isViewingOwnProfile });
   const { data: userScoresData } = useUserScores(studentId || '', { enabled: !isViewingOwnProfile && canViewOtherScores && !!studentId });
 
-  // Use the appropriate scores data
-  const scoresData = isViewingOwnProfile ? myScoresData : userScoresData;
+  const scoresData: ScoresData | undefined = isViewingOwnProfile ? myScoresData : userScoresData;
 
-  // Fetch student profile data by ID (only for TAs and Admins)
   const { data: studentProfileData } = useUserById(studentId || '', { enabled: canViewOtherScores && !!studentId });
 
-  useEffect(() => {
+  // Set student info from URL params
+  useState(() => {
     const studentName = searchParams.get('studentName');
     const studentEmail = searchParams.get('studentEmail');
-
-    // Set student info from URL params if available
     if (studentName || studentEmail) {
       setStudentInfo({
         name: studentName || 'Unknown',
         email: studentEmail || 'N/A',
       });
     }
-  }, [searchParams]);
+  });
 
-  // Find the selected cohort
   const selectedCohort = scoresData?.cohorts.find(cohort => {
-    if (cohortIdParam) {
-      return cohort.cohortId === cohortIdParam;
-    }
-    if (cohortTypeParam) {
-      return cohort.cohortType === cohortTypeParam;
-    }
+    if (cohortIdParam) return cohort.cohortId === cohortIdParam;
+    if (cohortTypeParam) return cohort.cohortType === cohortTypeParam;
     return false;
-  }) || scoresData?.cohorts[0]; // Default to first cohort if no match or no param
+  }) || scoresData?.cohorts[0];
 
-  // Sort weeks from the cohort API response (0 to n)
   const sortedCohortWeeks = useMemo(() => {
     if (!cohortData?.weeks) return [];
     return [...cohortData.weeks].sort((a, b) => a.week - b.week);
   }, [cohortData?.weeks]);
 
-  // Create a map of weekId to week number for easy lookup
   const weekIdToNumberMap = useMemo(() => {
     const map = new Map<string, number>();
-    sortedCohortWeeks.forEach(week => {
-      map.set(week.id, week.week);
-    });
+    sortedCohortWeeks.forEach(week => map.set(week.id, week.week));
     return map;
   }, [sortedCohortWeeks]);
 
-  // Sort the student's weekly scores based on the cohort's week order
   const sortedWeeklyScores = useMemo(() => {
     if (!selectedCohort?.weeklyScores) return [];
     return [...selectedCohort.weeklyScores].sort((a, b) => {
@@ -153,11 +137,8 @@ const StudentDetailPage = () => {
     });
   }, [selectedCohort?.weeklyScores, weekIdToNumberMap]);
 
-  // Calculate stats for the selected cohort only
   const totalWeeks = sortedWeeklyScores.length || 0;
   const attendedWeeks = sortedWeeklyScores.filter(w => w.groupDiscussionScores.attendance).length || 0;
-
-  // Check if cohort has exercises
   const hasExercises = cohortHasExercises(selectedCohort?.cohortType || '');
 
   const stats = {
@@ -166,27 +147,22 @@ const StudentDetailPage = () => {
     avgScore: totalWeeks > 0 ? (selectedCohort?.totalScore || 0) / totalWeeks : 0,
     attendanceRate: totalWeeks > 0 ? (attendedWeeks / totalWeeks) * 100 : 0,
     overallPercentage: (selectedCohort?.maxTotalScore || 0) > 0 ? ((selectedCohort?.totalScore || 0) / (selectedCohort?.maxTotalScore || 0)) * 100 : 0,
-    attendedWeeks: attendedWeeks,
-    totalWeeks: totalWeeks,
+    attendedWeeks,
+    totalWeeks,
   };
 
-  // Prepare weekly data for WeeklyBreakdownCard (filter out week 0)
   const validWeeks = sortedWeeklyScores
-    .map((weekScore) => {
-      const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? 0;
-      return {
-        week: weekNumber,
-        weekId: weekScore.weekId,
-        totalScore: weekScore.totalScore,
-        maxTotalScore: weekScore.maxTotalScore,
-        groupDiscussionScores: weekScore.groupDiscussionScores,
-        exerciseScores: weekScore.exerciseScores,
-        attendance: weekScore.groupDiscussionScores.attendance,
-      };
-    })
+    .map((weekScore) => ({
+      week: weekIdToNumberMap.get(weekScore.weekId) ?? 0,
+      weekId: weekScore.weekId,
+      totalScore: weekScore.totalScore,
+      maxTotalScore: weekScore.maxTotalScore,
+      groupDiscussionScores: weekScore.groupDiscussionScores,
+      exerciseScores: weekScore.exerciseScores,
+      attendance: weekScore.groupDiscussionScores.attendance,
+    }))
     .filter((week) => week.week !== 0);
 
-  // Prepare weekly data for WeeklyProgressChart (old format)
   const chartWeeklyData = sortedWeeklyScores.map((weekScore) => {
     const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? 0;
     return {
@@ -215,149 +191,124 @@ const StudentDetailPage = () => {
     };
   }).filter((weekData) => weekData.week !== 0);
 
-
   return (
-    <div className="min-h-screen bg-zinc-800 text-zinc-100">
-      {/* Header Terminal Window */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="bg-zinc-900 border border-orange-300 shadow-2xl font-mono rounded-lg overflow-hidden">
-          {/* Terminal Window Header */}
-          <div className="bg-zinc-700 px-4 py-3 flex items-center space-x-2 border-b border-orange-300">
-            <div className="flex space-x-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            </div>
-            <div className="flex-1 text-center">
-              <span className="text-gray-300 text-sm">Terminal — student_profile.sh</span>
-            </div>
-          </div>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#000', color: '#fafafa' }}>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3, lg: 4 }, py: { xs: 2, sm: 3 } }}>
 
-          {/* Terminal Content */}
-          <div className="p-6 bg-zinc-900">
-            {/* Terminal command header */}
-            {studentInfo && (
-              <div className="mb-4 pb-3 border-b border-zinc-700">
-                <div className="flex items-center space-x-2 text-orange-300 font-mono text-sm">
-                  <span className="text-green-400">$</span>
-                  <span className="text-zinc-400">cat</span>
-                  <span>student_info.txt</span>
-                </div>
-                <div className="mt-2 space-y-1 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-orange-400 font-semibold">NAME:</span>
-                    <span className="text-zinc-300">{studentInfo.name}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-orange-400 font-semibold">{isViewingOwnProfile ? 'EMAIL:' : 'DISCORD INFO:'}</span>
-                    <span className="text-zinc-300">{studentInfo.email}</span>
-                  </div>
-                  {selectedCohort && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-orange-400 font-semibold">COHORT:</span>
-                      <span className="text-zinc-300">
-                        {selectedCohort.cohortType} - Season {selectedCohort.seasonNumber}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {!fromSource && (
-                  <div className="mt-4 pt-3 border-t border-zinc-700 flex gap-3">
-                    {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") && (
-                      <button
-                        onClick={() => {
-                          if (selectedCohort.cohortId) {
-                            navigate(`/${selectedCohort.cohortId}/instructions`);
-                          } else if (selectedCohort.cohortType === "MASTERING_BITCOIN") {
-                            navigate('/mb-instructions');
-                          } else if (selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE") {
-                            navigate('/lbtcl-instructions');
-                          } else if (selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") {
-                            navigate('/ln-instructions');
-                          }
-                        }}
-                        className="px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors border-0"
-                      >
-                        Cohort Instructions
-                      </button>
-                    )}
-                    {cohortIdParam && (
-                      <button
-                        onClick={() => navigate(`/results/${cohortIdParam}`)}
-                        className="px-4 py-2 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors border-0"
-                      >
-                        View Ranking
-                      </button>
-                    )}
-                  </div>
+        {/* Back button */}
+        <Button
+          startIcon={<ArrowLeft size={18} />}
+          onClick={() => navigate(-1)}
+          sx={{
+            color: '#a1a1aa',
+            textTransform: 'none',
+            fontWeight: 500,
+            mb: 2,
+            px: 1.5,
+            '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.05)' },
+          }}
+        >
+          Back
+        </Button>
+
+        {/* Header */}
+        {studentInfo && (
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', gap: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff', fontSize: { xs: '1.5rem', sm: '1.75rem' } }}>
+                  {studentInfo.name}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>
+                  {isViewingOwnProfile ? studentInfo.email : studentInfo.email}
+                </Typography>
+                {selectedCohort && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                    <Chip
+                      label={selectedCohort.cohortType.replace(/_/g, ' ')}
+                      size="small"
+                      sx={{ bgcolor: 'rgba(249,115,22,0.15)', color: '#fb923c', fontWeight: 600, fontSize: '0.7rem' }}
+                    />
+                    <Chip
+                      label={`Season ${selectedCohort.seasonNumber}`}
+                      size="small"
+                      sx={{ bgcolor: '#3f3f46', color: '#d4d4d8', fontWeight: 500, fontSize: '0.7rem' }}
+                    />
+                  </Box>
                 )}
-              </div>
-            )} 
+              </Box>
 
-            {/* Navigation and Actions */}
+              {/* Action buttons */}
+              {!fromSource && (
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<BookOpen size={16} />}
+                      onClick={() => {
+                        if (selectedCohort.cohortId) {
+                          navigate(`/${selectedCohort.cohortId}/instructions`);
+                        } else if (selectedCohort.cohortType === "MASTERING_BITCOIN") {
+                          navigate('/mb-instructions');
+                        } else if (selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE") {
+                          navigate('/lbtcl-instructions');
+                        } else if (selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") {
+                          navigate('/ln-instructions');
+                        }
+                      }}
+                      sx={{ bgcolor: '#ea580c', textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&:hover': { bgcolor: '#c2410c' } }}
+                    >
+                      Instructions
+                    </Button>
+                  )}
+                  {cohortIdParam && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Trophy size={16} />}
+                      onClick={() => navigate(`/results/${cohortIdParam}`)}
+                      sx={{ color: '#fb923c', borderColor: 'rgba(249,115,22,0.4)', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#fb923c', bgcolor: 'rgba(249,115,22,0.08)' } }}
+                    >
+                      View Ranking
+                    </Button>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
 
+        {/* Summary Stats */}
+        <StudentSummary stats={stats} hasExercises={hasExercises} />
 
+        {/* Progress Chart */}
+        <Box sx={{ mb: 3 }}>
+          <WeeklyProgressChart weeklyData={chartWeeklyData} />
+        </Box>
 
-            {/* Summary Stats */}
-            <div className="mb-6">
-              <StudentSummary stats={stats} hasExercises={hasExercises} />
-            </div>
-            
-            {/* Progress Chart */}
-            <WeeklyProgressChart weeklyData={chartWeeklyData} />
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Weekly Breakdown */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-zinc-100 flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Detailed Weekly Breakdown
-            </h2>
-
-            {validWeeks.length > 0 && (
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setCurrentWeekIndex(prev => Math.max(0, prev - 1))}
-                  disabled={currentWeekIndex === 0}
-                  className="p-2 bg-orange-400 text-white hover:bg-orange-500 border-none rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-
-                <span className="text-orange-300 font-mono">
-                  Week {validWeeks[currentWeekIndex]?.week || 1} of {validWeeks[validWeeks.length - 1]?.week || validWeeks.length}
-                </span>
-
-                <button
-                  onClick={() => setCurrentWeekIndex(prev => Math.min(validWeeks.length - 1, prev + 1))}
-                  disabled={currentWeekIndex === validWeeks.length - 1}
-                  className="p-2 bg-orange-400 text-white hover:bg-orange-500  border-none  rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {validWeeks.length > 0 && validWeeks[currentWeekIndex] && (
-            <WeeklyBreakdownCard
-              week={validWeeks[currentWeekIndex]}
-              studentName={studentInfo?.name || ''}
+        {/* Weekly Breakdown (hidden for admin/TA viewing other students) */}
+        {validWeeks.length > 0 && (canViewOtherScores ? isViewingOwnProfile : true) && (
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Calendar size={20} color="#fafafa" />
+              <Typography sx={{ fontWeight: 600, color: '#fafafa' }}>
+                Weekly Breakdown
+              </Typography>
+            </Box>
+            <WeeklyBreakdownList
+              weeks={validWeeks}
               cohortType={selectedCohort?.cohortType}
             />
-          )}
-        </div>
+          </Box>
+        )}
 
+        {/* Profile Data (admin/TA only) */}
         {canViewOtherScores && studentProfileData && (
           <ProfileDataCard profile={studentProfileData} />
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

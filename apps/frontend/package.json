@@ -12,14 +12,18 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@fontsource/sora": "^5.2.8",
+    "@mui/material": "^7.3.8",
     "@tanstack/react-query": "^5.62.8",
     "axios": "^1.12.2",
     "browserlist": "^1.0.1",
     "lucide-react": "^0.522.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.1"
+    "react-router-dom": "^7.6.1",
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

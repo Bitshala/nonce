@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Button, CircularProgress } from '@mui/material';
+import { AlertTriangle } from 'lucide-react';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
 import { UserRole } from '../../types/enums';
@@ -29,48 +31,76 @@ const GeneralInstructions: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-900">
-        <div className="flex items-center space-x-3">
-          <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-white font-medium">Loading...</div>
-        </div>
-      </div>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <CircularProgress size={24} sx={{ color: '#f97316' }} />
+          <Typography sx={{ color: '#fafafa', fontWeight: 500 }}>Loading...</Typography>
+        </Box>
+      </Box>
     );
   }
 
   if (error || !hasAccess) {
     return (
-      <div className="min-h-screen bg-zinc-900 px-4 py-6">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="bg-zinc-800/80 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-white">Access Restricted</h1>
-              <p className="text-zinc-300 max-w-md mx-auto">
-                {error || 'You need to be enrolled in a cohort to access these instructions.'}
-              </p>
-              <div className="flex justify-center space-x-4 mt-6">
-                <button
-                  onClick={() => navigate('/me')}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-semibold rounded-xl hover:from-orange-700 hover:to-orange-800 focus:ring-2 focus:ring-orange-500/50 focus:outline-none transition-all duration-200"
-                >
-                  View Profile & Cohorts
-                </button>
-                <button
-                  onClick={() => navigate('/me')}
-                  className="px-6 py-3 bg-zinc-700 text-white font-semibold rounded-xl hover:bg-zinc-600 focus:ring-2 focus:ring-zinc-500/50 focus:outline-none transition-all duration-200"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Box sx={{ minHeight: '100vh', bgcolor: '#000', px: 2, py: 4 }}>
+        <Box sx={{ maxWidth: 600, mx: 'auto', textAlign: 'center' }}>
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              mx: 'auto',
+              mb: 3,
+              borderRadius: '50%',
+              bgcolor: 'rgba(239,68,68,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <AlertTriangle size={32} color="#f87171" />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff', mb: 1.5 }}>
+            Access Restricted
+          </Typography>
+          <Typography sx={{ color: '#a1a1aa', mb: 4, maxWidth: 400, mx: 'auto' }}>
+            {error || 'You need to be enrolled in a cohort to access these instructions.'}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/me')}
+              sx={{
+                bgcolor: '#ea580c',
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1.2,
+                borderRadius: 2,
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#c2410c' },
+              }}
+            >
+              View Profile & Cohorts
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/me')}
+              sx={{
+                color: '#d4d4d8',
+                borderColor: '#3f3f46',
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1.2,
+                borderRadius: 2,
+                '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.05)' },
+              }}
+            >
+              Go Back
+            </Button>
+          </Box>
+        </Box>
+      </Box>
     );
   }
 

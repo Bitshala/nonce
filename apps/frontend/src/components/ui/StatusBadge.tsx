@@ -1,10 +1,12 @@
+import { Chip } from '@mui/material';
+
 type StatusVariant = 'Active' | 'Upcoming' | 'Completed' | 'Inactive';
 
-const variantStyles: Record<StatusVariant, string> = {
-  Active: 'bg-green-500/15 text-green-400 ring-green-500/20',
-  Upcoming: 'bg-blue-500/15 text-blue-400 ring-blue-500/20',
-  Completed: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/20',
-  Inactive: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/20',
+const variantStyles: Record<StatusVariant, { bgcolor: string; color: string; borderColor: string }> = {
+  Active: { bgcolor: 'rgba(34,197,94,0.15)', color: '#4ade80', borderColor: 'rgba(34,197,94,0.3)' },
+  Upcoming: { bgcolor: 'rgba(59,130,246,0.15)', color: '#60a5fa', borderColor: 'rgba(59,130,246,0.3)' },
+  Completed: { bgcolor: 'rgba(161,161,170,0.15)', color: '#a1a1aa', borderColor: 'rgba(161,161,170,0.3)' },
+  Inactive: { bgcolor: 'rgba(161,161,170,0.15)', color: '#a1a1aa', borderColor: 'rgba(161,161,170,0.3)' },
 };
 
 type StatusBadgeProps = {
@@ -13,12 +15,20 @@ type StatusBadgeProps = {
 
 const StatusBadge = ({ status }: StatusBadgeProps) => {
   const variant = (status in variantStyles ? status : 'Inactive') as StatusVariant;
+  const styles = variantStyles[variant];
   return (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ring-1 ring-inset ${variantStyles[variant]}`}
-    >
-      {status}
-    </span>
+    <Chip
+      label={status}
+      size="small"
+      sx={{
+        fontWeight: 500,
+        fontSize: '0.8rem',
+        bgcolor: styles.bgcolor,
+        color: styles.color,
+        border: `1px solid ${styles.borderColor}`,
+        height: 28,
+      }}
+    />
   );
 };
 

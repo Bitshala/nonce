@@ -1,15 +1,29 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
+  Box,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Avatar,
+  Typography,
+  IconButton,
+  Collapse,
+  Divider,
+  Tooltip,
+} from '@mui/material';
+import {
   GraduationCap,
   LayoutDashboard,
   User,
-
   LogOut,
   ChevronLeft,
   ChevronRight,
   BookOpen,
   ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
@@ -38,6 +52,9 @@ const instructionLinks = [
   { label: 'Lightning Network', path: '/ln-instructions' },
   { label: 'Bitcoin Protocol Dev', path: '/bpd-instructions' },
 ];
+
+const EXPANDED_WIDTH = 260;
+const COLLAPSED_WIDTH = 68;
 
 const getInitial = (name: string | null | undefined): string => {
   if (!name) return '?';
@@ -77,134 +94,252 @@ const Sidebar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const drawerWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+
+  const activeItemSx = {
+    bgcolor: 'rgba(249,115,22,0.1)',
+    color: '#fb923c',
+    borderLeft: '3px solid #f97316',
+    '&:hover': { bgcolor: 'rgba(249,115,22,0.15)' },
+  };
+
+  const inactiveItemSx = {
+    color: '#a1a1aa',
+    borderLeft: '3px solid transparent',
+    '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', color: '#e4e4e7' },
+  };
+
   return (
-    <aside
-      className="h-screen sticky top-0 flex flex-col bg-zinc-900 border-r border-zinc-800 transition-all duration-200"
-      style={{ width: collapsed ? 64 : 240, minWidth: collapsed ? 64 : 240 }}
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          bgcolor: '#0f0f0f',
+          borderRight: '1px solid #27272a',
+          transition: 'width 200ms ease',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-zinc-800">
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          px: collapsed ? 1 : 2.5,
+          height: 64,
+          borderBottom: '1px solid #27272a',
+          flexShrink: 0,
+        }}
+      >
         {!collapsed && (
-          <span className="text-base font-bold text-zinc-100 whitespace-nowrap">Bitshala</span>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.1rem' }}>
+            Bitshala
+          </Typography>
         )}
-        <button
-          onClick={toggleCollapse}
-          className="b-0 p-1.5 rounded-md bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-        >
+        <IconButton onClick={toggleCollapse} size="small" sx={{ color: '#71717a', '&:hover': { color: '#d4d4d8', bgcolor: '#27272a' } }}>
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
-      </div>
+        </IconButton>
+      </Box>
 
-      {/* Nav items */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const active = isActive(item.path);
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              title={collapsed ? item.label : undefined}
-              className={`b-0 w-full flex items-center gap-3 rounded-lg transition-all duration-150 ${
-                collapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5'
-              } ${
-                active
-                  ? 'bg-orange-500/10 text-orange-400 border-l-3 border-orange-500'
-                  : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border-l-3 border-transparent'
-              }`}
-            >
-              <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-              {!collapsed && (
-                <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
-              )}
-            </button>
-          );
-        })}
-
-        {/* Instructions section */}
-        <div className="mt-2 pt-2 border-t border-zinc-800/50">
-          <button
-            onClick={() => collapsed ? navigate('/general-instructions') : setInstructionsOpen(!instructionsOpen)}
-            title={collapsed ? 'Instructions' : undefined}
-            className={`b-0 w-full flex items-center gap-3 rounded-lg transition-all duration-150 ${
-              collapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5'
-            } ${
-              instructionLinks.some((l) => isActive(l.path))
-                ? 'bg-orange-500/10 text-orange-400'
-                : 'bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-            }`}
-          >
-            <BookOpen size={20} strokeWidth={instructionLinks.some((l) => isActive(l.path)) ? 2.2 : 1.8} />
-            {!collapsed && (
-              <>
-                <span className="text-sm font-medium whitespace-nowrap flex-1 text-left">Instructions</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-200 ${instructionsOpen ? 'rotate-180' : ''}`}
-                />
-              </>
-            )}
-          </button>
-
-          {!collapsed && instructionsOpen && (
-            <div className="ml-5 mt-1 space-y-0.5 border-l border-zinc-700/50 pl-3">
-              {instructionLinks.map((link) => (
-                <button
-                  key={link.path}
-                  onClick={() => navigate(link.path)}
-                  className={`b-0 w-full text-left px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 ${
-                    isActive(link.path)
-                      ? 'text-orange-400 bg-orange-500/10'
-                      : 'text-zinc-500 hover:text-zinc-300 bg-transparent hover:bg-zinc-800/50'
-                  }`}
+      {/* Navigation */}
+      <Box sx={{ flex: 1, py: 1.5, px: 1, overflowY: 'auto' }}>
+        <List disablePadding>
+          {navItems.map((item) => {
+            const active = isActive(item.path);
+            const Icon = item.icon;
+            return (
+              <Tooltip key={item.path} title={collapsed ? item.label : ''} placement="right" arrow>
+                <ListItemButton
+                  onClick={() => navigate(item.path)}
+                  sx={{
+                    borderRadius: 1.5,
+                    mb: 0.5,
+                    py: 1.25,
+                    px: collapsed ? 0 : 2,
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    minHeight: 44,
+                    ...(active ? activeItemSx : inactiveItemSx),
+                  }}
                 >
-                  {link.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </nav>
+                  <ListItemIcon
+                    sx={{
+                      minWidth: collapsed ? 0 : 36,
+                      color: 'inherit',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+                  </ListItemIcon>
+                  {!collapsed && (
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            );
+          })}
+        </List>
 
-      {/* Bottom: user info + logout */}
-      <div className="border-t border-zinc-800 px-2 py-3 space-y-1">
-        {/* User info */}
+        <Divider sx={{ borderColor: '#27272a', my: 1.5 }} />
+
+        {/* Instructions Section */}
+        <List disablePadding>
+          <Tooltip title={collapsed ? 'Instructions' : ''} placement="right" arrow>
+            <ListItemButton
+              onClick={() => collapsed ? navigate('/general-instructions') : setInstructionsOpen(!instructionsOpen)}
+              sx={{
+                borderRadius: 1.5,
+                py: 1.25,
+                px: collapsed ? 0 : 2,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                minHeight: 44,
+                ...(instructionLinks.some(l => isActive(l.path)) ? activeItemSx : inactiveItemSx),
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: collapsed ? 0 : 36,
+                  color: 'inherit',
+                  justifyContent: 'center',
+                }}
+              >
+                <BookOpen size={20} strokeWidth={instructionLinks.some(l => isActive(l.path)) ? 2.2 : 1.8} />
+              </ListItemIcon>
+              {!collapsed && (
+                <>
+                  <ListItemText
+                    primary="Instructions"
+                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                  />
+                  {instructionsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </>
+              )}
+            </ListItemButton>
+          </Tooltip>
+
+          {!collapsed && (
+            <Collapse in={instructionsOpen} timeout="auto" unmountOnExit>
+              <List disablePadding sx={{ pl: 2.5, borderLeft: '1px solid #3f3f46', ml: 3, mt: 0.5 }}>
+                {instructionLinks.map((link) => {
+                  const active = isActive(link.path);
+                  return (
+                    <ListItemButton
+                      key={link.path}
+                      onClick={() => navigate(link.path)}
+                      sx={{
+                        borderRadius: 1,
+                        py: 1,
+                        px: 1.5,
+                        mb: 0.25,
+                        ...(active
+                          ? { color: '#fb923c', bgcolor: 'rgba(249,115,22,0.1)', '&:hover': { bgcolor: 'rgba(249,115,22,0.15)' } }
+                          : { color: '#a1a1aa', '&:hover': { color: '#e4e4e7', bgcolor: 'rgba(255,255,255,0.04)' } }),
+                      }}
+                    >
+                      <ListItemText
+                        primary={link.label}
+                        primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                      />
+                    </ListItemButton>
+                  );
+                })}
+              </List>
+            </Collapse>
+          )}
+        </List>
+      </Box>
+
+      {/* Bottom: User info + Logout */}
+      <Box sx={{ borderTop: '1px solid #27272a', px: 1, py: 1.5, flexShrink: 0 }}>
+        {/* User Info */}
         {user && (
-          <button
-            onClick={() => navigate('/myDashboard')}
-            className={`b-0 w-full flex items-center gap-2.5 rounded-lg bg-transparent hover:bg-zinc-800/50 transition-colors duration-150 ${
-              collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-semibold text-zinc-300">
+          <Tooltip title={collapsed ? (user.name || user.discordUsername || '') : ''} placement="right" arrow>
+            <ListItemButton
+              onClick={() => navigate('/myDashboard')}
+              sx={{
+                borderRadius: 1.5,
+                py: 1,
+                px: collapsed ? 0 : 1.5,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                color: '#d4d4d8',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                mb: 0.5,
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: '#3f3f46',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: '#d4d4d8',
+                  mr: collapsed ? 0 : 1.5,
+                }}
+              >
                 {getInitial(user.name || user.discordUsername)}
-              </span>
-            </div>
-            {!collapsed && (
-              <div className="overflow-hidden text-left leading-tight">
-                <p className="text-sm font-medium text-zinc-200 truncate">
-                  {user.name || user.discordUsername}
-                </p>
-                <p className="text-[11px] text-zinc-500 truncate">{user.role}</p>
-              </div>
-            )}
-          </button>
+              </Avatar>
+              {!collapsed && (
+                <Box sx={{ overflow: 'hidden' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 500, color: '#e4e4e7', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {user.name || user.discordUsername}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#71717a', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}
+                  >
+                    {user.role}
+                  </Typography>
+                </Box>
+              )}
+            </ListItemButton>
+          </Tooltip>
         )}
 
         {/* Logout */}
-        <button
-          onClick={logout}
-          title={collapsed ? 'Logout' : undefined}
-          className={`b-0 w-full flex items-center gap-3 rounded-lg bg-transparent text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 ${
-            collapsed ? 'justify-center px-0 py-3' : 'px-3 py-2.5'
-          }`}
-        >
-          <LogOut size={20} strokeWidth={1.8} />
-          {!collapsed && <span className="text-sm font-medium">Logout</span>}
-        </button>
-      </div>
-    </aside>
+        <Tooltip title={collapsed ? 'Logout' : ''} placement="right" arrow>
+          <ListItemButton
+            onClick={logout}
+            sx={{
+              borderRadius: 1.5,
+              py: 1,
+              px: collapsed ? 0 : 2,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              color: '#a1a1aa',
+              '&:hover': { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.1)' },
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: collapsed ? 0 : 36,
+                color: 'inherit',
+                justifyContent: 'center',
+              }}
+            >
+              <LogOut size={20} strokeWidth={1.8} />
+            </ListItemIcon>
+            {!collapsed && (
+              <ListItemText
+                primary="Logout"
+                primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+              />
+            )}
+          </ListItemButton>
+        </Tooltip>
+      </Box>
+    </Drawer>
   );
 };
 

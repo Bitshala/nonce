@@ -1,12 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Button as MuiButton,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  IconButton,
+} from '@mui/material';
+import { Eye, X } from 'lucide-react';
 
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
 import { ScoreEditModal } from '../components/table/ScoreEditModal';
 import { TableContextMenu } from '../components/table/TableContextMenu';
-import { Modal, InputField, Button, ModalRow } from '../components/Modal';
 
 import { computeTotal, cohortHasExercises } from '../utils/calculations';
 import { downloadCSV } from '../utils/csvUtils';
@@ -123,29 +135,33 @@ const TableView: React.FC = () => {
         ? (teachingAssistant.discordGlobalName || teachingAssistant.discordUsername || teachingAssistant.name || 'N/A')
         : 'N/A';
 
+      const gd = score.groupDiscussionScores;
+      const ex = score.exerciseScores;
+
       return {
         id: typeof score.userId === 'number' ? score.userId : idx,
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
+        discordGlobalName: score.discordGlobalName ?? score.discordUsername ?? score.name ?? 'Unknown',
         email: score.discordUsername ?? '', // discord username
         group: `Group ${groupNumber}`,
         ta: taName,
-        attendance: Boolean(score.groupDiscussionScores?.attendance),
-        gdScore: {
-          fa: score.groupDiscussionScores?.communicationScore ?? 0,
-          fb: score.groupDiscussionScores?.depthOfAnswerScore ?? 0,
-          fc: score.groupDiscussionScores?.technicalBitcoinFluencyScore ?? 0,
-          fd: score.groupDiscussionScores?.engagementScore ?? 0,
-        },
-        bonusScore: {
-          attempt: score.groupDiscussionScores?.isBonusAttempted ? 1 : 0,
-          good: score.groupDiscussionScores?.bonusAnswerScore ?? 0,
-          followUp: score.groupDiscussionScores?.bonusFollowupScore ?? 0,
-        },
-        exerciseScore: {
-          Submitted: Boolean(score.exerciseScores?.isSubmitted),
-          privateTest: Boolean(score.exerciseScores?.isPassing),
-        },
+        attendance: Boolean(gd?.attendance),
+        gdScore: gd ? {
+          fa: gd.communicationScore ?? 0,
+          fb: gd.depthOfAnswerScore ?? 0,
+          fc: gd.technicalBitcoinFluencyScore ?? 0,
+          fd: gd.engagementScore ?? 0,
+        } : null,
+        bonusScore: gd ? {
+          attempt: gd.isBonusAttempted ? 1 : 0,
+          good: gd.bonusAnswerScore ?? 0,
+          followUp: gd.bonusFollowupScore ?? 0,
+        } : null,
+        exerciseScore: ex ? {
+          Submitted: Boolean(ex.isSubmitted),
+          privateTest: Boolean(ex.isPassing),
+        } : null,
         week: weekIndex,
         total: score.totalScore ?? 0,
       };
@@ -240,15 +256,15 @@ const TableView: React.FC = () => {
 
       const body = {
         attendance: updated.attendance,
-        communicationScore: updated.gdScore.fa,
-        depthOfAnswerScore: updated.gdScore.fb,
-        technicalBitcoinFluencyScore: updated.gdScore.fc,
-        engagementScore: updated.gdScore.fd,
-        isBonusAttempted: updated.bonusScore.attempt > 0,
-        bonusAnswerScore: updated.bonusScore.good,
-        bonusFollowupScore: updated.bonusScore.followUp,
-        isSubmitted: updated.exerciseScore.Submitted,
-        isPassing: updated.exerciseScore.privateTest,
+        communicationScore: updated.gdScore?.fa ?? 0,
+        depthOfAnswerScore: updated.gdScore?.fb ?? 0,
+        technicalBitcoinFluencyScore: updated.gdScore?.fc ?? 0,
+        engagementScore: updated.gdScore?.fd ?? 0,
+        isBonusAttempted: (updated.bonusScore?.attempt ?? 0) > 0,
+        bonusAnswerScore: updated.bonusScore?.good ?? 0,
+        bonusFollowupScore: updated.bonusScore?.followUp ?? 0,
+        isSubmitted: updated.exerciseScore?.Submitted ?? false,
+        isPassing: updated.exerciseScore?.privateTest ?? false,
       };
 
       const userId = (selectedStudentForEdit as any).userId ?? String(selectedStudentForEdit.id);
@@ -264,7 +280,12 @@ const TableView: React.FC = () => {
           onSuccess: () => {
             setData((prev) =>
               prev.map((p) =>
-                p.id === updated.id ? { ...updated, total: computeTotal(updated, cohortHasExercises(cohortData?.type || '')) } : p
+                p.id === updated.id ? { ...updated, total: computeTotal({
+                  attendance: updated.attendance,
+                  gdScore: updated.gdScore ?? { fa: 0, fb: 0, fc: 0, fd: 0 },
+                  bonusScore: updated.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
+                  exerciseScore: updated.exerciseScore ?? { Submitted: false, privateTest: false },
+                }, cohortHasExercises(cohortData?.type || '')) } : p
               )
             );
             setShowScoreEditModal(false);
@@ -329,9 +350,9 @@ const TableView: React.FC = () => {
 
     const csvRows = rows.map((r) => [
       r.name, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
-      r.gdScore.fa, r.gdScore.fb, r.gdScore.fc, r.gdScore.fd,
-      r.bonusScore.attempt, r.bonusScore.good, r.bonusScore.followUp,
-      ...(hasExercises ? [r.exerciseScore.Submitted ? 'Yes' : 'No', r.exerciseScore.privateTest ? 'Yes' : 'No'] : []),
+      r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
+      r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
+      ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),
       r.total,
     ]);
 
@@ -397,48 +418,69 @@ const TableView: React.FC = () => {
     );
   }, [selectedWeekId, cohortIdParam, selectedGroupNumber, assignSelfToGroupMutation]);
 
-  // === Cohort Header (dynamic title) ===
-  const cohortTitleBlock = useMemo(() => {
-    // Prefer backend-sourced cohort metadata
-    if (cohortData) {
-      return (
-        <>
-          <h1>{`${cohortTypeToName(cohortData.type)} - Season ${cohortData.season}`}</h1>
-          <h2 className="font-light">{`${formatCohortDate(cohortData.startDate)} to ${formatCohortDate(cohortData.endDate)}`}</h2>
-        </>
-      );
-    }
-  }, [cohortData]);
-
   // === Loading & error states ===
   if (isCohortLoading || isScoresLoading || isScoresPending) {
     return (
-      <div className="p-6 bg-zinc-900 text-zinc-300/90 min-h-screen">
-        <div className="max-w-full mx-auto">Loading cohort…</div>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', bgcolor: '#000' }}>
+        <CircularProgress sx={{ color: '#f97316' }} />
+      </Box>
     );
   }
 
   if (cohortError) {
     return (
-      <div className="p-6 bg-zinc-900 text-red-400 min-h-screen">
-        <div className="max-w-full mx-auto">Failed to load cohort.</div>
-      </div>
+      <Box sx={{ p: 3, bgcolor: '#000', color: '#ef4444', minHeight: '100vh' }}>
+        <Typography>Failed to load cohort.</Typography>
+      </Box>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-zinc-900 text-zinc-300/90 min-h-screen">
-      <div className="max-w-full mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <div>{cohortTitleBlock}</div>
-          <button
+    <Box sx={{ p: { xs: 2, sm: 3, lg: 4 }, bgcolor: '#000', color: '#d4d4d8', minHeight: '100vh' }}>
+      <Box sx={{ maxWidth: '100%', mx: 'auto' }}>
+        {/* Page Title */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 2,
+            mb: 3,
+          }}
+        >
+          <Box>
+            {cohortData && (
+              <>
+                <Typography
+                  variant="h5"
+                  sx={{ color: '#fafafa', fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+                >
+                  {cohortTypeToName(cohortData.type)} &ndash; Season {cohortData.season}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#71717a', mt: 0.5 }}>
+                  {formatCohortDate(cohortData.startDate)} to {formatCohortDate(cohortData.endDate)}
+                </Typography>
+              </>
+            )}
+          </Box>
+          <MuiButton
+            variant="contained"
+            startIcon={<Eye size={16} />}
             onClick={() => navigate(`/results/${cohortIdParam}`)}
-            className="border-0 px-4 py-3 bg-orange-400 hover:bg-orange-700 text-white rounded-lg transition-colors duration-200 font-semibold"
+            sx={{
+              bgcolor: '#ea580c',
+              '&:hover': { bgcolor: '#c2410c' },
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 'none',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
           >
             View Result
-          </button>
-        </div>
+          </MuiButton>
+        </Box>
 
         <TableHeader
           // week props
@@ -496,6 +538,7 @@ const TableView: React.FC = () => {
             student={selectedStudentForEdit}
             cohortId={cohortData?.id}
             weekId={selectedWeekId}
+            week={weekIndex}
             cohortType={cohortData?.type}
             onSubmit={handleScoreUpdate}
             onClose={() => {
@@ -505,93 +548,129 @@ const TableView: React.FC = () => {
           />
         )}
 
-        <Modal
-            isOpen={showAssignGroupsModal}
-            onClose={() => setShowAssignGroupsModal(false)}
-            title="Assign Groups"
-            description="Configure the group assignment settings for this week."
-            size="sm"
-            footer={
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowAssignGroupsModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleAssignGroupsSubmit}
-                  loading={assignGroupsMutation.isPending}
-                >
-                  Assign Groups
-                </Button>
-              </>
-            }
-          >
-            <ModalRow>
-              <InputField
+        {/* Assign Groups Modal */}
+        <Dialog
+          open={showAssignGroupsModal}
+          onClose={() => setShowAssignGroupsModal(false)}
+          maxWidth="xs"
+          fullWidth
+          slotProps={{
+            backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.7)' } },
+          }}
+          PaperProps={{
+            sx: { bgcolor: '#1c1c1e', backgroundImage: 'none', borderRadius: 3, border: '1px solid #3f3f46' },
+          }}
+        >
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa' }}>Assign Groups</Typography>
+              <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>Configure group assignment for this week.</Typography>
+            </Box>
+            <IconButton onClick={() => setShowAssignGroupsModal(false)} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
+              <X size={20} />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <TextField
                 label="Participants Per Group"
-                name="participantsPerGroup"
                 type="number"
                 value={participantsPerGroup}
                 onChange={(e) => setParticipantsPerGroup(parseInt(e.target.value) || 0)}
-                min={1}
+                slotProps={{ htmlInput: { min: 1 } }}
                 required
-                placeholder="8"
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
+                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
+                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+                }}
               />
-              <InputField
+              <TextField
                 label="Number of Groups"
-                name="groupsAvailable"
                 type="number"
                 value={groupsAvailable}
                 onChange={(e) => setGroupsAvailable(parseInt(e.target.value) || 0)}
-                min={1}
+                slotProps={{ htmlInput: { min: 1 } }}
                 required
-                placeholder="3"
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
+                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
+                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+                }}
               />
-            </ModalRow>
-          </Modal>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+            <MuiButton onClick={() => setShowAssignGroupsModal(false)} variant="outlined" sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}>
+              Cancel
+            </MuiButton>
+            <MuiButton
+              onClick={handleAssignGroupsSubmit}
+              variant="contained"
+              disabled={assignGroupsMutation.isPending}
+              sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' }, textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' } }}
+            >
+              {assignGroupsMutation.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Assign Groups'}
+            </MuiButton>
+          </DialogActions>
+        </Dialog>
 
+        {/* TA Self-Assign Modal */}
         {isTA && (
-          <Modal
-            isOpen={showTASelfAssignModal}
+          <Dialog
+            open={showTASelfAssignModal}
             onClose={() => setShowTASelfAssignModal(false)}
-            title="Assign Yourself to a Group"
-            description="Select a group number to assign yourself as a TA for this week."
-            size="sm"
-            footer={
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowTASelfAssignModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleTASelfAssignSubmit}
-                  loading={assignSelfToGroupMutation.isPending}
-                >
-                  Assign to Group
-                </Button>
-              </>
-            }
+            maxWidth="xs"
+            fullWidth
+            slotProps={{
+              backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.7)' } },
+            }}
+            PaperProps={{
+              sx: { bgcolor: '#1c1c1e', backgroundImage: 'none', borderRadius: 3, border: '1px solid #3f3f46' },
+            }}
           >
-            <ModalRow>
-              <InputField
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa' }}>Assign to Group</Typography>
+                <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>Select a group to assign yourself as TA.</Typography>
+              </Box>
+              <IconButton onClick={() => setShowTASelfAssignModal(false)} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
+                <X size={20} />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 3 }}>
+              <TextField
                 label="Group Number"
-                name="groupNumber"
                 type="number"
                 value={selectedGroupNumber}
                 onChange={(e) => setSelectedGroupNumber(parseInt(e.target.value) || 0)}
-                min={0}
-                max={5}
+                slotProps={{ htmlInput: { min: 0, max: 5 } }}
                 required
-                placeholder="0"
+                fullWidth
+                sx={{
+                  mt: 1,
+                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
+                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
+                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+                }}
               />
-            </ModalRow>
-          </Modal>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+              <MuiButton onClick={() => setShowTASelfAssignModal(false)} variant="outlined" sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}>
+                Cancel
+              </MuiButton>
+              <MuiButton
+                onClick={handleTASelfAssignSubmit}
+                variant="contained"
+                disabled={assignSelfToGroupMutation.isPending}
+                sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' }, textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' } }}
+              >
+                {assignSelfToGroupMutation.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Assign to Group'}
+              </MuiButton>
+            </DialogActions>
+          </Dialog>
         )}
 
         <TableContextMenu
@@ -599,8 +678,8 @@ const TableView: React.FC = () => {
           onClose={() => setContextMenu({ visible: false, x: 0, y: 0, targetId: null })}
           onDelete={handleDeleteStudent}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
