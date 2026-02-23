@@ -6,7 +6,7 @@ import type { GetCohortResponseDto } from '../../types/api';
 import CohortCardV2 from '../../components/dashboard/CohortCardV2';
 import { getCohortImage, COHORT_TYPES } from '../../utils/cohortUtils';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
-import { getTodayDate, calculateEndDate, calculateStartDate, calculateRegistrationDeadline, formatDateForInput } from '../../utils/dateUtils';
+import { getTodayDate, calculateRegistrationDeadline, formatDateForInput } from '../../utils/dateUtils';
 
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,13 +20,8 @@ const AdminPage: React.FC = () => {
   const [selectedCohort, setSelectedCohort] = useState<GetCohortResponseDto | null>(null);
 
   // Form state
-  const [season, setSeason] = useState<number>(1);
-  const [weeks, setWeeks] = useState<number>(8);
   const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
   const [registrationDeadline, setRegistrationDeadline] = useState<string>('');
-  const [hasExercises, setHasExercises] = useState<boolean>(true);
-  const [lastChangedField, setLastChangedField] = useState<'startDate' | 'endDate' | null>(null);
 
   const [popup, setPopup] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
     show: false,
@@ -35,34 +30,12 @@ const AdminPage: React.FC = () => {
   });
 
 
-  // Update end date when start date or weeks change (only in create mode)
-  useEffect(() => {
-    if (startDate && weeks && !isEditMode) {
-      setEndDate(calculateEndDate(startDate, weeks));
-    }
-  }, [startDate, weeks, isEditMode]);
-
-  // Update registration deadline when start date changes (only in create mode)
+  // Auto-calculate registration deadline in create mode
   useEffect(() => {
     if (startDate && !isEditMode) {
       setRegistrationDeadline(calculateRegistrationDeadline(startDate));
     }
   }, [startDate, isEditMode]);
-
-  // Handle date changes in edit mode
-  useEffect(() => {
-    if (isEditMode && weeks) {
-      if (lastChangedField === 'startDate' && startDate) {
-        // If start date changed, recalculate end date
-        setEndDate(calculateEndDate(startDate, weeks));
-        setLastChangedField(null);
-      } else if (lastChangedField === 'endDate' && endDate) {
-        // If end date changed, recalculate start date
-        setStartDate(calculateStartDate(endDate, weeks));
-        setLastChangedField(null);
-      }
-    }
-  }, [lastChangedField, startDate, endDate, weeks, isEditMode]);
 
   const handleCardClick = (cohortType: CohortType) => {
     setSelectedCohortType(cohortType);
@@ -79,27 +52,13 @@ const AdminPage: React.FC = () => {
       // Edit mode - only for active or upcoming cohorts
       setIsEditMode(true);
       setSelectedCohort(existingCohort);
-      setSeason(existingCohort.season);
-      setWeeks(existingCohort.weeks?.length || 8);
       setStartDate(formatDateForInput(existingCohort.startDate));
-      setEndDate(formatDateForInput(existingCohort.endDate));
       setRegistrationDeadline(formatDateForInput(existingCohort.registrationDeadline));
     } else {
       // Create mode - for new cohorts or completed cohorts (next season)
-      const cohortsOfType = cohortsData?.records?.filter(
-        (cohort) => cohort.type === cohortType
-      ) || [];
-      const maxSeason = cohortsOfType.length > 0
-        ? Math.max(...cohortsOfType.map((c) => c.season))
-        : 0;
-      const nextSeason = maxSeason + 1;
-
       setIsEditMode(false);
       setSelectedCohort(null);
-      setSeason(nextSeason);
-      setWeeks(8);
       setStartDate(getTodayDate());
-      setEndDate(calculateEndDate(getTodayDate(), 8));
       setRegistrationDeadline('');
     }
 
@@ -110,13 +69,8 @@ const AdminPage: React.FC = () => {
     setIsModalOpen(false);
     setSelectedCohortType(null);
     setSelectedCohort(null);
-    setSeason(1);
-    setWeeks(8);
     setStartDate('');
-    setEndDate('');
     setRegistrationDeadline('');
-    setHasExercises(true);
-    setLastChangedField(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,7 +78,7 @@ const AdminPage: React.FC = () => {
 
     if (!selectedCohortType) return;
 
-    if (!startDate || !endDate || !registrationDeadline) {
+    if (!startDate || !registrationDeadline) {
       setPopup({
         show: true,
         message: 'Please fill in all required fields',
@@ -140,7 +94,6 @@ const AdminPage: React.FC = () => {
           cohortId: selectedCohort.id,
           body: {
             startDate,
-            endDate,
             registrationDeadline,
           },
         });
@@ -155,12 +108,8 @@ const AdminPage: React.FC = () => {
         // Create new cohort
         await createCohortMutation.mutateAsync({
           type: selectedCohortType,
-          season,
-          weeks,
           startDate,
-          endDate,
           registrationDeadline,
-          hasExercises,
         });
         // Refetch to ensure we have the latest data
         await refetch();
@@ -318,100 +267,23 @@ const AdminPage: React.FC = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Season and Weeks - Only show in create mode */}
-              {!isEditMode && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-zinc-300">
-                      Season
-                    </label>
-                    <input
-                      type="number"
-                      value={season}
-                      onChange={(e) => setSeason(parseInt(e.target.value))}
-                      min="1"
-                      placeholder="1"
-                      className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-zinc-300">
-                      Number of Weeks
-                    </label>
-                    <input
-                      type="number"
-                      value={weeks}
-                      onChange={(e) => setWeeks(parseInt(e.target.value))}
-                      min="1"
-                      max="52"
-                      placeholder="8"
-                      className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Number of Weeks - Show in edit mode but disabled */}
-              {isEditMode && (
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    Number of Weeks <span className="text-zinc-500 text-xs">(Fixed)</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={weeks}
-                    disabled={true}
-                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              )}
-
-              {/* Start Date and End Date - 2 column grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      if (isEditMode) {
-                        setLastChangedField('startDate');
-                      }
-                    }}
-                    min={getTodayDate()}
-                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
-                    style={{ colorScheme: 'dark' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-zinc-300">
-                    End Date {!isEditMode && <span className="text-zinc-500 text-xs">(Auto-calculated)</span>}
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value);
-                      if (isEditMode) {
-                        setLastChangedField('endDate');
-                      }
-                    }}
-                    min={startDate ? calculateEndDate(startDate, 1) : getTodayDate()}
-                    disabled={!isEditMode}
-                    className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ colorScheme: 'dark' }}
-                    required
-                  />
-                </div>
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-zinc-300">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  min={getTodayDate()}
+                  className="w-78 md:w-68 b-0 bg-zinc-700 border border-zinc-600 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent transition-all"
+                  style={{ colorScheme: 'dark' }}
+                  required
+                />
               </div>
 
-              {/* Registration Deadline - Full width */}
+              {/* Registration Deadline */}
               <div>
                 <label className="block text-sm font-medium mb-2 text-zinc-300">
                   Registration Deadline
@@ -425,22 +297,6 @@ const AdminPage: React.FC = () => {
                   required
                 />
               </div>
-
-              {/* Has Exercises - Only show in create mode */}
-              {!isEditMode && (
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="hasExercises"
-                    checked={hasExercises}
-                    onChange={(e) => setHasExercises(e.target.checked)}
-                    className="w-5 h-5 bg-zinc-700 border border-zinc-600 rounded text-blue-600 focus:ring-2 focus:ring-zinc-500 focus:ring-offset-0"
-                  />
-                  <label htmlFor="hasExercises" className="text-sm font-medium text-zinc-300">
-                    Has Exercises
-                  </label>
-                </div>
-              )}
 
               {/* Buttons */}
               <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-4">

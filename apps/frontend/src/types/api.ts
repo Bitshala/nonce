@@ -12,18 +12,13 @@ export interface PaginatedDataDto<TData> {
 
 export interface UpdateCohortRequestDto {
   startDate?: string;
-  endDate?: string;
   registrationDeadline?: string;
 }
 
 export interface CreateCohortRequestDto {
   type: CohortType;
-  season: number;
-  weeks: number;
   startDate: string;
-  endDate: string;
   registrationDeadline: string;
-  hasExercises: boolean;
 }
 
 export interface UpdateCohortWeekRequestDto {
@@ -40,6 +35,8 @@ export interface JoinWaitlistRequestDto {
 export interface GetCohortWeekResponseDto {
   id: string;
   week: number;
+  type: string;
+  hasExercise: boolean;
   questions: string[];
   bonusQuestion: string[];
   classroomUrl: string | null;

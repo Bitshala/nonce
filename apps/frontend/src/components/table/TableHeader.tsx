@@ -32,6 +32,8 @@ import {
 interface Week {
   id: string;
   week: number;
+  type: string;
+  hasExercise: boolean;
   questions: string[];
   bonusQuestion: string[];
   classroomUrl: string;
@@ -122,7 +124,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
         {weeks.map(weekData => (
           <Chip
             key={weekData.id}
-            label={weekData.week === 0 ? 'Orientation' : `Week ${weekData.week}`}
+            label={weekData.type === 'ORIENTATION' ? 'Orientation' : weekData.type === 'GRADUATION' ? 'Graduation' : `Week ${weekData.week}`}
             onClick={() => onWeekChange(weekData.week, weekData.id)}
             sx={{
               fontWeight: 500,

@@ -17,6 +17,8 @@ import type { TableRowData } from '../../types/student';
 interface StudentTableGridProps {
   data: TableRowData[];
   week: number;
+  weekType?: string;
+  weekHasExercise?: boolean;
   cohortType?: string;
   sortConfig: {
     key: keyof TableRowData | null;
@@ -42,6 +44,8 @@ const headerSx = {
 export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
   data,
   week,
+  weekType,
+  weekHasExercise,
   cohortType,
   sortConfig,
   onSort,
@@ -49,16 +53,15 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
   onEditStudent,
   onContextMenu,
 }) => {
-  const isOrientation = week === 0;
-  const showExerciseScores = cohortType !== 'MASTERING_BITCOIN';
+  const isGroupDiscussion = weekType === 'GROUP_DISCUSSION';
 
-  // Determine which score columns to show based on whether any row has data
-  // For week 0 (Orientation), only show attendance — hide GD, Bonus, Exercise
-  const hasGdScores = useMemo(() => !isOrientation && data.some(d => d.gdScore !== null), [data, isOrientation]);
-  const hasBonusScores = useMemo(() => !isOrientation && data.some(d => d.bonusScore !== null), [data, isOrientation]);
+  // Show GD/Bonus only for GROUP_DISCUSSION weeks
+  const hasGdScores = useMemo(() => isGroupDiscussion && data.some(d => d.gdScore !== null), [data, isGroupDiscussion]);
+  const hasBonusScores = useMemo(() => isGroupDiscussion && data.some(d => d.bonusScore !== null), [data, isGroupDiscussion]);
+  // Show Exercise only when the week has exercises
   const hasExerciseScores = useMemo(
-    () => !isOrientation && showExerciseScores && data.some(d => d.exerciseScore !== null),
-    [data, showExerciseScores, isOrientation]
+    () => isGroupDiscussion && weekHasExercise === true && data.some(d => d.exerciseScore !== null),
+    [data, isGroupDiscussion, weekHasExercise]
   );
 
   const requestSort = (key: keyof TableRowData) => {

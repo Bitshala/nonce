@@ -3,6 +3,8 @@ export type CohortStatus = 'Active' | 'Upcoming' | 'Completed';
 export type ApiCohortWeek = {
   id: string;
   week: number;
+  type: string;
+  hasExercise: boolean;
 };
 
 export type ApiCohort = {

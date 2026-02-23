@@ -62,6 +62,14 @@ const TableView: React.FC = () => {
   const [selectedWeekId, setSelectedWeekId] = useState<string>(null);
   const [weekIndex, setWeekIndex] = useState<number>(0);
 
+  // Derived week metadata
+  const selectedWeekData = useMemo(
+    () => weeks.find(w => w.id === selectedWeekId),
+    [weeks, selectedWeekId]
+  );
+  const selectedWeekType = selectedWeekData?.type;
+  const selectedWeekHasExercise = selectedWeekData?.hasExercise ?? false;
+
   // Initialize selected week from cohort once it arrives
   useEffect(() => {
     if (!selectedWeekId && weeks.length > 0) {
@@ -525,6 +533,8 @@ const TableView: React.FC = () => {
         <StudentTableGrid
           data={sortedFilteredData}
           week={weekIndex}
+          weekType={selectedWeekType}
+          weekHasExercise={selectedWeekHasExercise}
           cohortType={cohortData?.type}
           sortConfig={sortConfig}
           onSort={setSortConfig}
@@ -539,6 +549,8 @@ const TableView: React.FC = () => {
             cohortId={cohortData?.id}
             weekId={selectedWeekId}
             week={weekIndex}
+            weekType={selectedWeekType}
+            weekHasExercise={selectedWeekHasExercise}
             cohortType={cohortData?.type}
             onSubmit={handleScoreUpdate}
             onClose={() => {

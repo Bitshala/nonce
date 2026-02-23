@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -17,8 +16,6 @@ import {
   Select,
   FormControl,
   InputLabel,
-  FormControlLabel,
-  Checkbox,
   IconButton,
   CircularProgress,
   Snackbar,
@@ -35,15 +32,14 @@ import { useCohorts, useCreateCohort, useUpdateCohort } from '../hooks/cohortHoo
 import { useUser } from '../hooks/userHooks';
 import { useGenerateCohortCertificates } from '../hooks/certificateHooks';
 import { UserRole, CohortType } from '../types/enums';
-import type { GetCohortResponseDto, LeaderboardEntryDto } from '../types/api';
+import type { GetCohortResponseDto } from '../types/api';
 import type { ApiCohort, CohortStatus } from '../types/cohort';
-import apiService from '../services/apiService';
 import Tabs from '../components/ui/Tabs';
 import CohortTable from '../components/ui/CohortTable';
 import type { CohortRow } from '../components/ui/CohortTable';
 import { cohortTypeToName } from '../helpers/cohortHelpers';
 import { computeStatus, COHORT_TYPES } from '../utils/cohortUtils';
-import { getTodayDate, calculateEndDate, calculateStartDate, calculateRegistrationDeadline, formatDateForInput } from '../utils/dateUtils';
+import { getTodayDate, calculateRegistrationDeadline, formatDateForInput } from '../utils/dateUtils';
 import { downloadCSV } from '../utils/csvUtils';
 
 const inputSx = {
@@ -84,13 +80,9 @@ export const CohortSelection = () => {
   const [selectedCohortType, setSelectedCohortType] = useState<CohortType | null>(null);
 
   // Form state
-  const [formSeason, setFormSeason] = useState<number>(1);
-  const [formWeeks, setFormWeeks] = useState<number>(8);
   const [formStartDate, setFormStartDate] = useState<string>('');
-  const [formEndDate, setFormEndDate] = useState<string>('');
   const [formRegDeadline, setFormRegDeadline] = useState<string>('');
-  const [formHasExercises, setFormHasExercises] = useState<boolean>(true);
-  const [lastChangedField, setLastChangedField] = useState<'startDate' | 'endDate' | null>(null);
+
 
   // Snackbar state
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -99,57 +91,12 @@ export const CohortSelection = () => {
     severity: 'success',
   });
 
-  // Auto-calculate end date in create mode
-  useEffect(() => {
-    if (formStartDate && formWeeks && !isEditMode) {
-      setFormEndDate(calculateEndDate(formStartDate, formWeeks));
-    }
-  }, [formStartDate, formWeeks, isEditMode]);
-
   // Auto-calculate registration deadline in create mode
   useEffect(() => {
     if (formStartDate && !isEditMode) {
       setFormRegDeadline(calculateRegistrationDeadline(formStartDate));
     }
   }, [formStartDate, isEditMode]);
-
-  // Handle bidirectional date changes in edit mode
-  useEffect(() => {
-    if (isEditMode && formWeeks) {
-      if (lastChangedField === 'startDate' && formStartDate) {
-        setFormEndDate(calculateEndDate(formStartDate, formWeeks));
-        setLastChangedField(null);
-      } else if (lastChangedField === 'endDate' && formEndDate) {
-        setFormStartDate(calculateStartDate(formEndDate, formWeeks));
-        setLastChangedField(null);
-      }
-    }
-  }, [lastChangedField, formStartDate, formEndDate, formWeeks, isEditMode]);
-
-  // Participant counts via leaderboard
-  const cohortIds = useMemo(() => (data?.records ?? []).map((r) => r.id), [data]);
-
-  const leaderboardQueries = useQueries({
-    queries: cohortIds.map((cohortId) => ({
-      queryKey: ['scores', 'cohort', cohortId, 'leaderboard'],
-      queryFn: () => apiService.getCohortLeaderboard(cohortId),
-      staleTime: 5 * 60 * 1000,
-      enabled: cohortIds.length > 0,
-    })),
-  });
-
-  const participantCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    cohortIds.forEach((id, i) => {
-      const result = leaderboardQueries[i];
-      if (result?.data) {
-        const lb = result.data;
-        const entries: LeaderboardEntryDto[] = Array.isArray(lb) ? lb : (lb as { leaderboard: LeaderboardEntryDto[] }).leaderboard ?? [];
-        counts[id] = entries.length;
-      }
-    });
-    return counts;
-  }, [cohortIds, leaderboardQueries]);
 
   // Table data
   const cohorts = useMemo(() => {
@@ -163,10 +110,9 @@ export const CohortSelection = () => {
       startDate: c.startDate,
       endDate: c.endDate,
       weeks: c.weeks?.length ?? 0,
-      participants: participantCounts[c.id],
       raw: c,
     }));
-  }, [data, participantCounts]);
+  }, [data]);
 
   const grouped = useMemo(() => {
     const active = cohorts.filter((c) => c.status === 'Active');
@@ -196,8 +142,8 @@ export const CohortSelection = () => {
   const handleDownloadCSV = useCallback(() => {
     const rows = grouped[activeTab as CohortStatus] ?? [];
     downloadCSV(
-      ['Cohort', 'Season', 'Status', 'Weeks', 'Participants', 'Start Date', 'End Date'],
-      rows.map((c) => [c.name, `S${c.season}`, c.status, c.weeks ?? '', c.participants ?? '', c.startDate, c.endDate]),
+      ['Cohort', 'Season', 'Status', 'Weeks', 'Start Date', 'End Date'],
+      rows.map((c) => [c.name, `S${c.season}`, c.status, c.weeks ?? '', c.startDate, c.endDate]),
       `cohorts-${activeTab.toLowerCase()}.csv`,
     );
   }, [grouped, activeTab]);
@@ -207,13 +153,8 @@ export const CohortSelection = () => {
     setIsEditMode(false);
     setSelectedCohort(null);
     setSelectedCohortType(null);
-    setFormSeason(1);
-    setFormWeeks(8);
     setFormStartDate(getTodayDate());
-    setFormEndDate(calculateEndDate(getTodayDate(), 8));
     setFormRegDeadline('');
-    setFormHasExercises(true);
-    setLastChangedField(null);
     setIsModalOpen(true);
   };
 
@@ -223,13 +164,8 @@ export const CohortSelection = () => {
     setIsEditMode(true);
     setSelectedCohort(dto);
     setSelectedCohortType(dto.type as CohortType);
-    setFormSeason(dto.season);
-    setFormWeeks(dto.weeks?.length || 8);
     setFormStartDate(formatDateForInput(dto.startDate));
-    setFormEndDate(formatDateForInput(dto.endDate));
     setFormRegDeadline(formatDateForInput(dto.registrationDeadline));
-    setFormHasExercises(true);
-    setLastChangedField(null);
     setIsModalOpen(true);
   };
 
@@ -259,13 +195,8 @@ export const CohortSelection = () => {
     setIsModalOpen(false);
     setSelectedCohort(null);
     setSelectedCohortType(null);
-    setFormSeason(1);
-    setFormWeeks(8);
     setFormStartDate('');
-    setFormEndDate('');
     setFormRegDeadline('');
-    setFormHasExercises(true);
-    setLastChangedField(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -276,7 +207,7 @@ export const CohortSelection = () => {
       return;
     }
 
-    if (!formStartDate || !formEndDate || !formRegDeadline) {
+    if (!formStartDate || !formRegDeadline) {
       setSnackbar({ open: true, message: 'Please fill in all required fields.', severity: 'error' });
       return;
     }
@@ -285,19 +216,15 @@ export const CohortSelection = () => {
       if (isEditMode && selectedCohort) {
         await updateCohortMutation.mutateAsync({
           cohortId: selectedCohort.id,
-          body: { startDate: formStartDate, endDate: formEndDate, registrationDeadline: formRegDeadline },
+          body: { startDate: formStartDate, registrationDeadline: formRegDeadline },
         });
         await refetch();
         setSnackbar({ open: true, message: 'Cohort updated successfully!', severity: 'success' });
       } else if (selectedCohortType) {
         await createCohortMutation.mutateAsync({
           type: selectedCohortType,
-          season: formSeason,
-          weeks: formWeeks,
           startDate: formStartDate,
-          endDate: formEndDate,
           registrationDeadline: formRegDeadline,
-          hasExercises: formHasExercises,
         });
         await refetch();
         setSnackbar({ open: true, message: 'Cohort created successfully!', severity: 'success' });
@@ -531,13 +458,7 @@ export const CohortSelection = () => {
                 <Select
                   value={selectedCohortType ?? ''}
                   label="Cohort Type"
-                  onChange={(e) => {
-                    const val = e.target.value as CohortType;
-                    setSelectedCohortType(val);
-                    const existing = data?.records?.filter((r) => r.type === val) ?? [];
-                    const maxSeason = existing.length > 0 ? Math.max(...existing.map((c) => c.season)) : 0;
-                    setFormSeason(maxSeason + 1);
-                  }}
+                  onChange={(e) => setSelectedCohortType(e.target.value as CohortType)}
                   required
                   MenuProps={{ PaperProps: { sx: { bgcolor: '#18181b', border: '1px solid #27272a', color: '#fafafa' } } }}
                 >
@@ -550,41 +471,16 @@ export const CohortSelection = () => {
               </FormControl>
             )}
 
-            {/* Season + Weeks */}
-            {!isEditMode && (
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField label="Season" type="number" value={formSeason} onChange={(e) => setFormSeason(parseInt(e.target.value))} slotProps={{ htmlInput: { min: 1 } }} sx={{ ...inputSx, flex: 1 }} />
-                <TextField label="Weeks" type="number" value={formWeeks} onChange={(e) => setFormWeeks(parseInt(e.target.value))} slotProps={{ htmlInput: { min: 1, max: 52 } }} sx={{ ...inputSx, flex: 1 }} />
-              </Box>
-            )}
-
-            {/* Weeks readonly in edit mode */}
-            {isEditMode && (
-              <TextField label="Number of Weeks (Fixed)" type="number" value={formWeeks} disabled sx={inputSx} />
-            )}
-
-            {/* Dates */}
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label="Start Date"
-                type="date"
-                value={formStartDate}
-                onChange={(e) => { setFormStartDate(e.target.value); if (isEditMode) setLastChangedField('startDate'); }}
-                slotProps={{ htmlInput: { min: getTodayDate() }, inputLabel: { shrink: true } }}
-                required
-                sx={{ ...inputSx, flex: 1, '& input': { colorScheme: 'dark' } }}
-              />
-              <TextField
-                label={isEditMode ? 'End Date' : 'End Date (Auto)'}
-                type="date"
-                value={formEndDate}
-                onChange={(e) => { setFormEndDate(e.target.value); if (isEditMode) setLastChangedField('endDate'); }}
-                slotProps={{ htmlInput: { min: formStartDate ? calculateEndDate(formStartDate, 1) : getTodayDate() }, inputLabel: { shrink: true } }}
-                disabled={!isEditMode}
-                required
-                sx={{ ...inputSx, flex: 1, '& input': { colorScheme: 'dark' } }}
-              />
-            </Box>
+            {/* Start Date */}
+            <TextField
+              label="Start Date"
+              type="date"
+              value={formStartDate}
+              onChange={(e) => setFormStartDate(e.target.value)}
+              slotProps={{ htmlInput: { min: getTodayDate() }, inputLabel: { shrink: true } }}
+              required
+              sx={{ ...inputSx, '& input': { colorScheme: 'dark' } }}
+            />
 
             {/* Registration Deadline */}
             <TextField
@@ -597,19 +493,6 @@ export const CohortSelection = () => {
               sx={{ ...inputSx, '& input': { colorScheme: 'dark' } }}
             />
 
-            {/* Has exercises */}
-            {!isEditMode && (
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formHasExercises}
-                    onChange={(e) => setFormHasExercises(e.target.checked)}
-                    sx={{ color: '#71717a', '&.Mui-checked': { color: '#f97316' } }}
-                  />
-                }
-                label={<Typography variant="body2" sx={{ color: '#fafafa' }}>Has Exercises</Typography>}
-              />
-            )}
           </DialogContent>
 
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>

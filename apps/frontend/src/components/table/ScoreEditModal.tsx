@@ -23,6 +23,8 @@ interface ScoreEditModalProps {
   cohortId: string;
   weekId: string;
   week: number;
+  weekType?: string;
+  weekHasExercise?: boolean;
   cohortType?: string;
   onSubmit: (studentData: TableRowData) => void;
   onClose: () => void;
@@ -44,6 +46,8 @@ const selectSx = {
 export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
   student,
   week,
+  weekType,
+  weekHasExercise,
   cohortType,
   onSubmit,
   onClose,
@@ -55,8 +59,8 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
     exerciseScore: student.exerciseScore ?? { Submitted: false, privateTest: false },
   });
 
-  const isOrientation = week === 0;
-  const showExerciseScores = cohortType !== 'MASTERING_BITCOIN' && !isOrientation;
+  const isGroupDiscussion = weekType === 'GROUP_DISCUSSION';
+  const showExerciseScores = isGroupDiscussion && weekHasExercise === true;
 
   const scoreOptions = [0, 1, 2, 3, 4, 5];
 
@@ -129,7 +133,7 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
             Edit Scores — {editedStudent.name}
           </Typography>
           <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>
-            {isOrientation ? 'Orientation' : `Week ${week}`} · {editedStudent.group || 'No Group'}
+            {weekType === 'ORIENTATION' ? 'Orientation' : weekType === 'GRADUATION' ? 'Graduation' : `Week ${week}`} · {editedStudent.group || 'No Group'}
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
@@ -150,8 +154,8 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           label={<Typography sx={{ color: '#fafafa', fontWeight: 500 }}>Attended This Week</Typography>}
         />
 
-        {/* GD Scores — hidden for Orientation */}
-        {!isOrientation && (
+        {/* GD Scores — only for GROUP_DISCUSSION weeks */}
+        {isGroupDiscussion && (
           <Box>
             <Typography sx={{ color: '#d4d4d8', fontWeight: 600, mb: 2 }}>Group Discussion Scores</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 2 }}>
@@ -176,8 +180,8 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           </Box>
         )}
 
-        {/* Bonus Scores — hidden for Orientation */}
-        {!isOrientation && (
+        {/* Bonus Scores — only for GROUP_DISCUSSION weeks */}
+        {isGroupDiscussion && (
           <Box>
             <Typography sx={{ color: '#d4d4d8', fontWeight: 600, mb: 2 }}>Bonus Scores</Typography>
             <FormControlLabel
@@ -213,7 +217,7 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           </Box>
         )}
 
-        {/* Exercise Scores — hidden for Orientation and MASTERING_BITCOIN */}
+        {/* Exercise Scores — only for GROUP_DISCUSSION weeks with exercises */}
         {showExerciseScores && (
           <Box>
             <Typography sx={{ color: '#d4d4d8', fontWeight: 600, mb: 2 }}>Exercise Scores</Typography>
