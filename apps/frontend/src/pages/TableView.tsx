@@ -31,7 +31,7 @@ const TableView: React.FC = () => {
 
   // === User data ===
   const { data: userData } = useUser();
-  const isTA = userData?.role === UserRole.TEACHING_ASSISTANT;
+  const isTA = userData?.role === UserRole.TEACHING_ASSISTANT || userData?.role === UserRole.ADMIN;
 
   // === Cohort & Weeks (dynamic from hook) ===
   const {
