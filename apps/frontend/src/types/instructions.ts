@@ -10,4 +10,6 @@ export interface WeekContent {
   gdQuestions: string[];
   bonusQuestions?: (string | BonusQuestion)[];
   assignmentLinks?: Record<number, string>;
+  classroomUrl?: string | null;
+  classroomInviteLink?: string | null;
 }

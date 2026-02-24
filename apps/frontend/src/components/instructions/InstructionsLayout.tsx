@@ -39,6 +39,9 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   const navigate = useNavigate();
 
   const getAssignmentLink = (week: WeekContent): string | undefined => {
+    // Prefer classroomUrl from API if available
+    if (week.classroomUrl) return week.classroomUrl;
+    // Fall back to static assignmentLinks
     if (!week.assignmentLinks) return undefined;
     if (seasonNumber && week.assignmentLinks[seasonNumber]) {
       return week.assignmentLinks[seasonNumber];
@@ -236,29 +239,50 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                   </Typography>
 
                   {/* Assignment */}
-                  {assignmentLink && (
+                  {(assignmentLink || currentWeek.classroomInviteLink) && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <Typography variant="body2" sx={{ color: '#a1a1aa', fontWeight: 600, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Assignment
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                        <Chip
-                          label={`Week ${activeWeek} Assignment`}
-                          component="a"
-                          href={assignmentLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          clickable
-                          sx={{
-                            bgcolor: 'rgba(96,165,250,0.12)',
-                            color: '#93c5fd',
-                            border: '1px solid rgba(96,165,250,0.25)',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            height: 36,
-                            '&:hover': { bgcolor: 'rgba(96,165,250,0.2)', color: '#bfdbfe' },
-                          }}
-                        />
+                        {assignmentLink && (
+                          <Chip
+                            label={`Week ${activeWeek} Assignment`}
+                            component="a"
+                            href={assignmentLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            clickable
+                            sx={{
+                              bgcolor: 'rgba(96,165,250,0.12)',
+                              color: '#93c5fd',
+                              border: '1px solid rgba(96,165,250,0.25)',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              height: 36,
+                              '&:hover': { bgcolor: 'rgba(96,165,250,0.2)', color: '#bfdbfe' },
+                            }}
+                          />
+                        )}
+                        {currentWeek.classroomInviteLink && (
+                          <Chip
+                            label="Classroom Invite"
+                            component="a"
+                            href={currentWeek.classroomInviteLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            clickable
+                            sx={{
+                              bgcolor: 'rgba(74,222,128,0.12)',
+                              color: '#86efac',
+                              border: '1px solid rgba(74,222,128,0.25)',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              height: 36,
+                              '&:hover': { bgcolor: 'rgba(74,222,128,0.2)', color: '#bbf7d0' },
+                            }}
+                          />
+                        )}
                       </Box>
                     </Box>
                   )}

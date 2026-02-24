@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCohort } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
@@ -8,6 +8,7 @@ import { lnWeeks } from '../../data/lnWeeks';
 import { lbtclWeeks } from '../../data/lbtclWeeks';
 import { mbWeeks } from '../../data/mbWeeks';
 import { bpdWeeks } from '../../data/bpdWeeks';
+import type { GetCohortWeekResponseDto } from '../../types/api';
 
 const cohortTypeToContent = {
   MASTERING_BITCOIN: { name: 'MB', weeks: mbWeeks },
@@ -76,11 +77,30 @@ const MyCohortInstructions: React.FC = () => {
 
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
+  // Merge API week data (questions, bonusQuestion, classroomUrl, classroomInviteLink) into static content
+  const mergedWeeklyContent = useMemo(() => {
+    const apiWeeks = cohortData.weeks;
+    if (!apiWeeks || apiWeeks.length === 0) return content.weeks;
+
+    return content.weeks.map((staticWeek) => {
+      const apiWeek = apiWeeks.find((w: GetCohortWeekResponseDto) => w.week === staticWeek.week);
+      if (!apiWeek) return staticWeek;
+
+      return {
+        ...staticWeek,
+        gdQuestions: apiWeek.questions.length > 0 ? apiWeek.questions : staticWeek.gdQuestions,
+        bonusQuestions: apiWeek.bonusQuestion.length > 0 ? apiWeek.bonusQuestion : staticWeek.bonusQuestions,
+        classroomUrl: apiWeek.classroomUrl,
+        classroomInviteLink: apiWeek.classroomInviteLink,
+      };
+    });
+  }, [content.weeks, cohortData.weeks]);
+
   return (
     <InstructionsLayout
       cohortName={content.name}
       cohortType={cohortData.type as 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK' | 'BITCOIN_PROTOCOL_DEVELOPMENT'}
-      weeklyContent={content.weeks}
+      weeklyContent={mergedWeeklyContent}
       activeWeek={activeWeek}
       setActiveWeek={setActiveWeek}
       canViewBonusQuestions={isAdminOrTA}

@@ -9,10 +9,11 @@ import {
 import { AlertTriangle } from 'lucide-react';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
-import { useMyCohorts } from '../../hooks/cohortHooks';
+import { useMyCohorts, useCohorts } from '../../hooks/cohortHooks';
 import { UserRole } from '../../types/enums';
 import InstructionsLayout from './InstructionsLayout';
 import type { WeekContent } from '../../types/instructions';
+import type { GetCohortWeekResponseDto } from '../../types/api';
 
 interface CohortInstructionsProps {
   cohortType: 'MASTERING_BITCOIN' | 'LEARNING_BITCOIN_FROM_COMMAND_LINE' | 'MASTERING_LIGHTNING_NETWORK' | 'BITCOIN_PROTOCOL_DEVELOPMENT';
@@ -32,6 +33,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   const { data: userData, isLoading: isLoadingUser } = useUser();
   const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
   const { data: myCohortsData, isLoading: isLoadingCohorts } = useMyCohorts({ page: 0, pageSize: 100 });
+  const { data: allCohortsData, isLoading: isLoadingAllCohorts } = useCohorts({ page: 0, pageSize: 100 });
 
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
@@ -44,9 +46,36 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
   const myCohort = myCohortsData?.records
     .filter((c) => c.type === cohortType)
     .sort((a, b) => b.season - a.season)[0];
-  const seasonNumber = myCohort?.season;
 
-  const isLoading = isLoadingUser || isLoadingScores || isLoadingCohorts;
+  // For Admin/TA: use /cohorts, for Students: use /cohorts/me
+  const apiCohort = isAdminOrTA
+    ? allCohortsData?.records
+        .filter((c) => c.type === cohortType)
+        .sort((a, b) => b.season - a.season)[0]
+    : myCohort;
+
+  const seasonNumber = apiCohort?.season ?? myCohort?.season;
+
+  // Merge API week data (questions, bonusQuestion, classroomUrl, classroomInviteLink) into static content
+  const mergedWeeklyContent = React.useMemo(() => {
+    const apiWeeks = apiCohort?.weeks;
+    if (!apiWeeks || apiWeeks.length === 0) return weeklyContent;
+
+    return weeklyContent.map((staticWeek) => {
+      const apiWeek = apiWeeks.find((w: GetCohortWeekResponseDto) => w.week === staticWeek.week);
+      if (!apiWeek) return staticWeek;
+
+      return {
+        ...staticWeek,
+        gdQuestions: apiWeek.questions.length > 0 ? apiWeek.questions : staticWeek.gdQuestions,
+        bonusQuestions: apiWeek.bonusQuestion.length > 0 ? apiWeek.bonusQuestion : staticWeek.bonusQuestions,
+        classroomUrl: apiWeek.classroomUrl,
+        classroomInviteLink: apiWeek.classroomInviteLink,
+      };
+    });
+  }, [weeklyContent, apiCohort]);
+
+  const isLoading = isLoadingUser || isLoadingScores || isLoadingCohorts || isLoadingAllCohorts;
 
   useEffect(() => {
     if (!isLoading && scoresData && !hasAccess) {
@@ -100,7 +129,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({
     <InstructionsLayout
       cohortName={cohortName}
       cohortType={cohortType}
-      weeklyContent={weeklyContent}
+      weeklyContent={mergedWeeklyContent}
       activeWeek={activeWeek}
       setActiveWeek={setActiveWeek}
       canViewBonusQuestions={canViewBonusQuestions}
