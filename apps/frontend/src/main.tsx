@@ -47,7 +47,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/select',
-    element: <Layout><CohortSelection /></Layout>,
+    element: <Layout><ProtectedRoute><CohortSelection /></ProtectedRoute></Layout>,
   },
   {
     path: '/cohort/:id',
