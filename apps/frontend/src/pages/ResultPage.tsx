@@ -30,8 +30,7 @@ import {
 import { cohortHasExercises } from '../utils/calculations';
 
 const getScoreColor = (score: number): string => {
-  if (score >= 90) return '#4ade80';
-  if (score >= 80) return '#facc15';
+  if (score > 0) return '#4ade80';
   return '#f87171';
 };
 
@@ -245,7 +244,7 @@ export const ResultPage: React.FC = () => {
                       <TableCell sx={cellSx}>
                         <Typography sx={{
                           fontWeight: 700,
-                          color: highlight?.color ?? getScoreColor(student.totalScore),
+                          color: getScoreColor(student.totalScore),
                           fontSize: '1.05rem',
                         }}>
                           {student.totalScore}
