@@ -136,15 +136,18 @@ const TableView: React.FC = () => {
     }
 
     const transformed: TableRowData[] = scoresData.scores.map((score: any, idx: number) => {
-      const groupNumber = score.groupDiscussionScores?.groupNumber ?? 0;
-      const teachingAssistant = score.teachingAssistant;
-      console.log('Teaching Assistant data:', teachingAssistant);
+      const gd = score.groupDiscussionScores;
+      const ex = score.exerciseScores;
+      const groupNumber = gd?.groupNumber ?? 0;
+
+      // TA is at the top level of the score object
+      const teachingAssistant = score.teachingAssistant ?? gd?.teachingAssistant;
       const taName = teachingAssistant
         ? (teachingAssistant.discordGlobalName || teachingAssistant.discordUsername || teachingAssistant.name || 'N/A')
         : 'N/A';
 
-      const gd = score.groupDiscussionScores;
-      const ex = score.exerciseScores;
+      // API returns `attended` (boolean) at the top level
+      const isPresent = Boolean(score.attended ?? gd?.attendance);
 
       return {
         id: typeof score.userId === 'number' ? score.userId : idx,
@@ -154,7 +157,7 @@ const TableView: React.FC = () => {
         email: score.discordUsername ?? '', // discord username
         group: `Group ${groupNumber}`,
         ta: taName,
-        attendance: Boolean(gd?.attendance),
+        attendance: isPresent,
         gdScore: gd ? {
           fa: gd.communicationScore ?? 0,
           fb: gd.depthOfAnswerScore ?? 0,
@@ -177,8 +180,14 @@ const TableView: React.FC = () => {
 
     setData(transformed);
     setTotalCount(scoresData.scores.length);
-    setWeeklyData({week: weekIndex, attended: transformed.filter(s => s.attendance).length});
   }, [scoresData, scoresError, weekIndex]);
+
+  // Recalculate attended count whenever local data changes (after edits too)
+  useEffect(() => {
+    if (data.length > 0) {
+      setWeeklyData({ week: weekIndex, attended: data.filter(s => s.attendance).length });
+    }
+  }, [data, weekIndex]);
 
   // === Derived options ===
   const taOptions = useMemo(() => {

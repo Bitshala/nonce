@@ -76,35 +76,50 @@ const BITCOIN_BOOKS_OPTIONS = [
 
 const inputSx = {
   '& .MuiOutlinedInput-root': {
-    bgcolor: 'rgba(63,63,70,0.8)',
-    borderRadius: 3,
+    bgcolor: '#18181b',
+    borderRadius: 2.5,
     color: '#fafafa',
+    border: '1px solid #27272a',
+    transition: 'border-color 200ms, box-shadow 200ms',
     '& fieldset': { border: 'none' },
-    '&:hover': { bgcolor: 'rgba(63,63,70,0.95)' },
-    '&.Mui-focused': { bgcolor: 'rgba(63,63,70,0.95)' },
+    '&:hover': { borderColor: '#3f3f46' },
+    '&.Mui-focused': { borderColor: '#f97316', boxShadow: '0 0 0 2px rgba(249,115,22,0.15)' },
   },
   '& .MuiInputBase-input': { color: '#fafafa', py: 1.5, px: 2 },
-  '& .MuiInputBase-input::placeholder': { color: '#71717a', opacity: 1 },
+  '& .MuiInputBase-input::placeholder': { color: '#52525b', opacity: 1 },
   '& .MuiOutlinedInput-root.Mui-disabled': {
-    bgcolor: 'rgba(82,82,91,0.6)',
-    '& .MuiInputBase-input': { color: '#a1a1aa', WebkitTextFillColor: '#a1a1aa' },
+    bgcolor: '#0a0a0a',
+    borderColor: '#1c1c1e',
+    '& .MuiInputBase-input': { color: '#71717a', WebkitTextFillColor: '#71717a' },
   },
 };
 
 const autocompleteSx = {
   '& .MuiOutlinedInput-root': {
-    bgcolor: 'rgba(63,63,70,0.8)',
-    borderRadius: 3,
+    bgcolor: '#18181b',
+    borderRadius: 2.5,
     color: '#fafafa',
+    border: '1px solid #27272a',
+    transition: 'border-color 200ms, box-shadow 200ms',
     '& fieldset': { border: 'none' },
-    '&:hover': { bgcolor: 'rgba(63,63,70,0.95)' },
-    '&.Mui-focused': { bgcolor: 'rgba(63,63,70,0.95)' },
+    '&:hover': { borderColor: '#3f3f46' },
+    '&.Mui-focused': { borderColor: '#f97316', boxShadow: '0 0 0 2px rgba(249,115,22,0.15)' },
   },
   '& .MuiInputBase-input': { color: '#fafafa' },
-  '& .MuiInputBase-input::placeholder': { color: '#71717a', opacity: 1 },
-  '& .MuiAutocomplete-popupIndicator': { color: '#fb923c' },
-  '& .MuiAutocomplete-clearIndicator': { color: '#a1a1aa' },
+  '& .MuiInputBase-input::placeholder': { color: '#52525b', opacity: 1 },
+  '& .MuiAutocomplete-popupIndicator': { color: '#71717a' },
+  '& .MuiAutocomplete-clearIndicator': { color: '#71717a' },
 };
+
+const sectionSx = {
+  bgcolor: '#0a0a0a',
+  border: '1px solid #1c1c1e',
+  borderRadius: 4,
+  p: { xs: 2.5, sm: 3.5 },
+};
+
+const labelSx = { fontWeight: 600, color: '#d4d4d8', mb: 1, fontSize: '0.875rem' };
+const hintSx = { color: '#71717a', fontSize: '0.75rem', mt: 0.5 };
 
 const StudentProfileData: React.FC = () => {
   const location = useLocation();
@@ -193,17 +208,21 @@ const StudentProfileData: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#000', p: { xs: 2, sm: 3 } }}>
       <Box sx={{ maxWidth: 900, mx: 'auto' }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: '#fafafa', mb: 4, textAlign: { xs: 'center', lg: 'left' }, fontSize: { xs: '1.875rem', sm: '2.125rem' } }}>
-          Profile Settings
+        <Typography variant="h4" sx={{ fontWeight: 700, color: '#fafafa', mb: 1, fontSize: { xs: '1.875rem', sm: '2.125rem' } }}>
+          Profile Data
+        </Typography>
+        <Typography sx={{ color: '#71717a', mb: 4, fontSize: '0.9rem' }}>
+          Keep your profile information up to date.
         </Typography>
 
-        <Box component="form" onSubmit={handleSubmit}>
-          {/* Top grid: basic info */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: { xs: 3, lg: 5 } }}>
-            {/* Left column */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+          {/* Section: Identity */}
+          <Box sx={sectionSx}>
+            <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1rem', mb: 3 }}>Identity</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Certificate Name*</Typography>
+                <Typography variant="body2" sx={labelSx}>Certificate Name*</Typography>
                 <TextField
                   fullWidth
                   name="name"
@@ -211,11 +230,26 @@ const StudentProfileData: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   size="small"
+                  placeholder="Your full name"
+                  sx={inputSx}
+                />
+                <Typography sx={hintSx}>This name will appear on your certificate.</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" sx={labelSx}>Location*</Typography>
+                <TextField
+                  fullWidth
+                  name="location"
+                  value={profile.location || ''}
+                  onChange={handleInputChange}
+                  required
+                  size="small"
+                  placeholder="City, Country"
                   sx={inputSx}
                 />
               </Box>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Email*</Typography>
+                <Typography variant="body2" sx={labelSx}>Email*</Typography>
                 <TextField
                   fullWidth
                   name="email"
@@ -226,47 +260,10 @@ const StudentProfileData: React.FC = () => {
                   size="small"
                   sx={inputSx}
                 />
+                <Typography sx={hintSx}>Use the email linked to your Discord so roles are assigned correctly.</Typography>
               </Box>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Discord Username</Typography>
-                <TextField
-                  fullWidth
-                  name="discordUsername"
-                  value={profile.discordUsername}
-                  disabled
-                  size="small"
-                  sx={inputSx}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Discord Display Name</Typography>
-                <TextField
-                  fullWidth
-                  name="discordGlobalName"
-                  value={profile.discordGlobalName}
-                  disabled
-                  size="small"
-                  sx={inputSx}
-                />
-              </Box>
-            </Box>
-
-            {/* Right column */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Location*</Typography>
-                <TextField
-                  fullWidth
-                  name="location"
-                  value={profile.location || ''}
-                  onChange={handleInputChange}
-                  required
-                  size="small"
-                  sx={inputSx}
-                />
-              </Box>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Portfolio/Github/Side-project link:*</Typography>
+                <Typography variant="body2" sx={labelSx}>Portfolio / GitHub / Side-project link*</Typography>
                 <TextField
                   fullWidth
                   name="githubProfileUrl"
@@ -275,11 +272,35 @@ const StudentProfileData: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   size="small"
+                  placeholder="https://"
                   sx={inputSx}
                 />
               </Box>
+            </Box>
+          </Box>
+
+          {/* Section: Discord (read-only) */}
+          <Box sx={sectionSx}>
+            <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1rem', mb: 0.5 }}>Discord</Typography>
+            <Typography sx={{ color: '#52525b', fontSize: '0.8rem', mb: 3 }}>Synced from your Discord account. These cannot be edited.</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Hours per week willing to dedicate to this cohort?*</Typography>
+                <Typography variant="body2" sx={labelSx}>Username</Typography>
+                <TextField fullWidth name="discordUsername" value={profile.discordUsername} disabled size="small" sx={inputSx} />
+              </Box>
+              <Box>
+                <Typography variant="body2" sx={labelSx}>Display Name</Typography>
+                <TextField fullWidth name="discordGlobalName" value={profile.discordGlobalName} disabled size="small" sx={inputSx} />
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Section: Cohort Details */}
+          <Box sx={sectionSx}>
+            <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1rem', mb: 3 }}>Cohort Details</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
+              <Box>
+                <Typography variant="body2" sx={labelSx}>Hours per week willing to dedicate?*</Typography>
                 <TextField
                   fullWidth
                   name="weeklyCohortCommitmentHours"
@@ -293,7 +314,7 @@ const StudentProfileData: React.FC = () => {
                 />
               </Box>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Which year did you start taking Bitcoin seriously?*</Typography>
+                <Typography variant="body2" sx={labelSx}>When did you start taking Bitcoin seriously?*</Typography>
                 <TextField
                   fullWidth
                   name="firstHeardAboutBitcoinOn"
@@ -306,157 +327,164 @@ const StudentProfileData: React.FC = () => {
                   sx={inputSx}
                 />
               </Box>
+              <Box>
+                <Typography variant="body2" sx={labelSx}>Where did you hear about this cohort?*</Typography>
+                <TextField
+                  fullWidth
+                  name="referral"
+                  value={profile.referral || ''}
+                  onChange={handleInputChange}
+                  required
+                  size="small"
+                  placeholder="e.g. Twitter, friend, blog..."
+                  sx={inputSx}
+                />
+              </Box>
             </Box>
           </Box>
 
-          {/* Full-width fields */}
-          <Box sx={{ mt: 5, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>How would you describe yourself?*</Typography>
-              <TextField
-                fullWidth
-                name="description"
-                value={profile.description || ''}
-                onChange={handleInputChange}
-                required
-                multiline
-                rows={3}
-                sx={inputSx}
-              />
-            </Box>
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: { xs: 3, lg: 5 } }}>
+          {/* Section: About You */}
+          <Box sx={sectionSx}>
+            <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1rem', mb: 3 }}>About You</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Why is Bitcoin important to you?*</Typography>
+                <Typography variant="body2" sx={labelSx}>How would you describe yourself?*</Typography>
                 <TextField
                   fullWidth
-                  name="background"
-                  value={profile.background || ''}
+                  name="description"
+                  value={profile.description || ''}
                   onChange={handleInputChange}
                   required
                   multiline
                   rows={3}
+                  placeholder="A short bio..."
                   sx={inputSx}
+                />
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
+                <Box>
+                  <Typography variant="body2" sx={labelSx}>Why is Bitcoin important to you?*</Typography>
+                  <TextField
+                    fullWidth
+                    name="background"
+                    value={profile.background || ''}
+                    onChange={handleInputChange}
+                    required
+                    multiline
+                    rows={3}
+                    sx={inputSx}
+                  />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={labelSx}>What do you hope to achieve through this Cohort?*</Typography>
+                  <TextField
+                    fullWidth
+                    name="whyBitcoin"
+                    value={profile.whyBitcoin || ''}
+                    onChange={handleInputChange}
+                    required
+                    multiline
+                    rows={3}
+                    sx={inputSx}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Section: Skills & Reading */}
+          <Box sx={sectionSx}>
+            <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1rem', mb: 3 }}>Skills & Reading</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box>
+                <Typography variant="body2" sx={labelSx}>Skills*</Typography>
+                <Autocomplete
+                  multiple
+                  options={SKILLS_OPTIONS}
+                  value={profile.skills}
+                  onChange={(_, newValue) => setProfile({ ...profile, skills: newValue })}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => {
+                      const { key, ...rest } = getTagProps({ index });
+                      return (
+                        <Chip
+                          key={key}
+                          label={option}
+                          {...rest}
+                          sx={{
+                            bgcolor: 'rgba(249,115,22,0.15)',
+                            color: '#fb923c',
+                            fontWeight: 500,
+                            border: '1px solid rgba(249,115,22,0.3)',
+                            '& .MuiChip-deleteIcon': { color: 'rgba(249,115,22,0.5)', '&:hover': { color: '#fb923c' } },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} placeholder="Add a skill..." size="small" />
+                  )}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        bgcolor: '#18181b',
+                        border: '1px solid #27272a',
+                        '& .MuiAutocomplete-option': { color: '#fafafa', '&:hover': { bgcolor: 'rgba(249,115,22,0.15)' } },
+                        '& .MuiAutocomplete-option[aria-selected="true"]': { bgcolor: 'rgba(249,115,22,0.1)' },
+                      },
+                    },
+                  }}
+                  sx={autocompleteSx}
                 />
               </Box>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>What do you hope to achieve through this Cohort?*</Typography>
-                <TextField
-                  fullWidth
-                  name="whyBitcoin"
-                  value={profile.whyBitcoin || ''}
-                  onChange={handleInputChange}
-                  required
-                  multiline
-                  rows={3}
-                  sx={inputSx}
+                <Typography variant="body2" sx={labelSx}>Books / resources you've gone through*</Typography>
+                <Autocomplete
+                  multiple
+                  options={BITCOIN_BOOKS_OPTIONS}
+                  value={profile.bitcoinBooksRead}
+                  onChange={(_, newValue) => setProfile({ ...profile, bitcoinBooksRead: newValue })}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => {
+                      const { key, ...rest } = getTagProps({ index });
+                      return (
+                        <Chip
+                          key={key}
+                          label={option}
+                          {...rest}
+                          sx={{
+                            bgcolor: 'rgba(249,115,22,0.15)',
+                            color: '#fb923c',
+                            fontWeight: 500,
+                            border: '1px solid rgba(249,115,22,0.3)',
+                            '& .MuiChip-deleteIcon': { color: 'rgba(249,115,22,0.5)', '&:hover': { color: '#fb923c' } },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} placeholder="Add a book..." size="small" />
+                  )}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        bgcolor: '#18181b',
+                        border: '1px solid #27272a',
+                        '& .MuiAutocomplete-option': { color: '#fafafa', '&:hover': { bgcolor: 'rgba(249,115,22,0.15)' } },
+                        '& .MuiAutocomplete-option[aria-selected="true"]': { bgcolor: 'rgba(249,115,22,0.1)' },
+                      },
+                    },
+                  }}
+                  sx={autocompleteSx}
                 />
               </Box>
-            </Box>
-
-            {/* Skills multi-select */}
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Please select list of skills*</Typography>
-              <Autocomplete
-                multiple
-                options={SKILLS_OPTIONS}
-                value={profile.skills}
-                onChange={(_, newValue) => setProfile({ ...profile, skills: newValue })}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => {
-                    const { key, ...rest } = getTagProps({ index });
-                    return (
-                      <Chip
-                        key={key}
-                        label={option}
-                        {...rest}
-                        sx={{
-                          bgcolor: '#ea580c',
-                          color: '#fff',
-                          fontWeight: 500,
-                          '& .MuiChip-deleteIcon': { color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff' } },
-                        }}
-                      />
-                    );
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} placeholder="Add a skill..." size="small" />
-                )}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      bgcolor: '#27272a',
-                      border: '1px solid #3f3f46',
-                      '& .MuiAutocomplete-option': { color: '#fafafa', '&:hover': { bgcolor: '#ea580c' } },
-                      '& .MuiAutocomplete-option[aria-selected="true"]': { bgcolor: 'rgba(234,88,12,0.2)' },
-                    },
-                  },
-                }}
-                sx={autocompleteSx}
-              />
-            </Box>
-
-            {/* Books multi-select */}
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Select books that you have gone through?*</Typography>
-              <Autocomplete
-                multiple
-                options={BITCOIN_BOOKS_OPTIONS}
-                value={profile.bitcoinBooksRead}
-                onChange={(_, newValue) => setProfile({ ...profile, bitcoinBooksRead: newValue })}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => {
-                    const { key, ...rest } = getTagProps({ index });
-                    return (
-                      <Chip
-                        key={key}
-                        label={option}
-                        {...rest}
-                        sx={{
-                          bgcolor: '#ea580c',
-                          color: '#fff',
-                          fontWeight: 500,
-                          '& .MuiChip-deleteIcon': { color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff' } },
-                        }}
-                      />
-                    );
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} placeholder="Add a book..." size="small" />
-                )}
-                slotProps={{
-                  paper: {
-                    sx: {
-                      bgcolor: '#27272a',
-                      border: '1px solid #3f3f46',
-                      '& .MuiAutocomplete-option': { color: '#fafafa', '&:hover': { bgcolor: '#ea580c' } },
-                      '& .MuiAutocomplete-option[aria-selected="true"]': { bgcolor: 'rgba(234,88,12,0.2)' },
-                    },
-                  },
-                }}
-                sx={autocompleteSx}
-              />
-            </Box>
-
-            {/* Referral */}
-            <Box>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#d4d4d8', mb: 1.5 }}>Where did you hear about this cohort?*</Typography>
-              <TextField
-                fullWidth
-                name="referral"
-                value={profile.referral || ''}
-                onChange={handleInputChange}
-                required
-                size="small"
-                sx={inputSx}
-              />
             </Box>
           </Box>
 
           {/* Submit */}
-          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1 }}>
             <Button
               type="submit"
               variant="contained"
@@ -466,9 +494,9 @@ const StudentProfileData: React.FC = () => {
                 bgcolor: '#ea580c',
                 fontWeight: 600,
                 textTransform: 'none',
-                px: 4,
+                px: 5,
                 py: 1.5,
-                borderRadius: 3,
+                borderRadius: 2.5,
                 fontSize: '0.95rem',
                 boxShadow: 'none',
                 '&:hover': { bgcolor: '#c2410c' },

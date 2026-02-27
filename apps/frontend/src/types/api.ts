@@ -106,20 +106,32 @@ export interface ExerciseScore {
   maxTotalScore: number;
 }
 
+export interface AttendanceScore {
+  totalScore: number;
+  maxTotalScore: number;
+}
+
 export interface WeeklyScore {
   weekId: string;
-  groupDiscussionScores: GroupDiscussionScore;
-  exerciseScores: ExerciseScore;
+  attended: boolean;
+  groupDiscussionScores: GroupDiscussionScore | null;
+  exerciseScores: ExerciseScore | null;
+  attendanceScores: AttendanceScore | null;
   totalScore: number;
   maxTotalScore: number;
 }
 
 export interface UsersWeekScoreResponseDto extends WeeklyScore {
-  // User details
   userId: string;
   discordUsername: string;
   discordGlobalName: string | null;
   name: string | null;
+  teachingAssistant: {
+    id: string;
+    name: string | null;
+    discordUsername: string;
+    discordGlobalName: string | null;
+  } | null;
 }
 
 export interface ListScoresForCohortAndWeekResponseDto {

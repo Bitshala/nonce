@@ -13,7 +13,7 @@ import {
   Button,
   Chip,
 } from '@mui/material';
-import { ArrowLeft, Trophy, Medal, Crown, Flame } from 'lucide-react';
+import { ArrowLeft, Medal, Crown, Flame } from 'lucide-react';
 
 import { useCohort } from '../hooks/cohortHooks';
 import { useCohortLeaderboard } from '../hooks/scoreHooks';
@@ -35,61 +35,28 @@ const getScoreColor = (score: number): string => {
   return '#f87171';
 };
 
-const RANK_CONFIG = {
-  1: {
-    color: '#facc15',
-    glow: 'rgba(250,204,21,0.3)',
-    glowStrong: 'rgba(250,204,21,0.15)',
-    bg: 'rgba(250,204,21,0.06)',
-    border: 'rgba(250,204,21,0.25)',
-    label: '1ST',
-    fontSize: { xs: '1.6rem', sm: '2rem' },
-    rankFontSize: { xs: '1.3rem', sm: '1.6rem' },
-    iconSize: 28,
-    py: { xs: 3, sm: 4 },
-  },
-  2: {
-    color: '#e4e4e7',
-    glow: 'rgba(228,228,231,0.2)',
-    glowStrong: 'rgba(228,228,231,0.1)',
-    bg: 'rgba(228,228,231,0.04)',
-    border: 'rgba(228,228,231,0.2)',
-    label: '2ND',
-    fontSize: { xs: '1.3rem', sm: '1.6rem' },
-    rankFontSize: { xs: '1.1rem', sm: '1.3rem' },
-    iconSize: 24,
-    py: { xs: 2.5, sm: 3 },
-  },
-  3: {
-    color: '#d97706',
-    glow: 'rgba(217,119,6,0.25)',
-    glowStrong: 'rgba(217,119,6,0.12)',
-    bg: 'rgba(217,119,6,0.05)',
-    border: 'rgba(217,119,6,0.25)',
-    label: '3RD',
-    fontSize: { xs: '1.1rem', sm: '1.3rem' },
-    rankFontSize: { xs: '1rem', sm: '1.1rem' },
-    iconSize: 22,
-    py: { xs: 2, sm: 2.5 },
-  },
-} as const;
+const RANK_HIGHLIGHT: Record<number, { color: string; bg: string; border: string; label: string }> = {
+  1: { color: '#facc15', bg: 'rgba(250,204,21,0.06)', border: 'rgba(250,204,21,0.35)', label: '1ST' },
+  2: { color: '#e4e4e7', bg: 'rgba(228,228,231,0.04)', border: 'rgba(228,228,231,0.25)', label: '2ND' },
+  3: { color: '#d97706', bg: 'rgba(217,119,6,0.05)', border: 'rgba(217,119,6,0.30)', label: '3RD' },
+};
 
 const headerSx = {
   color: '#a1a1aa',
   fontWeight: 600,
-  fontSize: '0.75rem',
+  fontSize: '0.85rem',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.05em',
   borderBottom: '1px solid #27272a',
-  py: 1.5,
-  px: 2.5,
+  py: 2,
+  px: 3,
   whiteSpace: 'nowrap' as const,
 };
 
 const cellSx = {
   borderBottom: '1px solid rgba(39,39,42,0.6)',
-  py: 2,
-  px: 2.5,
+  py: 2.5,
+  px: 3,
 };
 
 export const ResultPage: React.FC = () => {
@@ -131,8 +98,6 @@ export const ResultPage: React.FC = () => {
 
   const cohortName = useMemo(() => formatCohortName(cohortData), [cohortData]);
 
-  const topThree = useMemo(() => sortedResults.slice(0, 3), [sortedResults]);
-  const restResults = useMemo(() => sortedResults.slice(3), [sortedResults]);
 
   const handleStudentClick = useCallback(
     (student: StudentResult) => {
@@ -205,247 +170,113 @@ export const ResultPage: React.FC = () => {
             </Typography>
             <Flame size={32} color="#f97316" />
           </Box>
-          <Typography variant="body1" sx={{ color: '#a1a1aa', fontSize: '1rem' }}>
+          <Typography variant="body1" sx={{ color: '#a1a1aa', fontSize: '1.1rem' }}>
             {cohortName || 'Cohort information unavailable'}
           </Typography>
         </Box>
 
-        {/* Podium - Top 3 */}
-        {topThree.length > 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 5 }}>
-            {topThree.map((student, index) => {
-              const rank = (index + 1) as 1 | 2 | 3;
-              const config = RANK_CONFIG[rank];
+        {/* Rankings table */}
+        {sortedResults.length > 0 && (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ ...headerSx, width: 80 }}>Rank</TableCell>
+                  <TableCell sx={headerSx}>Discord</TableCell>
+                  {canViewAttendance && (
+                    <TableCell sx={{ ...headerSx, display: { xs: 'none', sm: 'table-cell' } }}>Attendance</TableCell>
+                  )}
+                  <TableCell sx={headerSx}>Score</TableCell>
+                  {hasExercises && (
+                    <TableCell sx={{ ...headerSx, display: { xs: 'none', sm: 'table-cell' } }}>Exercises</TableCell>
+                  )}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedResults.map((student, index) => {
+                  const rank = index + 1;
+                  const highlight = RANK_HIGHLIGHT[rank];
 
-              return (
-                <Box
-                  key={student.userId}
-                  onClick={() => handleStudentClick(student)}
-                  sx={{
-                    cursor: 'pointer',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: { xs: 2, sm: 3 },
-                    py: config.py,
-                    px: { xs: 2.5, sm: 4 },
-                    borderRadius: 3,
-                    bgcolor: config.bg,
-                    border: `1px solid ${config.border}`,
-                    boxShadow: `0 0 20px ${config.glow}, inset 0 0 20px ${config.glowStrong}`,
-                    transition: 'all 200ms ease',
-                    overflow: 'hidden',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: `0 0 35px ${config.glow}, inset 0 0 25px ${config.glowStrong}`,
-                      bgcolor: `${config.bg}`.replace(')', ', 0.1)').replace('rgba', 'rgba'),
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: '1px',
-                      background: `linear-gradient(90deg, transparent, ${config.color}, transparent)`,
-                      opacity: 0.4,
-                    },
-                  }}
-                >
-                  {/* Rank badge */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      minWidth: { xs: 48, sm: 64 },
-                    }}
-                  >
-                    {rank === 1 ? (
-                      <Crown size={config.iconSize} color={config.color} />
-                    ) : (
-                      <Medal size={config.iconSize} color={config.color} />
-                    )}
-                    <Typography
+                  return (
+                    <TableRow
+                      key={student.userId}
+                      hover
+                      onClick={() => handleStudentClick(student)}
                       sx={{
-                        fontWeight: 900,
-                        color: config.color,
-                        fontSize: config.rankFontSize,
-                        letterSpacing: '0.05em',
-                        lineHeight: 1.2,
-                        mt: 0.5,
+                        cursor: 'pointer',
+                        bgcolor: highlight?.bg ?? 'transparent',
+                        borderLeft: highlight ? `3px solid ${highlight.border}` : '3px solid transparent',
+                        '&:hover': { bgcolor: highlight ? highlight.bg : 'rgba(255,255,255,0.03)' },
+                        transition: 'background-color 150ms',
                       }}
                     >
-                      {config.label}
-                    </Typography>
-                  </Box>
+                      <TableCell sx={cellSx}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {rank === 1 && <Crown size={18} color={highlight!.color} />}
+                          {(rank === 2 || rank === 3) && <Medal size={18} color={highlight!.color} />}
+                          <Typography sx={{
+                            fontWeight: highlight ? 800 : 600,
+                            color: highlight?.color ?? '#a1a1aa',
+                            fontSize: '1rem',
+                          }}>
+                            {highlight ? highlight.label : `#${rank}`}
+                          </Typography>
+                        </Box>
+                      </TableCell>
 
-                  {/* Name & details */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                      sx={{
-                        fontWeight: 800,
-                        color: '#fff',
-                        fontSize: config.fontSize,
-                        letterSpacing: '-0.01em',
-                        lineHeight: 1.2,
-                        textShadow: `0 0 20px ${config.glow}`,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {student.discordUsername}
-                    </Typography>
-                    {canViewAttendance && (
-                      <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>
-                        Attendance: {student.totalAttendance}/{student.maxAttendance}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  {/* Score */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 3 }, flexShrink: 0 }}>
-                    {hasExercises && (
-                      <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', alignItems: 'center' }}>
-                        <Typography variant="caption" sx={{ color: '#a1a1aa', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                          Exercises
+                      <TableCell sx={cellSx}>
+                        <Typography sx={{
+                          color: '#fafafa',
+                          fontWeight: highlight ? 700 : 500,
+                          fontSize: '1rem',
+                        }}>
+                          {student.discordUsername}
                         </Typography>
-                        <Chip
-                          label={student.exercisesCompleted}
-                          size="small"
-                          sx={{
-                            bgcolor: student.exercisesCompleted > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
-                            color: student.exercisesCompleted > 0 ? '#4ade80' : '#71717a',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            height: 28,
-                            mt: 0.5,
-                          }}
-                        />
-                      </Box>
-                    )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Typography variant="caption" sx={{ color: '#a1a1aa', fontSize: '0.7rem', textTransform: 'uppercase' }}>
-                        Score
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontWeight: 900,
-                          color: config.color,
-                          fontSize: { xs: '1.3rem', sm: '1.6rem' },
-                          lineHeight: 1.2,
-                          textShadow: `0 0 15px ${config.glow}`,
-                        }}
-                      >
-                        {student.totalScore}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              );
-            })}
-          </Box>
-        )}
+                      </TableCell>
 
-        {/* Rest of results table */}
-        {restResults.length > 0 && (
-          <>
-            <Typography
-              sx={{
-                color: '#71717a',
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                mb: 1.5,
-                px: 1,
-              }}
-            >
-              Other Rankings
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ ...headerSx, width: 64 }}>Rank</TableCell>
-                    <TableCell sx={headerSx}>Discord</TableCell>
-                    {canViewAttendance && (
-                      <TableCell sx={{ ...headerSx, display: { xs: 'none', sm: 'table-cell' } }}>Attendance</TableCell>
-                    )}
-                    <TableCell sx={headerSx}>Score</TableCell>
-                    {hasExercises && (
-                      <TableCell sx={{ ...headerSx, display: { xs: 'none', sm: 'table-cell' } }}>Exercises</TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {restResults.map((student, index) => {
-                    const rank = index + 4;
-
-                    return (
-                      <TableRow
-                        key={student.userId}
-                        hover
-                        onClick={() => handleStudentClick(student)}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' },
-                          transition: 'background-color 150ms',
-                        }}
-                      >
-                        <TableCell sx={cellSx}>
-                          <Typography sx={{ fontWeight: 600, color: '#a1a1aa', fontSize: '0.9rem' }}>
-                            #{rank}
+                      {canViewAttendance && (
+                        <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                          <Typography sx={{ color: '#d4d4d8', fontSize: '1rem' }}>
+                            {student.totalAttendance}/{student.maxAttendance}
                           </Typography>
                         </TableCell>
+                      )}
 
-                        <TableCell sx={cellSx}>
-                          <Typography sx={{ color: '#fafafa', fontWeight: 500, fontSize: '0.9rem' }}>
-                            {student.discordUsername}
-                          </Typography>
+                      <TableCell sx={cellSx}>
+                        <Typography sx={{
+                          fontWeight: 700,
+                          color: highlight?.color ?? getScoreColor(student.totalScore),
+                          fontSize: '1.05rem',
+                        }}>
+                          {student.totalScore}
+                        </Typography>
+                      </TableCell>
+
+                      {hasExercises && (
+                        <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                          <Chip
+                            label={student.exercisesCompleted}
+                            size="small"
+                            sx={{
+                              bgcolor: student.exercisesCompleted > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+                              color: student.exercisesCompleted > 0 ? '#4ade80' : '#71717a',
+                              fontWeight: 600,
+                              fontSize: '0.9rem',
+                              height: 26,
+                            }}
+                          />
                         </TableCell>
-
-                        {canViewAttendance && (
-                          <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
-                            <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
-                              {student.totalAttendance}/{student.maxAttendance}
-                            </Typography>
-                          </TableCell>
-                        )}
-
-                        <TableCell sx={cellSx}>
-                          <Typography sx={{ fontWeight: 700, color: getScoreColor(student.totalScore), fontSize: '0.9rem' }}>
-                            {student.totalScore}
-                          </Typography>
-                        </TableCell>
-
-                        {hasExercises && (
-                          <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
-                            <Chip
-                              label={student.exercisesCompleted}
-                              size="small"
-                              sx={{
-                                bgcolor: student.exercisesCompleted > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
-                                color: student.exercisesCompleted > 0 ? '#4ade80' : '#71717a',
-                                fontWeight: 600,
-                                fontSize: '0.8rem',
-                                height: 24,
-                              }}
-                            />
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </>
+                      )}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
 
         {/* Footer */}
-        <Typography variant="body2" sx={{ textAlign: 'center', color: '#71717a', mt: 4 }}>
+        <Typography sx={{ textAlign: 'center', color: '#71717a', mt: 4, fontSize: '0.95rem' }}>
           Showing {sortedResults.length} students
         </Typography>
 

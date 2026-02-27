@@ -146,6 +146,45 @@ const GeneralInstructions: React.FC<GeneralInstructionsProps> = ({
             </Box>
           </Box>
 
+          {/* Group Assignments */}
+          <Box>
+            <SectionTitle>Group Assignments</SectionTitle>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Paragraph>
+                Each week, your attendance is tracked and directly affects your group assignment for the following week.
+              </Paragraph>
+
+              <Box>
+                <SubTitle>How It Works</SubTitle>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pl: 1 }}>
+                  <BulletItem color="#4ade80">
+                    <Highlight color="#4ade80">Attendance Tracking</Highlight> — Every week, if you attend you are marked <Highlight color="#4ade80">Present</Highlight>. If you do not attend, you are marked <Highlight color="#f87171">Absent</Highlight>.
+                  </BulletItem>
+                  <BulletItem color="#60a5fa">
+                    <Highlight color="#60a5fa">Group Assignment</Highlight> — Based on the previous week's attendance, TAs assign present participants into groups using our custom grouping logic.
+                  </BulletItem>
+                  <BulletItem color="#f87171">
+                    <Highlight color="#f87171">Group 0 (Unassigned)</Highlight> — Absent participants are placed into <Highlight color="#f87171">Group 0</Highlight> by default. They are free to join any group TAs assign them to, but they <Highlight>must notify the TAs</Highlight>.
+                  </BulletItem>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  bgcolor: 'rgba(249,115,22,0.06)',
+                  border: '1px solid rgba(249,115,22,0.2)',
+                  borderRadius: 2,
+                  px: 3,
+                  py: 2,
+                }}
+              >
+                <Paragraph>
+                  <Highlight>Tip:</Highlight> Consistent attendance ensures you are automatically placed in a group each week without extra steps. If you were absent last week and plan to attend, <Highlight>reach out to a TA</Highlight> ahead of time so they can place you in a group.
+                </Paragraph>
+              </Box>
+            </Box>
+          </Box>
+
           {/* Participant Profiling */}
           <Box>
             <SectionTitle>Participant Profiling and Evaluation</SectionTitle>
