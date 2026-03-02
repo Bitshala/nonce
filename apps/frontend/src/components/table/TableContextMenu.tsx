@@ -8,7 +8,7 @@ interface TableContextMenuProps {
     targetId: number | null;
   };
   onClose: () => void;
-  onDelete: (studentId: string) => void; 
+  onDelete: (studentId: string) => void;
 }
 
 export const TableContextMenu: React.FC<TableContextMenuProps> = ({
@@ -65,17 +65,29 @@ export const TableContextMenu: React.FC<TableContextMenuProps> = ({
         left: contextMenu.x,
         position: 'fixed',
         zIndex: 1000,
+        backgroundColor: '#1c1c1e',
+        border: '1px solid #3f3f46',
+        borderRadius: '8px',
+        width: '176px',
+        overflow: 'hidden',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+        padding: '4px 0',
       }}
-      className=" flex justify-center items-center bg-red-200 b-0 border border-zinc-300 rounded-md  w-40"
     >
-
-          <button
-            onClick={handleDelete}
-            className="b-0 rounded-md cursor-pointer w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-red-500 hover:text-white transition-colors"
-          >
-            Delete Row
-          </button>
-
+      <div
+        onClick={handleDelete}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#d4d4d8'; }}
+        style={{
+          padding: '8px 16px',
+          fontSize: '14px',
+          color: '#d4d4d8',
+          backgroundColor: 'transparent',
+          cursor: 'pointer',
+        }}
+      >
+        Delete Row
+      </div>
     </div>
   );
 };

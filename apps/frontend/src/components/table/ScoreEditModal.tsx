@@ -17,6 +17,8 @@ import {
 } from '@mui/material';
 import { X } from 'lucide-react';
 import type { TableRowData } from '../../types/student';
+import type { GetTeachingAssistantResponseDto } from '../../types/api';
+import { getGroupNumber } from '../../helpers/taHelpers';
 
 interface ScoreEditModalProps {
   student: TableRowData;
@@ -26,7 +28,8 @@ interface ScoreEditModalProps {
   weekType?: string;
   weekHasExercise?: boolean;
   cohortType?: string;
-  onSubmit: (studentData: TableRowData) => void;
+  teachingAssistants?: GetTeachingAssistantResponseDto[];
+  onSubmit: (studentData: TableRowData, groupNumber: number, teachingAssistantId: string) => void;
   onClose: () => void;
 }
 
@@ -49,6 +52,7 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
   weekType,
   weekHasExercise,
   cohortType,
+  teachingAssistants,
   onSubmit,
   onClose,
 }) => {
@@ -58,6 +62,9 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
     bonusScore: student.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
     exerciseScore: student.exerciseScore ?? { Submitted: false, privateTest: false },
   });
+
+  const [groupNumber, setGroupNumber] = useState<number>(getGroupNumber(student.group));
+  const [selectedTAId, setSelectedTAId] = useState<string>('');
 
   const isGroupDiscussion = weekType === 'GROUP_DISCUSSION';
   const showExerciseScores = isGroupDiscussion && weekHasExercise === true;
@@ -153,6 +160,46 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           }
           label={<Typography sx={{ color: '#fafafa', fontWeight: 500 }}>Attended This Week</Typography>}
         />
+
+        {/* Group Assignment */}
+        <Box>
+          <Typography sx={{ color: '#d4d4d8', fontWeight: 600, mb: 2 }}>Group Assignment</Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <FormControl fullWidth sx={selectSx}>
+              <InputLabel>Group Number</InputLabel>
+              <Select
+                value={groupNumber}
+                label="Group Number"
+                onChange={e => setGroupNumber(Number(e.target.value))}
+                MenuProps={{ PaperProps: { sx: { bgcolor: '#18181b', border: '1px solid #27272a', color: '#fafafa' } } }}
+              >
+                {[0, 1, 2, 3, 4, 5].map(val => (
+                  <MenuItem key={val} value={val} sx={{ '&:hover': { bgcolor: '#27272a' } }}>
+                    Group {val}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={selectSx}>
+              <InputLabel>Teaching Assistant</InputLabel>
+              <Select
+                value={selectedTAId}
+                label="Teaching Assistant"
+                onChange={e => setSelectedTAId(e.target.value as string)}
+                MenuProps={{ PaperProps: { sx: { bgcolor: '#18181b', border: '1px solid #27272a', color: '#fafafa' } } }}
+              >
+                <MenuItem value="" sx={{ '&:hover': { bgcolor: '#27272a' } }}>
+                  None
+                </MenuItem>
+                {teachingAssistants?.map(ta => (
+                  <MenuItem key={ta.id} value={ta.id} sx={{ '&:hover': { bgcolor: '#27272a' } }}>
+                    {ta.discordGlobalName || ta.discordUserName || ta.name || ta.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
 
         {/* GD Scores — only for GROUP_DISCUSSION weeks */}
         {isGroupDiscussion && (
@@ -262,7 +309,7 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
           Cancel
         </Button>
         <Button
-          onClick={() => onSubmit(editedStudent)}
+          onClick={() => onSubmit(editedStudent, groupNumber, selectedTAId)}
           variant="contained"
           sx={{
             bgcolor: '#f97316',
