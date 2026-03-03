@@ -75,11 +75,11 @@ export const useAssignGroupsForCohortWeek = createUseMutation<
   }
 );
 
-export const useAssignSelfToGroup = createUseMutation<
+export const useAssignTAToGroup = createUseMutation<
   void,
-  { weekId: string; cohortId: string; groupNumber: number }
+  { weekId: string; cohortId: string; groupNumber: number; userId: string }
 >(
-  ({ weekId, groupNumber }) => apiService.assignSelfToGroup(weekId, groupNumber),
+  ({ weekId, groupNumber, userId }) => apiService.assignTAToGroup(weekId, groupNumber, userId),
   {
     queryInvalidation: async ({variables: {weekId, cohortId}}) => {
       if (cohortId) {

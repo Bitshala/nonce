@@ -12,8 +12,19 @@ import {
   DialogActions,
   TextField,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Snackbar,
+  Alert,
 } from '@mui/material';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { lnWeeks } from '../data/lnWeeks';
+import { lbtclWeeks } from '../data/lbtclWeeks';
+import { mbWeeks } from '../data/mbWeeks';
+import { bpdWeeks } from '../data/bpdWeeks';
+import type { BonusQuestion } from '../types/instructions';
 
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
@@ -23,23 +34,33 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 import { computeTotal, cohortHasExercises } from '../utils/calculations';
 import { downloadCSV } from '../utils/csvUtils';
 import type { TableRowData } from '../types/student';
+import type { UpdateScoresRequestDto } from '../types/api';
 
 import {
   useScoresForCohortAndWeek,
   useUpdateScoresForUserCohortAndWeek,
   useAssignGroupsForCohortWeek,
-  useAssignSelfToGroup,
 } from '../hooks/scoreHooks';
+import { useTeachingAssistants } from '../hooks/teachingAssistantHooks';
+import apiService from '../services/apiService';
 import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
 
+
+const cohortTypeToContent = {
+  MASTERING_BITCOIN: { weeks: mbWeeks },
+  LEARNING_BITCOIN_FROM_COMMAND_LINE: { weeks: lbtclWeeks },
+  MASTERING_LIGHTNING_NETWORK: { weeks: lnWeeks },
+  BITCOIN_PROTOCOL_DEVELOPMENT: { weeks: bpdWeeks },
+} as const;
+
 const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', 'Group 5'];
 
 const TableView: React.FC = () => {
   const navigate = useNavigate();
-  const { id: cohortIdParam } = useParams<{ id: string }>();
+  const { cohortId: cohortIdParam, weekId: weekIdParam } = useParams<{ cohortId: string; weekId: string }>();
 
   // === User data ===
   const { data: userData } = useUser();
@@ -53,30 +74,28 @@ const TableView: React.FC = () => {
   } = useCohort(cohortIdParam);
 
   const weeks = useMemo(() => cohortData?.weeks ?? [], [cohortData]);
-  const baseGroups = useMemo(
-    () => DEFAULT_GROUPS,
-    []
-  );
 
-  // We keep both the selectedWeekId (source of truth for API) and a display-friendly numeric "weekIndex"
-  const [selectedWeekId, setSelectedWeekId] = useState<string>(null);
-  const [weekIndex, setWeekIndex] = useState<number>(0);
+
+  // Derive selectedWeekId from URL param
+  const selectedWeekId = weekIdParam === 'default' ? null : weekIdParam;
+
+  // Redirect from 'default' or invalid weekId to the first week
+  useEffect(() => {
+    if (weeks.length > 0) {
+      if (weekIdParam === 'default' || !weeks.find(w => w.id === weekIdParam)) {
+        navigate(`/cohort/${cohortIdParam}/week/${weeks[0].id}`, { replace: true });
+      }
+    }
+  }, [weeks, weekIdParam, cohortIdParam, navigate]);
 
   // Derived week metadata
   const selectedWeekData = useMemo(
     () => weeks.find(w => w.id === selectedWeekId),
     [weeks, selectedWeekId]
   );
+  const weekIndex = selectedWeekData?.week ?? 0;
   const selectedWeekType = selectedWeekData?.type;
   const selectedWeekHasExercise = selectedWeekData?.hasExercise ?? false;
-
-  // Initialize selected week from cohort once it arrives
-  useEffect(() => {
-    if (!selectedWeekId && weeks.length > 0) {
-      setSelectedWeekId(weeks[0].id);
-      setWeekIndex(0);
-    }
-  }, [selectedWeekId, weeks]);
 
   // === Scores for selected week ===
   const {
@@ -87,10 +106,21 @@ const TableView: React.FC = () => {
   } = useScoresForCohortAndWeek({
     cohortId: cohortIdParam,
     weekId: selectedWeekId,
-  }, {enabled: !!selectedWeekId});
+  }, { enabled: !!selectedWeekId });
 
   // === Local table state ===
   const [data, setData] = useState<TableRowData[]>([]);
+
+  const baseGroups = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const unique = new Set(data.map((p) => p.group).filter(Boolean));
+    return Array.from(unique).sort((a, b) => {
+      const numA = parseInt(a.match(/\d+/)?.[0] ?? '0');
+      const numB = parseInt(b.match(/\d+/)?.[0] ?? '0');
+      return numA - numB;
+    });
+  }, [data]);
+
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('All Groups');
   const [selectedTA, setSelectedTA] = useState<string>('All TAs');
@@ -99,12 +129,14 @@ const TableView: React.FC = () => {
   const [showScoreEditModal, setShowScoreEditModal] = useState(false);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<TableRowData | null>(null);
 
-  const [showAssignGroupsModal, setShowAssignGroupsModal] = useState(false);
+  // Unified assign groups + TA modal
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignStep, setAssignStep] = useState<'config' | 'loading' | 'assign-ta' | 'assigning-ta'>('config');
   const [participantsPerGroup, setParticipantsPerGroup] = useState<number>(8);
   const [groupsAvailable, setGroupsAvailable] = useState<number>(3);
+  const [taAssignments, setTaAssignments] = useState<Record<number, string>>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'success' });
 
-  const [showTASelfAssignModal, setShowTASelfAssignModal] = useState(false);
-  const [selectedGroupNumber, setSelectedGroupNumber] = useState<number>(0);
 
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
@@ -112,6 +144,10 @@ const TableView: React.FC = () => {
     y: number;
     targetId: number | null;
   }>({ visible: false, x: 0, y: 0, targetId: null });
+
+  // === GD Questions Modal ===
+  const [showGDModal, setShowGDModal] = useState(false);
+  const [gdSlideIndex, setGdSlideIndex] = useState(0);
 
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [weeklyData, setWeeklyData] = useState<{ week: number; attended: number }>({
@@ -122,7 +158,7 @@ const TableView: React.FC = () => {
   // === Mutation ===
   const updateScoresMutation = useUpdateScoresForUserCohortAndWeek();
   const assignGroupsMutation = useAssignGroupsForCohortWeek();
-  const assignSelfToGroupMutation = useAssignSelfToGroup();
+  const { data: teachingAssistants } = useTeachingAssistants();
   const removeUserMutation = useRemoveUserFromCohort();
 
   // === Transform API scores to table rows ===
@@ -196,6 +232,49 @@ const TableView: React.FC = () => {
     return ['All TAs', ...Array.from(unique).sort()];
   }, [data]);
 
+  // === GD Questions for selected week ===
+  const gdQuestionsData = useMemo(() => {
+    const ct = cohortData?.type as keyof typeof cohortTypeToContent | undefined;
+    if (!ct || !cohortTypeToContent[ct]) return { gdQuestions: [], bonusQuestions: [] };
+
+    const staticWeeks = cohortTypeToContent[ct].weeks;
+    const staticWeek = staticWeeks.find(w => w.week === weekIndex);
+    if (!staticWeek) return { gdQuestions: [], bonusQuestions: [] };
+
+    // Merge with API week data — API overrides static if non-empty
+    const apiWeek = weeks.find(w => w.id === selectedWeekId);
+    const gdQuestions = (apiWeek && apiWeek.questions && apiWeek.questions.length > 0)
+      ? apiWeek.questions
+      : staticWeek.gdQuestions;
+    const bonusQuestions = (apiWeek && apiWeek.bonusQuestion && apiWeek.bonusQuestion.length > 0)
+      ? apiWeek.bonusQuestion
+      : (staticWeek.bonusQuestions ?? []);
+
+    return { gdQuestions, bonusQuestions };
+  }, [cohortData?.type, weekIndex, weeks, selectedWeekId]);
+
+  const allSlides = useMemo(() => {
+    const slides: { text: string; isBonus: boolean; image?: string }[] = [];
+    gdQuestionsData.gdQuestions.forEach(q => slides.push({ text: q, isBonus: false }));
+    gdQuestionsData.bonusQuestions.forEach(q => {
+      if (typeof q === 'string') {
+        slides.push({ text: q, isBonus: true });
+      } else {
+        slides.push({ text: (q as BonusQuestion).question, isBonus: true, image: (q as BonusQuestion).image });
+      }
+    });
+    return slides;
+  }, [gdQuestionsData]);
+
+  const handleOpenGDModal = useCallback(() => {
+    setGdSlideIndex(0);
+    setShowGDModal(true);
+  }, []);
+
+  const handleCloseGDModal = useCallback(() => {
+    setShowGDModal(false);
+  }, []);
+
   // === Sorting ===
   const [sortConfig, setSortConfig] = useState<{
     key: keyof TableRowData | null;
@@ -246,12 +325,11 @@ const TableView: React.FC = () => {
 
   // === Handlers ===
   const handleWeekChange = useCallback(
-    (newIndex: number, weekId: string) => {
-      setWeekIndex(newIndex);
-      setSelectedWeekId(weekId);
+    (_newIndex: number, weekId: string) => {
+      navigate(`/cohort/${cohortIdParam}/week/${weekId}`);
       setContextMenu({ visible: false, x: 0, y: 0, targetId: null });
     },
-    []
+    [navigate, cohortIdParam]
   );
 
   const handleStudentClick = useCallback((student: TableRowData) => {
@@ -268,10 +346,10 @@ const TableView: React.FC = () => {
   }, []);
 
   const handleScoreUpdate = useCallback(
-    (updated: TableRowData) => {
+    (updated: TableRowData, groupNumber?: number, teachingAssistantId?: string) => {
       if (!selectedStudentForEdit || !cohortData?.id || !selectedWeekId) return;
 
-      const body = {
+      const body: UpdateScoresRequestDto = {
         attendance: updated.attendance,
         communicationScore: updated.gdScore?.fa ?? 0,
         depthOfAnswerScore: updated.gdScore?.fb ?? 0,
@@ -282,6 +360,8 @@ const TableView: React.FC = () => {
         bonusFollowupScore: updated.bonusScore?.followUp ?? 0,
         isSubmitted: updated.exerciseScore?.Submitted ?? false,
         isPassing: updated.exerciseScore?.privateTest ?? false,
+        groupNumber,
+        teachingAssistantId: teachingAssistantId || undefined,
       };
 
       const userId = (selectedStudentForEdit as any).userId ?? String(selectedStudentForEdit.id);
@@ -295,14 +375,22 @@ const TableView: React.FC = () => {
         },
         {
           onSuccess: () => {
+            const taMatch = teachingAssistants?.find(ta => ta.id === teachingAssistantId);
+            const updatedGroup = groupNumber !== undefined ? `Group ${groupNumber}` : updated.group;
+            const updatedTA = taMatch
+              ? (taMatch.discordGlobalName || taMatch.discordUserName || taMatch.name || 'N/A')
+              : updated.ta;
+
             setData((prev) =>
               prev.map((p) =>
-                p.id === updated.id ? { ...updated, total: computeTotal({
-                  attendance: updated.attendance,
-                  gdScore: updated.gdScore ?? { fa: 0, fb: 0, fc: 0, fd: 0 },
-                  bonusScore: updated.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
-                  exerciseScore: updated.exerciseScore ?? { Submitted: false, privateTest: false },
-                }, cohortHasExercises(cohortData?.type || '')) } : p
+                p.id === updated.id ? {
+                  ...updated, group: updatedGroup, ta: updatedTA, total: computeTotal({
+                    attendance: updated.attendance,
+                    gdScore: updated.gdScore ?? { fa: 0, fb: 0, fc: 0, fd: 0 },
+                    bonusScore: updated.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
+                    exerciseScore: updated.exerciseScore ?? { Submitted: false, privateTest: false },
+                  }, cohortHasExercises(cohortData?.type || ''))
+                } : p
               )
             );
             setShowScoreEditModal(false);
@@ -316,7 +404,7 @@ const TableView: React.FC = () => {
         }
       );
     },
-    [selectedStudentForEdit, cohortData?.id, selectedWeekId, updateScoresMutation]
+    [selectedStudentForEdit, cohortData?.id, selectedWeekId, updateScoresMutation, teachingAssistants]
   );
 
   const handleDeleteStudent = useCallback((studentId: string) => {
@@ -377,63 +465,100 @@ const TableView: React.FC = () => {
     downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
   }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
-  const handleAssignGroups = useCallback(() => {
-    setShowAssignGroupsModal(true);
+  const handleOpenAssignModal = useCallback(() => {
+    // Always start from the config step so the user can (re-)assign groups
+    setAssignStep('config');
+    setTaAssignments({});
+    setShowAssignModal(true);
   }, []);
 
   const handleAssignGroupsSubmit = useCallback(() => {
     if (isNaN(participantsPerGroup) || isNaN(groupsAvailable) || participantsPerGroup <= 0 || groupsAvailable <= 0) {
-      alert('Please enter valid positive numbers');
+      setSnackbar({ open: true, message: 'Please enter valid positive numbers', severity: 'error' });
       return;
     }
+
+    setAssignStep('loading');
 
     assignGroupsMutation.mutate(
       { weekId: selectedWeekId, cohortId: cohortIdParam, participantsPerWeek: participantsPerGroup, groupsAvailable },
       {
-        onSuccess: () => {
-          alert('Groups assigned successfully!');
-          setShowAssignGroupsModal(false);
+        onSuccess: async () => {
+          setSnackbar({ open: true, message: 'Groups assigned successfully!', severity: 'success' });
+
+          // Refetch scores to get actual group distribution from backend
+          try {
+            const freshScores = await apiService.listScoresForCohortAndWeek(cohortIdParam, selectedWeekId);
+            const actualGroups = new Set<number>();
+            if (freshScores?.scores) {
+              freshScores.scores.forEach((score: any) => {
+                const groupNum = score.groupDiscussionScores?.groupNumber ?? 0;
+                if (groupNum > 0) actualGroups.add(groupNum);
+              });
+            }
+
+            if (actualGroups.size === 0) {
+              // All students are in Group 0 (e.g. all absent) — no real groups formed
+              setSnackbar({ open: true, message: 'All students belong to Group 0. No groups were formed to assign TAs.', severity: 'info' });
+              setShowAssignModal(false);
+              setAssignStep('config');
+            } else {
+              // Initialize TA assignments only for groups that actually exist
+              const initial: Record<number, string> = {};
+              Array.from(actualGroups).sort((a, b) => a - b).forEach((g) => { initial[g] = ''; });
+              setTaAssignments(initial);
+              setAssignStep('assign-ta');
+            }
+          } catch {
+            // Fallback: use configured groups if refetch fails
+            const initial: Record<number, string> = {};
+            for (let i = 1; i <= groupsAvailable; i++) {
+              initial[i] = '';
+            }
+            setTaAssignments(initial);
+            setAssignStep('assign-ta');
+          }
         },
         onError: (error: unknown) => {
           console.error('Group assignment failed', error);
           const message = error instanceof Error ? error.message : 'Unknown error occurred';
-          alert(`Failed to assign groups: ${message}`);
+          setSnackbar({ open: true, message: `Failed to assign groups: ${message}`, severity: 'error' });
+          setAssignStep('config');
         },
       }
     );
   }, [selectedWeekId, cohortIdParam, participantsPerGroup, groupsAvailable, assignGroupsMutation]);
 
-  const handleTASelfAssign = useCallback(() => {
-    setShowTASelfAssignModal(true);
-  }, []);
+  const handleBatchTAAssign = useCallback(async () => {
+    if (!selectedWeekId || !cohortIdParam) return;
 
-  const handleTASelfAssignSubmit = useCallback(() => {
-    if (!selectedWeekId || !cohortIdParam) {
-      alert('Please select a week first');
+    const assignments = Object.entries(taAssignments).filter(([, taId]) => taId !== '');
+    if (assignments.length === 0) {
+      setShowAssignModal(false);
       return;
     }
 
-    assignSelfToGroupMutation.mutate(
-      { weekId: selectedWeekId, cohortId: cohortIdParam, groupNumber: selectedGroupNumber },
-      {
-        onSuccess: () => {
-          alert('Successfully assigned yourself to the group!');
-          setShowTASelfAssignModal(false);
-        },
-        onError: (error: any) => {
-          console.error('Self assignment failed', error);
-          const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred';
+    setAssignStep('assigning-ta');
 
-          // Check if it's a "no group found" error
-          if (errorMessage.includes('No group found')) {
-            alert(`Failed to assign to group: The group doesn't exist yet. Please ask an admin to assign groups for this week first using the "Assign Groups" button.`);
-          } else {
-            alert(`Failed to assign to group: ${errorMessage}`);
-          }
-        },
+    try {
+      await Promise.all(
+        assignments.map(([groupNum, userId]) =>
+          apiService.assignTAToGroup(selectedWeekId, parseInt(groupNum), userId)
+        )
+      );
+      setSnackbar({ open: true, message: 'TAs assigned to groups successfully!', severity: 'success' });
+      setShowAssignModal(false);
+      // Invalidate scores to refresh the table
+      if (cohortIdParam && selectedWeekId) {
+        await useScoresForCohortAndWeek.invalidate({ cohortId: cohortIdParam, weekId: selectedWeekId });
       }
-    );
-  }, [selectedWeekId, cohortIdParam, selectedGroupNumber, assignSelfToGroupMutation]);
+    } catch (error: any) {
+      console.error('TA batch assignment failed', error);
+      const message = error?.response?.data?.message || error?.message || 'Unknown error occurred';
+      setSnackbar({ open: true, message: `Failed to assign TAs: ${message}`, severity: 'error' });
+      setAssignStep('assign-ta');
+    }
+  }, [selectedWeekId, cohortIdParam, taAssignments]);
 
   // === Loading & error states ===
   if (isCohortLoading || isScoresLoading || isScoresPending) {
@@ -525,8 +650,9 @@ const TableView: React.FC = () => {
             /* Implement when backend supports create */
           }}
           onDownloadCSV={handleDownloadCSV}
-          onAssignGroups={handleAssignGroups}
-          onTASelfAssign={handleTASelfAssign}
+          onAssignGroups={handleOpenAssignModal}
+          onTASelfAssign={undefined}
+          onShowGDQuestions={handleOpenGDModal}
           onClearFilters={() => {
             setSearchTerm('');
             setSelectedGroup('All Groups');
@@ -561,6 +687,7 @@ const TableView: React.FC = () => {
             weekType={selectedWeekType}
             weekHasExercise={selectedWeekHasExercise}
             cohortType={cohortData?.type}
+            teachingAssistants={teachingAssistants}
             onSubmit={handleScoreUpdate}
             onClose={() => {
               setShowScoreEditModal(false);
@@ -569,136 +696,401 @@ const TableView: React.FC = () => {
           />
         )}
 
-        {/* Assign Groups Modal */}
+        {/* Unified Assign Groups + TA Modal */}
         <Dialog
-          open={showAssignGroupsModal}
-          onClose={() => setShowAssignGroupsModal(false)}
-          maxWidth="xs"
+          open={showAssignModal}
+          onClose={() => { if (assignStep !== 'loading' && assignStep !== 'assigning-ta') setShowAssignModal(false); }}
+          maxWidth="sm"
           fullWidth
           slotProps={{
-            backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.7)' } },
+            backdrop: { sx: { backdropFilter: 'blur(8px)', bgcolor: 'rgba(0,0,0,0.75)' } },
           }}
           PaperProps={{
-            sx: { bgcolor: '#1c1c1e', backgroundImage: 'none', borderRadius: 3, border: '1px solid #3f3f46' },
+            sx: {
+              bgcolor: '#111113',
+              backgroundImage: 'none',
+              borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
+            },
           }}
         >
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa' }}>Assign Groups</Typography>
-              <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>Configure group assignment for this week.</Typography>
+          {/* Step 1: Configure groups */}
+          {assignStep === 'config' && (
+            <>
+              <Box sx={{ px: 3.5, pt: 3.5, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.35rem', letterSpacing: '-0.01em' }}>
+                    Assign Groups
+                  </Typography>
+                  <Typography sx={{ color: '#71717a', fontSize: '0.85rem', mt: 0.5 }}>
+                    Distribute students into groups for this week.
+                  </Typography>
+                </Box>
+                <IconButton onClick={() => setShowAssignModal(false)} size="small" sx={{ color: '#52525b', mt: -0.5, '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.06)' } }}>
+                  <X size={18} />
+                </IconButton>
+              </Box>
+              <DialogContent sx={{ px: 3.5, pt: 2.5, pb: 1 }}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Per Group"
+                    type="number"
+                    value={participantsPerGroup}
+                    onChange={(e) => setParticipantsPerGroup(parseInt(e.target.value) || 0)}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                    required
+                    fullWidth
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'rgba(255,255,255,0.04)', color: '#fafafa', borderRadius: 2,
+                        '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+                        '&:hover fieldset': { borderColor: 'rgba(249,115,22,0.5)' },
+                        '&.Mui-focused fieldset': { borderColor: '#f97316' },
+                      },
+                      '& .MuiInputLabel-root': { color: '#71717a', fontSize: '0.85rem' },
+                      '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+                    }}
+                  />
+                  <TextField
+                    label="Groups"
+                    type="number"
+                    value={groupsAvailable}
+                    onChange={(e) => setGroupsAvailable(parseInt(e.target.value) || 0)}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                    required
+                    fullWidth
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'rgba(255,255,255,0.04)', color: '#fafafa', borderRadius: 2,
+                        '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+                        '&:hover fieldset': { borderColor: 'rgba(249,115,22,0.5)' },
+                        '&.Mui-focused fieldset': { borderColor: '#f97316' },
+                      },
+                      '& .MuiInputLabel-root': { color: '#71717a', fontSize: '0.85rem' },
+                      '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
+                    }}
+                  />
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ px: 3.5, pb: 3, pt: 2, gap: 1 }}>
+                <MuiButton
+                  onClick={() => setShowAssignModal(false)}
+                  sx={{ color: '#71717a', textTransform: 'none', fontWeight: 500, fontSize: '0.85rem', '&:hover': { color: '#d4d4d8', bgcolor: 'rgba(255,255,255,0.04)' } }}
+                >
+                  Cancel
+                </MuiButton>
+                <MuiButton
+                  onClick={handleAssignGroupsSubmit}
+                  variant="contained"
+                  sx={{
+                    bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' },
+                    textTransform: 'none', fontWeight: 600, fontSize: '0.85rem',
+                    boxShadow: 'none', borderRadius: 2, px: 3,
+                  }}
+                >
+                  Assign Groups
+                </MuiButton>
+              </DialogActions>
+            </>
+          )}
+
+          {/* Loading state */}
+          {assignStep === 'loading' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 2 }}>
+              <CircularProgress size={32} sx={{ color: '#f97316' }} />
+              <Typography sx={{ color: '#71717a', fontSize: '0.9rem' }}>Assigning groups...</Typography>
             </Box>
-            <IconButton onClick={() => setShowAssignGroupsModal(false)} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
-              <X size={20} />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 3 }}>
-            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-              <TextField
-                label="Participants Per Group"
-                type="number"
-                value={participantsPerGroup}
-                onChange={(e) => setParticipantsPerGroup(parseInt(e.target.value) || 0)}
-                slotProps={{ htmlInput: { min: 1 } }}
-                required
-                fullWidth
-                sx={{
-                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
-                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
-                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
-                }}
-              />
-              <TextField
-                label="Number of Groups"
-                type="number"
-                value={groupsAvailable}
-                onChange={(e) => setGroupsAvailable(parseInt(e.target.value) || 0)}
-                slotProps={{ htmlInput: { min: 1 } }}
-                required
-                fullWidth
-                sx={{
-                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
-                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
-                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
-                }}
-              />
+          )}
+
+          {/* Step 2: Assign TAs to groups */}
+          {assignStep === 'assign-ta' && (
+            <>
+              <Box sx={{ px: 3.5, pt: 3.5, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.35rem', letterSpacing: '-0.01em' }}>
+                    Assign TAs
+                  </Typography>
+                  <Typography sx={{ color: '#71717a', fontSize: '0.85rem', mt: 0.5 }}>
+                    {Object.keys(taAssignments).length} groups found. Select a TA for each group.
+                  </Typography>
+                </Box>
+                <IconButton onClick={() => setShowAssignModal(false)} size="small" sx={{ color: '#52525b', mt: -0.5, '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.06)' } }}>
+                  <X size={18} />
+                </IconButton>
+              </Box>
+              <DialogContent sx={{ px: 3.5, pt: 1.5, pb: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {Object.keys(taAssignments).map((groupNum) => (
+                    <Box
+                      key={groupNum}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 2,
+                        p: 1.5, borderRadius: 2,
+                        bgcolor: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        transition: 'border-color 0.15s',
+                        '&:hover': { borderColor: 'rgba(255,255,255,0.1)' },
+                      }}
+                    >
+                      <Typography sx={{
+                        color: '#f97316', fontWeight: 700, fontSize: '0.8rem',
+                        minWidth: 70, textAlign: 'center',
+                        bgcolor: 'rgba(249,115,22,0.1)', borderRadius: 1.5, py: 0.75, px: 1.5,
+                        letterSpacing: '0.02em',
+                      }}>
+                        Group {groupNum}
+                      </Typography>
+                      <Select
+                        value={taAssignments[parseInt(groupNum)] || ''}
+                        onChange={(e) => setTaAssignments((prev) => ({ ...prev, [parseInt(groupNum)]: e.target.value }))}
+                        displayEmpty
+                        size="small"
+                        fullWidth
+                        sx={{
+                          bgcolor: 'transparent', color: '#fafafa', borderRadius: 1.5,
+                          '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.08)' },
+                          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(249,115,22,0.4)' },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f97316' },
+                          '& .MuiSvgIcon-root': { color: '#52525b' },
+                          '& .MuiSelect-select': { py: 1, fontSize: '0.875rem' },
+                        }}
+                        MenuProps={{ PaperProps: { sx: { bgcolor: '#1c1c1e', color: '#d4d4d8', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2, mt: 0.5 } } }}
+                      >
+                        <MenuItem value="" sx={{ color: '#52525b', fontSize: '0.875rem', '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' } }}>
+                          Select TA...
+                        </MenuItem>
+                        {teachingAssistants?.map((ta) => (
+                          <MenuItem key={ta.id} value={ta.id} sx={{ fontSize: '0.875rem', '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' } }}>
+                            {ta.discordGlobalName || ta.discordUserName || ta.name || ta.email}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </Box>
+                  ))}
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ px: 3.5, pb: 3, pt: 2, gap: 1 }}>
+                <MuiButton
+                  onClick={() => setShowAssignModal(false)}
+                  sx={{ color: '#71717a', textTransform: 'none', fontWeight: 500, fontSize: '0.85rem', '&:hover': { color: '#d4d4d8', bgcolor: 'rgba(255,255,255,0.04)' } }}
+                >
+                  Skip
+                </MuiButton>
+                <MuiButton
+                  onClick={handleBatchTAAssign}
+                  variant="contained"
+                  disabled={Object.values(taAssignments).every((v) => v === '')}
+                  sx={{
+                    bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' },
+                    textTransform: 'none', fontWeight: 600, fontSize: '0.85rem',
+                    boxShadow: 'none', borderRadius: 2, px: 3,
+                    '&.Mui-disabled': { bgcolor: 'rgba(249,115,22,0.2)', color: 'rgba(249,115,22,0.4)' },
+                  }}
+                >
+                  Assign TAs
+                </MuiButton>
+              </DialogActions>
+            </>
+          )}
+
+          {/* Assigning TAs loading */}
+          {assignStep === 'assigning-ta' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 2 }}>
+              <CircularProgress size={32} sx={{ color: '#f97316' }} />
+              <Typography sx={{ color: '#71717a', fontSize: '0.9rem' }}>Assigning TAs...</Typography>
             </Box>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            <MuiButton onClick={() => setShowAssignGroupsModal(false)} variant="outlined" sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}>
-              Cancel
-            </MuiButton>
-            <MuiButton
-              onClick={handleAssignGroupsSubmit}
-              variant="contained"
-              disabled={assignGroupsMutation.isPending}
-              sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' }, textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' } }}
-            >
-              {assignGroupsMutation.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Assign Groups'}
-            </MuiButton>
-          </DialogActions>
+          )}
         </Dialog>
 
-        {/* TA Self-Assign Modal */}
-        {isTA && (
-          <Dialog
-            open={showTASelfAssignModal}
-            onClose={() => setShowTASelfAssignModal(false)}
-            maxWidth="xs"
-            fullWidth
-            slotProps={{
-              backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(0,0,0,0.7)' } },
-            }}
-            PaperProps={{
-              sx: { bgcolor: '#1c1c1e', backgroundImage: 'none', borderRadius: 3, border: '1px solid #3f3f46' },
-            }}
+        {/* Snackbar for success/error popups */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ width: '100%' }}
           >
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa' }}>Assign to Group</Typography>
-                <Typography variant="body2" sx={{ color: '#a1a1aa', mt: 0.5 }}>Select a group to assign yourself as TA.</Typography>
-              </Box>
-              <IconButton onClick={() => setShowTASelfAssignModal(false)} size="small" sx={{ color: '#a1a1aa', '&:hover': { color: '#fafafa' } }}>
-                <X size={20} />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent sx={{ pt: 3 }}>
-              <TextField
-                label="Group Number"
-                type="number"
-                value={selectedGroupNumber}
-                onChange={(e) => setSelectedGroupNumber(parseInt(e.target.value) || 0)}
-                slotProps={{ htmlInput: { min: 0, max: 5 } }}
-                required
-                fullWidth
-                sx={{
-                  mt: 1,
-                  '& .MuiOutlinedInput-root': { bgcolor: '#18181b', color: '#fafafa', '& fieldset': { borderColor: '#52525b' }, '&:hover fieldset': { borderColor: '#f97316' }, '&.Mui-focused fieldset': { borderColor: '#f97316' } },
-                  '& .MuiInputLabel-root': { color: '#d4d4d8' },
-                  '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' },
-                }}
-              />
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-              <MuiButton onClick={() => setShowTASelfAssignModal(false)} variant="outlined" sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', fontWeight: 600, '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}>
-                Cancel
-              </MuiButton>
-              <MuiButton
-                onClick={handleTASelfAssignSubmit}
-                variant="contained"
-                disabled={assignSelfToGroupMutation.isPending}
-                sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' }, textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' } }}
-              >
-                {assignSelfToGroupMutation.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Assign to Group'}
-              </MuiButton>
-            </DialogActions>
-          </Dialog>
-        )}
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
 
         <TableContextMenu
           contextMenu={contextMenu}
           onClose={() => setContextMenu({ visible: false, x: 0, y: 0, targetId: null })}
           onDelete={handleDeleteStudent}
         />
+
+        {/* GD Questions PPT Modal */}
+        <Dialog
+          open={showGDModal}
+          onClose={handleCloseGDModal}
+          maxWidth="lg"
+          fullWidth
+          slotProps={{
+            backdrop: { sx: { backdropFilter: 'blur(8px)', bgcolor: 'rgba(0,0,0,0.75)' } },
+          }}
+          PaperProps={{
+            sx: {
+              bgcolor: '#111113',
+              backgroundImage: 'none',
+              borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
+              minHeight: 520,
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1));
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              setGdSlideIndex(prev => Math.max(prev - 1, 0));
+            }
+          }}
+        >
+          {/* Header */}
+          <Box sx={{ px: 3.5, pt: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.6rem', letterSpacing: '-0.01em' }}>
+                GD Questions &mdash; Week {weekIndex}
+              </Typography>
+              <Typography sx={{ color: '#71717a', fontSize: '0.95rem', mt: 0.5 }}>
+                {allSlides.length > 0
+                  ? `${gdQuestionsData.gdQuestions.length} questions${gdQuestionsData.bonusQuestions.length > 0 ? ` + ${gdQuestionsData.bonusQuestions.length} bonus` : ''}`
+                  : 'No questions available for this week'}
+              </Typography>
+            </Box>
+            <IconButton onClick={handleCloseGDModal} size="small" sx={{ color: '#52525b', '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.06)' } }}>
+              <X size={18} />
+            </IconButton>
+          </Box>
+
+          {/* Slide Body */}
+          <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: { xs: 3, sm: 5 }, py: 4 }}>
+            {allSlides.length > 0 ? (
+              <Box sx={{ width: '100%', textAlign: 'center' }}>
+                {/* Bonus badge */}
+                {allSlides[gdSlideIndex]?.isBonus && (
+                  <Box sx={{
+                    display: 'inline-block',
+                    bgcolor: 'rgba(59,130,246,0.15)',
+                    color: '#60a5fa',
+                    px: 2, py: 0.5,
+                    borderRadius: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    mb: 2,
+                  }}>
+                    Bonus Question
+                  </Box>
+                )}
+
+                {/* Question number */}
+                <Typography sx={{
+                  color: allSlides[gdSlideIndex]?.isBonus ? '#60a5fa' : '#f97316',
+                  fontWeight: 700,
+                  fontSize: '1.25rem',
+                  mb: 2,
+                }}>
+                  {allSlides[gdSlideIndex]?.isBonus
+                    ? `Bonus Q${gdSlideIndex - gdQuestionsData.gdQuestions.length + 1}.`
+                    : `Q${gdSlideIndex + 1}.`}
+                </Typography>
+
+                {/* Question text */}
+                <Typography sx={{
+                  color: '#fafafa',
+                  fontSize: { xs: '1.3rem', sm: '1.65rem' },
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  maxWidth: 800,
+                  mx: 'auto',
+                }}>
+                  {allSlides[gdSlideIndex]?.text}
+                </Typography>
+
+                {/* Bonus image if present */}
+                {allSlides[gdSlideIndex]?.image && (
+                  <Box
+                    component="img"
+                    src={allSlides[gdSlideIndex].image}
+                    alt="Bonus question illustration"
+                    sx={{
+                      mt: 3,
+                      maxWidth: '100%',
+                      maxHeight: 300,
+                      borderRadius: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  />
+                )}
+              </Box>
+            ) : (
+              <Typography sx={{ color: '#52525b', fontSize: '1.1rem' }}>
+                No questions available for this week.
+              </Typography>
+            )}
+          </DialogContent>
+
+          {/* Footer Navigation */}
+          {allSlides.length > 0 && (
+            <DialogActions sx={{
+              px: 3.5, pb: 3, pt: 1.5,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <MuiButton
+                onClick={() => setGdSlideIndex(prev => Math.max(prev - 1, 0))}
+                disabled={gdSlideIndex === 0}
+                startIcon={<ChevronLeft size={16} />}
+                sx={{
+                  color: '#a1a1aa',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.85rem',
+                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
+                  '&.Mui-disabled': { color: '#3f3f46' },
+                }}
+              >
+                Prev
+              </MuiButton>
+
+              <Typography sx={{ color: '#71717a', fontSize: '1rem', fontWeight: 500 }}>
+                {gdSlideIndex + 1} / {allSlides.length}
+              </Typography>
+
+              <MuiButton
+                onClick={() => setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1))}
+                disabled={gdSlideIndex === allSlides.length - 1}
+                endIcon={<ChevronRight size={16} />}
+                sx={{
+                  color: '#a1a1aa',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.85rem',
+                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
+                  '&.Mui-disabled': { color: '#3f3f46' },
+                }}
+              >
+                Next
+              </MuiButton>
+            </DialogActions>
+          )}
+        </Dialog>
       </Box>
     </Box>
   );

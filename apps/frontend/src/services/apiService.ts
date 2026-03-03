@@ -267,12 +267,12 @@ class ApiService {
     });
   };
 
-  public assignSelfToGroup = async (weekId: string, groupNumber: number): Promise<void> => {
+  public assignTAToGroup = async (weekId: string, groupNumber: number, userId: string): Promise<void> => {
     await this.request<void>({
       headers: this.getRequestHeaders(),
       method: 'POST',
-      url: `/scores/week/${weekId}/assign-self-to-group`,
-      params: { groupNumber },
+      url: `/scores/week/${weekId}/assign-ta-to-group`,
+      data: { userId, groupNumber },
     });
   };
 

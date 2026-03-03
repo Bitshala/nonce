@@ -68,6 +68,8 @@ export interface UpdateScoresRequestDto {
   bonusFollowupScore?: number;
   isSubmitted?: boolean;
   isPassing?: boolean;
+  groupNumber?: number;
+  teachingAssistantId?: string;
 }
 
 

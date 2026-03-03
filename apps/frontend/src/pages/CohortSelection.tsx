@@ -134,7 +134,7 @@ export const CohortSelection = () => {
 
   const handleRowClick = useCallback(
     (cohort: CohortRow) => {
-      navigate(`/cohort/${cohort.id}`, { state: { cohort: cohort.raw } });
+      navigate(`/cohort/${cohort.id}/week/default`, { state: { cohort: cohort.raw } });
     },
     [navigate],
   );
