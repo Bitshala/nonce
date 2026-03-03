@@ -60,7 +60,7 @@ const DEFAULT_GROUPS = ['Group 0', 'Group 1', 'Group 2', 'Group 3', 'Group 4', '
 
 const TableView: React.FC = () => {
   const navigate = useNavigate();
-  const { id: cohortIdParam } = useParams<{ id: string }>();
+  const { cohortId: cohortIdParam, weekId: weekIdParam } = useParams<{ cohortId: string; weekId: string }>();
 
   // === User data ===
   const { data: userData } = useUser();
@@ -74,27 +74,28 @@ const TableView: React.FC = () => {
   } = useCohort(cohortIdParam);
 
   const weeks = useMemo(() => cohortData?.weeks ?? [], [cohortData]);
-  const baseGroups = useMemo(() => DEFAULT_GROUPS, []);
 
-  // We keep both the selectedWeekId (source of truth for API) and a display-friendly numeric "weekIndex"
-  const [selectedWeekId, setSelectedWeekId] = useState<string>(null);
-  const [weekIndex, setWeekIndex] = useState<number>(0);
+
+  // Derive selectedWeekId from URL param
+  const selectedWeekId = weekIdParam === 'default' ? null : weekIdParam;
+
+  // Redirect from 'default' or invalid weekId to the first week
+  useEffect(() => {
+    if (weeks.length > 0) {
+      if (weekIdParam === 'default' || !weeks.find(w => w.id === weekIdParam)) {
+        navigate(`/cohort/${cohortIdParam}/week/${weeks[0].id}`, { replace: true });
+      }
+    }
+  }, [weeks, weekIdParam, cohortIdParam, navigate]);
 
   // Derived week metadata
   const selectedWeekData = useMemo(
     () => weeks.find(w => w.id === selectedWeekId),
     [weeks, selectedWeekId]
   );
+  const weekIndex = selectedWeekData?.week ?? 0;
   const selectedWeekType = selectedWeekData?.type;
   const selectedWeekHasExercise = selectedWeekData?.hasExercise ?? false;
-
-  // Initialize selected week from cohort once it arrives
-  useEffect(() => {
-    if (!selectedWeekId && weeks.length > 0) {
-      setSelectedWeekId(weeks[0].id);
-      setWeekIndex(0);
-    }
-  }, [selectedWeekId, weeks]);
 
   // === Scores for selected week ===
   const {
@@ -105,10 +106,20 @@ const TableView: React.FC = () => {
   } = useScoresForCohortAndWeek({
     cohortId: cohortIdParam,
     weekId: selectedWeekId,
-  }, {enabled: !!selectedWeekId});
+  }, { enabled: !!selectedWeekId });
 
   // === Local table state ===
   const [data, setData] = useState<TableRowData[]>([]);
+
+  const baseGroups = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const unique = new Set(data.map((p) => p.group).filter(Boolean));
+    return Array.from(unique).sort((a, b) => {
+      const numA = parseInt(a.match(/\d+/)?.[0] ?? '0');
+      const numB = parseInt(b.match(/\d+/)?.[0] ?? '0');
+      return numA - numB;
+    });
+  }, [data]);
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('All Groups');
@@ -124,7 +135,7 @@ const TableView: React.FC = () => {
   const [participantsPerGroup, setParticipantsPerGroup] = useState<number>(8);
   const [groupsAvailable, setGroupsAvailable] = useState<number>(3);
   const [taAssignments, setTaAssignments] = useState<Record<number, string>>({});
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'success' });
 
 
   const [contextMenu, setContextMenu] = useState<{
@@ -314,12 +325,11 @@ const TableView: React.FC = () => {
 
   // === Handlers ===
   const handleWeekChange = useCallback(
-    (newIndex: number, weekId: string) => {
-      setWeekIndex(newIndex);
-      setSelectedWeekId(weekId);
+    (_newIndex: number, weekId: string) => {
+      navigate(`/cohort/${cohortIdParam}/week/${weekId}`);
       setContextMenu({ visible: false, x: 0, y: 0, targetId: null });
     },
-    []
+    [navigate, cohortIdParam]
   );
 
   const handleStudentClick = useCallback((student: TableRowData) => {
@@ -373,12 +383,14 @@ const TableView: React.FC = () => {
 
             setData((prev) =>
               prev.map((p) =>
-                p.id === updated.id ? { ...updated, group: updatedGroup, ta: updatedTA, total: computeTotal({
-                  attendance: updated.attendance,
-                  gdScore: updated.gdScore ?? { fa: 0, fb: 0, fc: 0, fd: 0 },
-                  bonusScore: updated.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
-                  exerciseScore: updated.exerciseScore ?? { Submitted: false, privateTest: false },
-                }, cohortHasExercises(cohortData?.type || '')) } : p
+                p.id === updated.id ? {
+                  ...updated, group: updatedGroup, ta: updatedTA, total: computeTotal({
+                    attendance: updated.attendance,
+                    gdScore: updated.gdScore ?? { fa: 0, fb: 0, fc: 0, fd: 0 },
+                    bonusScore: updated.bonusScore ?? { attempt: 0, good: 0, followUp: 0 },
+                    exerciseScore: updated.exerciseScore ?? { Submitted: false, privateTest: false },
+                  }, cohortHasExercises(cohortData?.type || ''))
+                } : p
               )
             );
             setShowScoreEditModal(false);
@@ -454,27 +466,11 @@ const TableView: React.FC = () => {
   }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
   const handleOpenAssignModal = useCallback(() => {
-    // Check if groups are already assigned
-    const existingGroups = new Set(
-      data
-        .map((p) => {
-          const match = p.group?.match(/\d+/);
-          return match ? parseInt(match[0]) : 0;
-        })
-        .filter((n) => n > 0)
-    );
-
-    if (existingGroups.size > 0) {
-      const initial: Record<number, string> = {};
-      Array.from(existingGroups).sort((a, b) => a - b).forEach((g) => { initial[g] = ''; });
-      setTaAssignments(initial);
-      setAssignStep('assign-ta');
-    } else {
-      setAssignStep('config');
-      setTaAssignments({});
-    }
+    // Always start from the config step so the user can (re-)assign groups
+    setAssignStep('config');
+    setTaAssignments({});
     setShowAssignModal(true);
-  }, [data]);
+  }, []);
 
   const handleAssignGroupsSubmit = useCallback(() => {
     if (isNaN(participantsPerGroup) || isNaN(groupsAvailable) || participantsPerGroup <= 0 || groupsAvailable <= 0) {
@@ -487,15 +483,41 @@ const TableView: React.FC = () => {
     assignGroupsMutation.mutate(
       { weekId: selectedWeekId, cohortId: cohortIdParam, participantsPerWeek: participantsPerGroup, groupsAvailable },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setSnackbar({ open: true, message: 'Groups assigned successfully!', severity: 'success' });
-          // Initialize TA assignments for each group
-          const initial: Record<number, string> = {};
-          for (let i = 1; i <= groupsAvailable; i++) {
-            initial[i] = '';
+
+          // Refetch scores to get actual group distribution from backend
+          try {
+            const freshScores = await apiService.listScoresForCohortAndWeek(cohortIdParam, selectedWeekId);
+            const actualGroups = new Set<number>();
+            if (freshScores?.scores) {
+              freshScores.scores.forEach((score: any) => {
+                const groupNum = score.groupDiscussionScores?.groupNumber ?? 0;
+                if (groupNum > 0) actualGroups.add(groupNum);
+              });
+            }
+
+            if (actualGroups.size === 0) {
+              // All students are in Group 0 (e.g. all absent) — no real groups formed
+              setSnackbar({ open: true, message: 'All students belong to Group 0. No groups were formed to assign TAs.', severity: 'info' });
+              setShowAssignModal(false);
+              setAssignStep('config');
+            } else {
+              // Initialize TA assignments only for groups that actually exist
+              const initial: Record<number, string> = {};
+              Array.from(actualGroups).sort((a, b) => a - b).forEach((g) => { initial[g] = ''; });
+              setTaAssignments(initial);
+              setAssignStep('assign-ta');
+            }
+          } catch {
+            // Fallback: use configured groups if refetch fails
+            const initial: Record<number, string> = {};
+            for (let i = 1; i <= groupsAvailable; i++) {
+              initial[i] = '';
+            }
+            setTaAssignments(initial);
+            setAssignStep('assign-ta');
           }
-          setTaAssignments(initial);
-          setAssignStep('assign-ta');
         },
         onError: (error: unknown) => {
           console.error('Group assignment failed', error);

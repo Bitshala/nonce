@@ -50,7 +50,7 @@ const router = createBrowserRouter([
     element: <Layout><ProtectedRoute><CohortSelection /></ProtectedRoute></Layout>,
   },
   {
-    path: '/cohort/:id',
+    path: '/cohort/:cohortId/week/:weekId',
     element: <Layout><TableView /></Layout>,
   },
   {
