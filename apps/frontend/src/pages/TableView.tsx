@@ -16,12 +16,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { lnWeeks } from '../data/lnWeeks';
-import { lbtclWeeks } from '../data/lbtclWeeks';
-import { mbWeeks } from '../data/mbWeeks';
-import { bpdWeeks } from '../data/bpdWeeks';
-import type { BonusQuestion } from '../types/instructions';
+import { Eye, X } from 'lucide-react';
 
 import { TableHeader } from '../components/table/TableHeader';
 import { StudentTableGrid } from '../components/table/StudentTableGrid';
@@ -44,14 +39,6 @@ import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
-
-
-const cohortTypeToContent = {
-  MASTERING_BITCOIN: { weeks: mbWeeks },
-  LEARNING_BITCOIN_FROM_COMMAND_LINE: { weeks: lbtclWeeks },
-  MASTERING_LIGHTNING_NETWORK: { weeks: lnWeeks },
-  BITCOIN_PROTOCOL_DEVELOPMENT: { weeks: bpdWeeks },
-} as const;
 
 
 const TableView: React.FC = () => {
@@ -141,10 +128,6 @@ const TableView: React.FC = () => {
     targetId: number | null;
   }>({ visible: false, x: 0, y: 0, targetId: null });
 
-  // === GD Questions Modal ===
-  const [showGDModal, setShowGDModal] = useState(false);
-  const [gdSlideIndex, setGdSlideIndex] = useState(0);
-
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [weeklyData, setWeeklyData] = useState<{ week: number; attended: number }>({
     week: 0,
@@ -227,49 +210,6 @@ const TableView: React.FC = () => {
     const unique = new Set(data.map((p) => p.ta).filter((ta) => ta && ta !== 'N/A'));
     return ['All TAs', ...Array.from(unique).sort()];
   }, [data]);
-
-  // === GD Questions for selected week ===
-  const gdQuestionsData = useMemo(() => {
-    const ct = cohortData?.type as keyof typeof cohortTypeToContent | undefined;
-    if (!ct || !cohortTypeToContent[ct]) return { gdQuestions: [], bonusQuestions: [] };
-
-    const staticWeeks = cohortTypeToContent[ct].weeks;
-    const staticWeek = staticWeeks.find(w => w.week === weekIndex);
-    if (!staticWeek) return { gdQuestions: [], bonusQuestions: [] };
-
-    // Merge with API week data — API overrides static if non-empty
-    const apiWeek = weeks.find(w => w.id === selectedWeekId);
-    const gdQuestions = (apiWeek && apiWeek.questions && apiWeek.questions.length > 0)
-      ? apiWeek.questions
-      : staticWeek.gdQuestions;
-    const bonusQuestions = (apiWeek && apiWeek.bonusQuestion && apiWeek.bonusQuestion.length > 0)
-      ? apiWeek.bonusQuestion
-      : (staticWeek.bonusQuestions ?? []);
-
-    return { gdQuestions, bonusQuestions };
-  }, [cohortData?.type, weekIndex, weeks, selectedWeekId]);
-
-  const allSlides = useMemo(() => {
-    const slides: { text: string; isBonus: boolean; image?: string }[] = [];
-    gdQuestionsData.gdQuestions.forEach(q => slides.push({ text: q, isBonus: false }));
-    gdQuestionsData.bonusQuestions.forEach(q => {
-      if (typeof q === 'string') {
-        slides.push({ text: q, isBonus: true });
-      } else {
-        slides.push({ text: (q as BonusQuestion).question, isBonus: true, image: (q as BonusQuestion).image });
-      }
-    });
-    return slides;
-  }, [gdQuestionsData]);
-
-  const handleOpenGDModal = useCallback(() => {
-    setGdSlideIndex(0);
-    setShowGDModal(true);
-  }, []);
-
-  const handleCloseGDModal = useCallback(() => {
-    setShowGDModal(false);
-  }, []);
 
   // === Sorting ===
   const [sortConfig, setSortConfig] = useState<{
@@ -648,7 +588,6 @@ const TableView: React.FC = () => {
           onDownloadCSV={handleDownloadCSV}
           onAssignGroups={handleOpenAssignModal}
           onTASelfAssign={undefined}
-          onShowGDQuestions={handleOpenGDModal}
           onClearFilters={() => {
             setSearchTerm('');
             setSelectedGroup('All Groups');
@@ -924,169 +863,6 @@ const TableView: React.FC = () => {
           onDelete={handleDeleteStudent}
         />
 
-        {/* GD Questions PPT Modal */}
-        <Dialog
-          open={showGDModal}
-          onClose={handleCloseGDModal}
-          maxWidth="lg"
-          fullWidth
-          slotProps={{
-            backdrop: { sx: { backdropFilter: 'blur(8px)', bgcolor: 'rgba(0,0,0,0.75)' } },
-          }}
-          PaperProps={{
-            sx: {
-              bgcolor: '#111113',
-              backgroundImage: 'none',
-              borderRadius: 4,
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
-              minHeight: 520,
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-              e.preventDefault();
-              setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1));
-            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-              e.preventDefault();
-              setGdSlideIndex(prev => Math.max(prev - 1, 0));
-            }
-          }}
-        >
-          {/* Header */}
-          <Box sx={{ px: 3.5, pt: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.6rem', letterSpacing: '-0.01em' }}>
-                GD Questions &mdash; Week {weekIndex}
-              </Typography>
-              <Typography sx={{ color: '#71717a', fontSize: '0.95rem', mt: 0.5 }}>
-                {allSlides.length > 0
-                  ? `${gdQuestionsData.gdQuestions.length} questions${gdQuestionsData.bonusQuestions.length > 0 ? ` + ${gdQuestionsData.bonusQuestions.length} bonus` : ''}`
-                  : 'No questions available for this week'}
-              </Typography>
-            </Box>
-            <IconButton onClick={handleCloseGDModal} size="small" sx={{ color: '#52525b', '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.06)' } }}>
-              <X size={18} />
-            </IconButton>
-          </Box>
-
-          {/* Slide Body */}
-          <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: { xs: 3, sm: 5 }, py: 4 }}>
-            {allSlides.length > 0 ? (
-              <Box sx={{ width: '100%', textAlign: 'center' }}>
-                {/* Bonus badge */}
-                {allSlides[gdSlideIndex]?.isBonus && (
-                  <Box sx={{
-                    display: 'inline-block',
-                    bgcolor: 'rgba(59,130,246,0.15)',
-                    color: '#60a5fa',
-                    px: 2, py: 0.5,
-                    borderRadius: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    mb: 2,
-                  }}>
-                    Bonus Question
-                  </Box>
-                )}
-
-                {/* Question number */}
-                <Typography sx={{
-                  color: allSlides[gdSlideIndex]?.isBonus ? '#60a5fa' : '#f97316',
-                  fontWeight: 700,
-                  fontSize: '1.25rem',
-                  mb: 2,
-                }}>
-                  {allSlides[gdSlideIndex]?.isBonus
-                    ? `Bonus Q${gdSlideIndex - gdQuestionsData.gdQuestions.length + 1}.`
-                    : `Q${gdSlideIndex + 1}.`}
-                </Typography>
-
-                {/* Question text */}
-                <Typography sx={{
-                  color: '#fafafa',
-                  fontSize: { xs: '1.3rem', sm: '1.65rem' },
-                  fontWeight: 400,
-                  lineHeight: 1.7,
-                  maxWidth: 800,
-                  mx: 'auto',
-                }}>
-                  {allSlides[gdSlideIndex]?.text}
-                </Typography>
-
-                {/* Bonus image if present */}
-                {allSlides[gdSlideIndex]?.image && (
-                  <Box
-                    component="img"
-                    src={allSlides[gdSlideIndex].image}
-                    alt="Bonus question illustration"
-                    sx={{
-                      mt: 3,
-                      maxWidth: '100%',
-                      maxHeight: 300,
-                      borderRadius: 2,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  />
-                )}
-              </Box>
-            ) : (
-              <Typography sx={{ color: '#52525b', fontSize: '1.1rem' }}>
-                No questions available for this week.
-              </Typography>
-            )}
-          </DialogContent>
-
-          {/* Footer Navigation */}
-          {allSlides.length > 0 && (
-            <DialogActions sx={{
-              px: 3.5, pb: 3, pt: 1.5,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <MuiButton
-                onClick={() => setGdSlideIndex(prev => Math.max(prev - 1, 0))}
-                disabled={gdSlideIndex === 0}
-                startIcon={<ChevronLeft size={16} />}
-                sx={{
-                  color: '#a1a1aa',
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.85rem',
-                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
-                  '&.Mui-disabled': { color: '#3f3f46' },
-                }}
-              >
-                Prev
-              </MuiButton>
-
-              <Typography sx={{ color: '#71717a', fontSize: '1rem', fontWeight: 500 }}>
-                {gdSlideIndex + 1} / {allSlides.length}
-              </Typography>
-
-              <MuiButton
-                onClick={() => setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1))}
-                disabled={gdSlideIndex === allSlides.length - 1}
-                endIcon={<ChevronRight size={16} />}
-                sx={{
-                  color: '#a1a1aa',
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.85rem',
-                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
-                  '&.Mui-disabled': { color: '#3f3f46' },
-                }}
-              >
-                Next
-              </MuiButton>
-            </DialogActions>
-          )}
-        </Dialog>
       </Box>
     </Box>
   );

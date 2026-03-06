@@ -56,6 +56,12 @@ export const bpdWeeks: WeekContent[] = [
       "What are some major requirements and design goals while designing the address format? How was Bech32 improved over previous formats?",
       "What is the Bech32 mutability issue? How is it fixed for Taproot addresses?"
     ],
+    bonusQuestions: [
+      "At the P2P layer, what changed so that upgraded nodes can relay transactions/blocks with witness while still staying compatible with older peers? Name the key idea and what problem it solves.",
+      "SegWit removes third-party txid malleability for SegWit spends, but some fields can still be mutated. Identify what can still change without changing the txid, and explain why that remaining mutability is considered acceptable.",
+      { question: "The image shows two transactions in Block #553724 (post SegWit), of which among the two has its txid = wtxid?", image: "/images/bpd/week2/question3.png" },
+      { question: "Which among these representations is a hard fork and a soft fork? (new refers to the client with the new set of consensus changes)", image: "/images/bpd/week2/question4.png" },
+    ],
     assignmentLinks: {
       1: "https://classroom.github.com/a/IV07G3s9",
     }

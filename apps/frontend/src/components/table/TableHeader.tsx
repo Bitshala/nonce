@@ -27,7 +27,6 @@ import {
   Shuffle,
   UserPlus,
   BookOpen,
-  Presentation,
 } from 'lucide-react';
 
 interface Week {
@@ -62,7 +61,6 @@ interface TableHeaderProps {
   onDownloadCSV: () => void;
   onAssignGroups: () => void;
   onTASelfAssign?: () => void;
-  onShowGDQuestions?: () => void;
   onClearFilters: () => void;
   navigate: (path: string) => void;
   cohortType?: string;
@@ -100,7 +98,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   weeklyData,
   onAssignGroups,
   onTASelfAssign,
-  onShowGDQuestions,
   onDownloadCSV,
   onClearFilters,
   navigate,
@@ -463,26 +460,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
               }}
             >
               Assign Groups
-            </Button>
-          )}
-
-          {week > 0 && showInstructions && onShowGDQuestions && (
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Presentation size={15} />}
-              onClick={onShowGDQuestions}
-              sx={{
-                bgcolor: '#fb923c',
-                '&:hover': { bgcolor: '#f97316' },
-                textTransform: 'none',
-                fontWeight: 500,
-                fontSize: '0.8rem',
-                boxShadow: 'none',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              GD Questions
             </Button>
           )}
 

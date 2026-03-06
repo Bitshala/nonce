@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -7,6 +7,10 @@ import {
   Paper,
   Link,
   Button,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  IconButton,
 } from '@mui/material';
 import {
   Info,
@@ -14,8 +18,12 @@ import {
   FileText,
   ClipboardList,
   ExternalLink,
+  Presentation,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import type { WeekContent } from '../../types/instructions';
+import type { WeekContent, BonusQuestion } from '../../types/instructions';
 
 interface InstructionsLayoutProps {
   cohortName: string;
@@ -37,6 +45,35 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   seasonNumber,
 }) => {
   const navigate = useNavigate();
+  const [showGDModal, setShowGDModal] = useState(false);
+  const [gdSlideIndex, setGdSlideIndex] = useState(0);
+
+  const currentWeekData = weeklyContent.find(w => w.week === activeWeek);
+
+  const allSlides = useMemo(() => {
+    if (!currentWeekData) return [];
+    const slides: { text: string; isBonus: boolean; image?: string }[] = [];
+    currentWeekData.gdQuestions.forEach(q => slides.push({ text: q, isBonus: false }));
+    if (canViewBonusQuestions && currentWeekData.bonusQuestions) {
+      currentWeekData.bonusQuestions.forEach(q => {
+        if (typeof q === 'string') {
+          slides.push({ text: q, isBonus: true });
+        } else {
+          slides.push({ text: (q as BonusQuestion).question, isBonus: true, image: (q as BonusQuestion).image });
+        }
+      });
+    }
+    return slides;
+  }, [currentWeekData, canViewBonusQuestions]);
+
+  const handleOpenGDModal = useCallback(() => {
+    setGdSlideIndex(0);
+    setShowGDModal(true);
+  }, []);
+
+  const handleCloseGDModal = useCallback(() => {
+    setShowGDModal(false);
+  }, []);
 
   const getAssignmentLink = (week: WeekContent): string | undefined => {
     // Prefer classroomUrl from API if available
@@ -233,10 +270,32 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
 
               return (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {/* Title */}
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#fb923c', fontSize: { xs: '1.5rem', md: '2rem' } }}>
-                    {currentWeek.title}
-                  </Typography>
+                  {/* Title + Present Button */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#fb923c', fontSize: { xs: '1.5rem', md: '2rem' } }}>
+                      {currentWeek.title}
+                    </Typography>
+                    {canViewBonusQuestions && currentWeek.gdQuestions.length > 0 && (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<Presentation size={16} />}
+                        onClick={handleOpenGDModal}
+                        sx={{
+                          bgcolor: '#fb923c',
+                          '&:hover': { bgcolor: '#f97316' },
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          boxShadow: 'none',
+                          borderRadius: 2,
+                          px: 2,
+                        }}
+                      >
+                        Present GD Questions
+                      </Button>
+                    )}
+                  </Box>
 
                   {/* Assignment */}
                   {(assignmentLink || currentWeek.classroomInviteLink) && (
@@ -385,6 +444,172 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
           </>
         )}
       </Box>
+
+      {/* GD Questions PPT Modal — Admin/TA only */}
+      {canViewBonusQuestions && (
+        <Dialog
+          open={showGDModal}
+          onClose={handleCloseGDModal}
+          maxWidth="lg"
+          fullWidth
+          slotProps={{
+            backdrop: { sx: { backdropFilter: 'blur(8px)', bgcolor: 'rgba(0,0,0,0.75)' } },
+          }}
+          PaperProps={{
+            sx: {
+              bgcolor: '#111113',
+              backgroundImage: 'none',
+              borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
+              minHeight: 520,
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1));
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              setGdSlideIndex(prev => Math.max(prev - 1, 0));
+            }
+          }}
+        >
+          {/* Header */}
+          <Box sx={{ px: 3.5, pt: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.6rem', letterSpacing: '-0.01em' }}>
+                GD Questions &mdash; Week {activeWeek}
+              </Typography>
+              <Typography sx={{ color: '#71717a', fontSize: '0.95rem', mt: 0.5 }}>
+                {allSlides.length > 0
+                  ? `${currentWeekData?.gdQuestions.length ?? 0} questions${(currentWeekData?.bonusQuestions?.length ?? 0) > 0 ? ` + ${currentWeekData!.bonusQuestions!.length} bonus` : ''}`
+                  : 'No questions available for this week'}
+              </Typography>
+            </Box>
+            <IconButton onClick={handleCloseGDModal} size="small" sx={{ color: '#52525b', '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.06)' } }}>
+              <X size={18} />
+            </IconButton>
+          </Box>
+
+          {/* Slide Body */}
+          <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: { xs: 3, sm: 5 }, py: 4 }}>
+            {allSlides.length > 0 ? (
+              <Box sx={{ width: '100%', textAlign: 'center' }}>
+                {/* Bonus badge */}
+                {allSlides[gdSlideIndex]?.isBonus && (
+                  <Box sx={{
+                    display: 'inline-block',
+                    bgcolor: 'rgba(59,130,246,0.15)',
+                    color: '#60a5fa',
+                    px: 2, py: 0.5,
+                    borderRadius: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    mb: 2,
+                  }}>
+                    Bonus Question
+                  </Box>
+                )}
+
+                {/* Question number */}
+                <Typography sx={{
+                  color: allSlides[gdSlideIndex]?.isBonus ? '#60a5fa' : '#f97316',
+                  fontWeight: 700,
+                  fontSize: '1.25rem',
+                  mb: 2,
+                }}>
+                  {allSlides[gdSlideIndex]?.isBonus
+                    ? `Bonus Q${gdSlideIndex - (currentWeekData?.gdQuestions.length ?? 0) + 1}.`
+                    : `Q${gdSlideIndex + 1}.`}
+                </Typography>
+
+                {/* Question text */}
+                <Typography sx={{
+                  color: '#fafafa',
+                  fontSize: { xs: '1.3rem', sm: '1.65rem' },
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  maxWidth: 800,
+                  mx: 'auto',
+                }}>
+                  {allSlides[gdSlideIndex]?.text}
+                </Typography>
+
+                {/* Bonus image if present */}
+                {allSlides[gdSlideIndex]?.image && (
+                  <Box
+                    component="img"
+                    src={allSlides[gdSlideIndex].image}
+                    alt="Bonus question illustration"
+                    sx={{
+                      mt: 3,
+                      maxWidth: '100%',
+                      maxHeight: 300,
+                      borderRadius: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  />
+                )}
+              </Box>
+            ) : (
+              <Typography sx={{ color: '#52525b', fontSize: '1.1rem' }}>
+                No questions available for this week.
+              </Typography>
+            )}
+          </DialogContent>
+
+          {/* Footer Navigation */}
+          {allSlides.length > 0 && (
+            <DialogActions sx={{
+              px: 3.5, pb: 3, pt: 1.5,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <Button
+                onClick={() => setGdSlideIndex(prev => Math.max(prev - 1, 0))}
+                disabled={gdSlideIndex === 0}
+                startIcon={<ChevronLeft size={16} />}
+                sx={{
+                  color: '#a1a1aa',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.85rem',
+                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
+                  '&.Mui-disabled': { color: '#3f3f46' },
+                }}
+              >
+                Prev
+              </Button>
+
+              <Typography sx={{ color: '#71717a', fontSize: '1rem', fontWeight: 500 }}>
+                {gdSlideIndex + 1} / {allSlides.length}
+              </Typography>
+
+              <Button
+                onClick={() => setGdSlideIndex(prev => Math.min(prev + 1, allSlides.length - 1))}
+                disabled={gdSlideIndex === allSlides.length - 1}
+                endIcon={<ChevronRight size={16} />}
+                sx={{
+                  color: '#a1a1aa',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.85rem',
+                  '&:hover': { color: '#fafafa', bgcolor: 'rgba(255,255,255,0.04)' },
+                  '&.Mui-disabled': { color: '#3f3f46' },
+                }}
+              >
+                Next
+              </Button>
+            </DialogActions>
+          )}
+        </Dialog>
+      )}
     </Box>
   );
 };
