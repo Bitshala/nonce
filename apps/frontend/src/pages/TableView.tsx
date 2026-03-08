@@ -39,6 +39,7 @@ import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
+import { generateMockTableData, mockWeeks } from '../data/mockTableData';
 
 
 const TableView: React.FC = () => {
@@ -56,7 +57,10 @@ const TableView: React.FC = () => {
     error: cohortError,
   } = useCohort(cohortIdParam);
 
-  const weeks = useMemo(() => cohortData?.weeks ?? [], [cohortData]);
+  const weeks = useMemo(() => {
+    const apiWeeks = cohortData?.weeks ?? [];
+    return apiWeeks.length > 0 ? apiWeeks : mockWeeks;
+  }, [cohortData]);
 
 
   // Derive selectedWeekId from URL param
@@ -142,11 +146,14 @@ const TableView: React.FC = () => {
 
   // === Transform API scores to table rows ===
   useEffect(() => {
-    if (!scoresData?.scores || !Array.isArray(scoresData.scores)) {
+    if (!scoresData?.scores || !Array.isArray(scoresData.scores) || scoresData.scores.length === 0) {
       if (scoresError) {
         console.error('Error fetching weekly data:', scoresError);
       }
-      setData([]);
+      // Fallback to mock data when no API data
+      const mock = generateMockTableData(weekIndex, 16);
+      setData(mock);
+      setTotalCount(mock.length);
       return;
     }
 
@@ -224,10 +231,14 @@ const TableView: React.FC = () => {
     if (selectedTA !== 'All TAs') rows = rows.filter((p) => p.ta === selectedTA);
     if (attendanceFilter === 'Present') rows = rows.filter((p) => p.attendance);
     if (attendanceFilter === 'Absent') rows = rows.filter((p) => !p.attendance);
-    if (searchTerm) rows = rows.filter((p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      rows = rows.filter((p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.discordGlobalName?.toLowerCase().includes(term) ||
+        p.email?.toLowerCase().includes(term)
+      );
+    }
 
     if (sortConfig.key) {
       const { key, direction } = sortConfig;
@@ -497,18 +508,10 @@ const TableView: React.FC = () => {
   }, [selectedWeekId, cohortIdParam, taAssignments]);
 
   // === Loading & error states ===
-  if (isCohortLoading || isScoresLoading || isScoresPending) {
+  if (isCohortLoading && !cohortError) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', bgcolor: '#000' }}>
         <CircularProgress sx={{ color: '#f97316' }} />
-      </Box>
-    );
-  }
-
-  if (cohortError) {
-    return (
-      <Box sx={{ p: 3, bgcolor: '#000', color: '#ef4444', minHeight: '100vh' }}>
-        <Typography>Failed to load cohort.</Typography>
       </Box>
     );
   }

@@ -249,7 +249,7 @@ const StudentDetailPage = () => {
               {/* Action buttons */}
               {!fromSource && (
                 <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") && (
+                  {selectedCohort && (selectedCohort.cohortType === "MASTERING_BITCOIN" || selectedCohort.cohortType === "LEARNING_BITCOIN_FROM_COMMAND_LINE" || selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK" || selectedCohort.cohortType === "BITCOIN_PROTOCOL_DEVELOPMENT") && (
                     <Button
                       variant="contained"
                       size="small"
@@ -263,6 +263,8 @@ const StudentDetailPage = () => {
                           navigate('/lbtcl-instructions');
                         } else if (selectedCohort.cohortType === "MASTERING_LIGHTNING_NETWORK") {
                           navigate('/ln-instructions');
+                        } else if (selectedCohort.cohortType === "BITCOIN_PROTOCOL_DEVELOPMENT") {
+                          navigate('/bpd-instructions');
                         }
                       }}
                       sx={{ bgcolor: '#ea580c', textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&:hover': { bgcolor: '#c2410c' } }}

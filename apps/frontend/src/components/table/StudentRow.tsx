@@ -17,6 +17,7 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface StudentRowProps {
   person: TableRowData;
+  index: number;
   week: number;
   showAttendance?: boolean;
   showGdScores?: boolean;
@@ -53,6 +54,7 @@ const tooltipSx = {
 
 export const StudentRow: React.FC<StudentRowProps> = ({
   person,
+  index,
   week,
   showAttendance = false,
   showGdScores = true,
@@ -62,6 +64,7 @@ export const StudentRow: React.FC<StudentRowProps> = ({
   onEditStudent,
   onContextMenu,
 }) => {
+  const isEven = index % 2 === 0;
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onEditStudent(person);
@@ -157,10 +160,18 @@ export const StudentRow: React.FC<StudentRowProps> = ({
       hover
       sx={{
         cursor: 'pointer',
-        '&:hover': { backgroundColor: '#fafafa' },
+        backgroundColor: isEven ? '#ffffff' : '#fff7ed',
+        '&:hover': { backgroundColor: '#fff7ed' },
         transition: 'background-color 150ms',
       }}
     >
+      {/* Serial Number */}
+      <TableCell sx={{ ...cellSx, width: 48, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ color: '#a1a1aa', fontWeight: 500, fontSize: '0.8rem' }}>
+          {index + 1}
+        </Typography>
+      </TableCell>
+
       {/* Name - shows discordGlobalName */}
       <TableCell
         sx={{ ...cellSx, cursor: 'pointer', px: 3 }}

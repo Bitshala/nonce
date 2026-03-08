@@ -102,17 +102,33 @@ export const CohortSelection = () => {
   // Table data
   const cohorts = useMemo(() => {
     const records: ApiCohort[] = data?.records ?? [];
-    return records.map((c) => ({
-      id: c.id,
-      name: cohortTypeToName(c.type as CohortType),
-      type: c.type,
-      season: c.season,
-      status: computeStatus(c.startDate, c.endDate),
-      startDate: c.startDate,
-      endDate: c.endDate,
-      weeks: c.weeks?.length ?? 0,
-      raw: c,
-    }));
+    const now = new Date();
+    return records.map((c) => {
+      const totalWeeks = c.weeks?.length ?? 0;
+      const start = new Date(c.startDate);
+      const status = computeStatus(c.startDate, c.endDate);
+
+      let completedWeeks = 0;
+      if (status === 'Completed') {
+        completedWeeks = totalWeeks;
+      } else if (status === 'Active' && totalWeeks > 0) {
+        const msElapsed = now.getTime() - start.getTime();
+        completedWeeks = Math.max(0, Math.min(Math.floor(msElapsed / (7 * 24 * 60 * 60 * 1000)), totalWeeks));
+      }
+
+      return {
+        id: c.id,
+        name: cohortTypeToName(c.type as CohortType),
+        type: c.type,
+        season: c.season,
+        status,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        weeks: totalWeeks,
+        completedWeeks,
+        raw: c,
+      };
+    });
   }, [data]);
 
   const grouped = useMemo(() => {
@@ -276,9 +292,6 @@ export const CohortSelection = () => {
   // Render
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#000', px: { xs: 2, md: 5, lg: 8 }, py: 3, fontFamily: 'Sora, sans-serif' }}>
-      {/* Accent bar */}
-      <Box sx={{ height: 4, background: 'linear-gradient(to right, #f97316, #fb923c, #f59e0b)', borderRadius: 2, mb: 4 }} />
-
       <Box sx={{ mx: 'auto' }}>
         {/* Page Header */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, mb: 4 }}>

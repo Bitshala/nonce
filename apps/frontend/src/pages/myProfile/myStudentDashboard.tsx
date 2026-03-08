@@ -91,31 +91,53 @@ const MyStudentDashboard = () => {
   }, [allCohortsData, myCohorts]);
 
   const allRows: DashboardCohortRow[] = useMemo(() => {
-    const enrolledRows: DashboardCohortRow[] = myCohorts.map((c) => ({
-      id: c.id,
-      name: cohortTypeToName(c.type as CohortType),
-      type: c.type,
-      season: c.season,
-      status: computeStatus(c.startDate, c.endDate),
-      startDate: c.startDate,
-      endDate: c.endDate,
-      enrolled: true,
-      raw: c,
-    }));
+    const now = new Date();
 
-    const availableRows: DashboardCohortRow[] = availableCohorts.map((c) => ({
-      id: c.id,
-      name: cohortTypeToName(c.type as CohortType),
-      type: c.type,
-      season: c.season,
-      status: computeStatus(c.startDate, c.endDate),
-      startDate: c.startDate,
-      endDate: c.endDate,
-      enrolled: false,
-      registrationOpen: isRegistrationOpen(c.registrationDeadline),
-      cohortType: c.type as CohortType,
-      raw: c,
-    }));
+    const calcCompletedWeeks = (startDate: string, endDate: string, totalWeeks: number) => {
+      const status = computeStatus(startDate, endDate);
+      if (status === 'Completed') return totalWeeks;
+      if (status === 'Active' && totalWeeks > 0) {
+        const msElapsed = now.getTime() - new Date(startDate).getTime();
+        return Math.max(0, Math.min(Math.floor(msElapsed / (7 * 24 * 60 * 60 * 1000)), totalWeeks));
+      }
+      return 0;
+    };
+
+    const enrolledRows: DashboardCohortRow[] = myCohorts.map((c) => {
+      const totalWeeks = c.weeks?.length ?? 0;
+      return {
+        id: c.id,
+        name: cohortTypeToName(c.type as CohortType),
+        type: c.type,
+        season: c.season,
+        status: computeStatus(c.startDate, c.endDate),
+        startDate: c.startDate,
+        endDate: c.endDate,
+        weeks: totalWeeks,
+        completedWeeks: calcCompletedWeeks(c.startDate, c.endDate, totalWeeks),
+        enrolled: true,
+        raw: c,
+      };
+    });
+
+    const availableRows: DashboardCohortRow[] = availableCohorts.map((c) => {
+      const totalWeeks = c.weeks?.length ?? 0;
+      return {
+        id: c.id,
+        name: cohortTypeToName(c.type as CohortType),
+        type: c.type,
+        season: c.season,
+        status: computeStatus(c.startDate, c.endDate),
+        startDate: c.startDate,
+        endDate: c.endDate,
+        weeks: totalWeeks,
+        completedWeeks: calcCompletedWeeks(c.startDate, c.endDate, totalWeeks),
+        enrolled: false,
+        registrationOpen: isRegistrationOpen(c.registrationDeadline),
+        cohortType: c.type as CohortType,
+        raw: c,
+      };
+    });
 
     return [...enrolledRows, ...availableRows];
   }, [myCohorts, availableCohorts]);
@@ -250,9 +272,6 @@ const MyStudentDashboard = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#000', color: '#fafafa', px: { xs: 2, md: 5, lg: 8 }, py: 3 }}>
-      {/* Student accent bar */}
-      <Box sx={{ height: 4, background: 'linear-gradient(to right, #14b8a6, #22d3ee, #3b82f6)', borderRadius: 2, mb: 3 }} />
-
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -304,7 +323,7 @@ const MyStudentDashboard = () => {
       {/* Tabs + Table */}
       <Paper sx={{ bgcolor: 'rgba(39,39,42,0.5)', borderRadius: 3, border: '1px solid rgba(20,184,166,0.2)', overflow: 'hidden' }}>
         <Box sx={{ px: 2, pt: 1.5 }}>
-          <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+          <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} accent="#14b8a6" />
         </Box>
 
         <CohortTable

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -13,6 +13,8 @@ import {
   Collapse,
   Divider,
   Tooltip,
+  Popper,
+  Paper,
 } from '@mui/material';
 import {
   GraduationCap,
@@ -24,6 +26,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  BarChart3,
 } from 'lucide-react';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
@@ -38,6 +41,7 @@ interface NavItem {
 
 const adminNavItems: NavItem[] = [
   { label: 'Cohorts', path: '/select', icon: GraduationCap },
+  { label: 'Cohort Metrics', path: '/cohort-metrics', icon: BarChart3 },
 ];
 
 const studentNavItems: NavItem[] = [
@@ -68,6 +72,8 @@ const Sidebar = () => {
   const { logout } = useAuth();
 
   const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [instructionsHover, setInstructionsHover] = useState(false);
+  const instructionsAnchorRef = useRef<HTMLDivElement>(null);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -97,15 +103,13 @@ const Sidebar = () => {
   const drawerWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
 
   const activeItemSx = {
-    bgcolor: 'rgba(249,115,22,0.1)',
+    bgcolor: 'rgba(249,115,22,0.08)',
     color: '#fb923c',
-    borderLeft: '3px solid #f97316',
-    '&:hover': { bgcolor: 'rgba(249,115,22,0.15)' },
+    '&:hover': { bgcolor: 'rgba(249,115,22,0.12)' },
   };
 
   const inactiveItemSx = {
     color: '#a1a1aa',
-    borderLeft: '3px solid transparent',
     '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', color: '#e4e4e7' },
   };
 
@@ -193,7 +197,11 @@ const Sidebar = () => {
 
         {/* Instructions Section */}
         <List disablePadding>
-          <Tooltip title={collapsed ? 'Instructions' : ''} placement="right" arrow>
+          <Box
+            ref={instructionsAnchorRef}
+            onMouseEnter={() => collapsed && setInstructionsHover(true)}
+            onMouseLeave={() => setInstructionsHover(false)}
+          >
             <ListItemButton
               onClick={() => collapsed ? navigate('/general-instructions') : setInstructionsOpen(!instructionsOpen)}
               sx={{
@@ -224,7 +232,51 @@ const Sidebar = () => {
                 </>
               )}
             </ListItemButton>
-          </Tooltip>
+          </Box>
+
+          {/* Collapsed hover flyout */}
+          {collapsed && (
+            <Popper
+              open={instructionsHover}
+              anchorEl={instructionsAnchorRef.current}
+              placement="right-start"
+              sx={{ zIndex: 1300 }}
+            >
+              <Paper
+                onMouseEnter={() => setInstructionsHover(true)}
+                onMouseLeave={() => setInstructionsHover(false)}
+                sx={{
+                  bgcolor: '#1c1c1f',
+                  border: '1px solid #27272a',
+                  borderRadius: 1.5,
+                  py: 0.5,
+                  ml: 1,
+                  minWidth: 180,
+                }}
+              >
+                {instructionLinks.map((link) => {
+                  const active = isActive(link.path);
+                  return (
+                    <ListItemButton
+                      key={link.path}
+                      onClick={() => { navigate(link.path); setInstructionsHover(false); }}
+                      sx={{
+                        py: 0.75,
+                        px: 2,
+                        ...(active
+                          ? { color: '#fb923c', bgcolor: 'rgba(249,115,22,0.08)', '&:hover': { bgcolor: 'rgba(249,115,22,0.12)' } }
+                          : { color: '#a1a1aa', '&:hover': { color: '#e4e4e7', bgcolor: 'rgba(255,255,255,0.04)' } }),
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                        {link.label}
+                      </Typography>
+                    </ListItemButton>
+                  );
+                })}
+              </Paper>
+            </Popper>
+          )}
 
           {!collapsed && (
             <Collapse in={instructionsOpen} timeout="auto" unmountOnExit>
