@@ -386,43 +386,27 @@ const TableView: React.FC = () => {
     );
   }, [cohortData?.id, removeUserMutation]);
 
-  const handleDownloadCSV = useCallback(async () => {
+  const handleDownloadCSV = useCallback(() => {
     const rows = sortedFilteredData;
     if (rows.length === 0) return;
-
-    // Fetch real emails for all users via getUserById
-    const emailMap = new Map<string, string>();
-    const userIds = rows.map((r) => String(r.userId ?? r.id)).filter(Boolean);
-    const results = await Promise.allSettled(
-      userIds.map((id) => apiService.getUserById(id)),
-    );
-    results.forEach((result, i) => {
-      if (result.status === 'fulfilled' && result.value?.email) {
-        emailMap.set(userIds[i], result.value.email);
-      }
-    });
 
     const hasExercises = cohortHasExercises(cohortData?.type || '');
 
     const headers = [
-      '#', 'Email', 'Name', 'Discord Name', 'Group', 'TA', 'Attendance',
+      'Name', 'Discord Name', 'Group', 'TA', 'Attendance',
       'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
       'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
       ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
       'Total',
     ];
 
-    const csvRows = rows.map((r, i) => {
-      const odId = String(r.userId ?? r.id);
-      const email = emailMap.get(odId) ?? '';
-      return [
-        i + 1, email, r.name, r.discordGlobalName, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
-        r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
-        r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
-        ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),
-        r.total,
-      ];
-    });
+    const csvRows = rows.map((r) => [
+      r.name, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
+      r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
+      ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),
+      r.total,
+    ]);
 
     const weekLabel = weekIndex !== undefined ? `week${weekIndex}` : 'all';
     downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
@@ -619,18 +603,24 @@ const TableView: React.FC = () => {
           isTA={isTA}
         />
 
-        <StudentTableGrid
-          data={sortedFilteredData}
-          week={weekIndex}
-          weekType={selectedWeekType}
-          weekHasExercise={selectedWeekHasExercise}
-          cohortType={cohortData?.type}
-          sortConfig={sortConfig}
-          onSort={setSortConfig}
-          onStudentClick={handleStudentClick}
-          onEditStudent={handleEditStudent}
-          onContextMenu={setContextMenu}
-        />
+        {isScoresLoading || isScoresPending ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 12 }}>
+            <CircularProgress size={32} sx={{ color: '#f97316' }} />
+          </Box>
+        ) : (
+          <StudentTableGrid
+            data={sortedFilteredData}
+            week={weekIndex}
+            weekType={selectedWeekType}
+            weekHasExercise={selectedWeekHasExercise}
+            cohortType={cohortData?.type}
+            sortConfig={sortConfig}
+            onSort={setSortConfig}
+            onStudentClick={handleStudentClick}
+            onEditStudent={handleEditStudent}
+            onContextMenu={setContextMenu}
+          />
+        )}
 
         {showScoreEditModal && selectedStudentForEdit && (
           <ScoreEditModal
