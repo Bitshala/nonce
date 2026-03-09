@@ -21,6 +21,7 @@ export type CohortRow = {
   startDate: string;
   endDate: string;
   weeks?: number;
+  completedWeeks?: number;
   participants?: number;
   applications?: number;
   raw?: unknown;
@@ -88,6 +89,7 @@ const CohortTable = ({
   }
 
   const hasWeeks = cohorts.some((c) => c.weeks !== undefined);
+  const hasProgress = cohorts.some((c) => c.completedWeeks !== undefined);
   const hasParticipants = cohorts.some((c) => c.participants !== undefined);
   const hasApplications = cohorts.some((c) => c.applications !== undefined);
 
@@ -96,11 +98,14 @@ const CohortTable = ({
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell sx={headerCellSx}>Cohort</TableCell>
+            <TableCell sx={{ ...headerCellSx, maxWidth: 220 }}>Cohort</TableCell>
             <TableCell sx={headerCellSx}>Season</TableCell>
             <TableCell sx={headerCellSx}>Status</TableCell>
             {hasWeeks && (
               <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Weeks</TableCell>
+            )}
+            {hasProgress && (
+              <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' }, minWidth: 160 }}>Progress</TableCell>
             )}
             {hasParticipants && (
               <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Participants</TableCell>
@@ -125,8 +130,19 @@ const CohortTable = ({
                 transition: 'background-color 150ms',
               }}
             >
-              <TableCell sx={bodyCellSx}>
-                <Typography variant="body2" sx={{ fontWeight: 500, color: '#fafafa' }}>
+              <TableCell sx={{ ...bodyCellSx, maxWidth: 220 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    color: '#fafafa',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 200,
+                  }}
+                  title={cohort.name}
+                >
                   {cohort.name}
                 </Typography>
               </TableCell>
@@ -141,6 +157,27 @@ const CohortTable = ({
                   <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
                     {cohort.weeks !== undefined ? cohort.weeks : '-'}
                   </Typography>
+                </TableCell>
+              )}
+              {hasProgress && (
+                <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
+                  {cohort.completedWeeks !== undefined && cohort.weeks ? (
+                    <Box sx={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                      {Array.from({ length: cohort.weeks }, (_, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            width: 10,
+                            height: 18,
+                            borderRadius: '3px',
+                            bgcolor: i < cohort.completedWeeks! ? '#facc15' : '#3f3f46',
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#71717a' }}>-</Typography>
+                  )}
                 </TableCell>
               )}
               {hasParticipants && (

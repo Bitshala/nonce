@@ -95,6 +95,11 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
           <TableHead>
             <TableRow>
               <TableCell
+                sx={{ ...headerSx, position: 'sticky', top: 0, zIndex: 3, width: 48, textAlign: 'center' }}
+              >
+                #
+              </TableCell>
+              <TableCell
                 sx={{ ...headerSx, cursor: 'pointer', '&:hover': { backgroundColor: '#fff7ed' }, position: 'sticky', top: 0, zIndex: 3 }}
                 onClick={() => requestSort('name')}
               >
@@ -225,10 +230,11 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
           </TableHead>
 
           <TableBody>
-            {data.map(person => (
+            {data.map((person, index) => (
               <StudentRow
                 key={person.id}
                 person={person}
+                index={index}
                 week={week}
                 showAttendance={showAttendance}
                 showGdScores={hasGdScores}

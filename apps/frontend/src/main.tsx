@@ -32,6 +32,7 @@ import ProfilePage from './pages/myProfile/profilePage.tsx';
 import MyCohortInstructions from './pages/myProfile/myCohortInstructions.tsx';
 import CohortFeedback from './pages/CohortFeedback.tsx';
 import AdminPage from './pages/admin/page.tsx';
+import CohortMetrics from './pages/CohortMetrics.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { UserRole } from './types/enums.ts';
 import Layout from './components/Layout.tsx';
@@ -119,6 +120,16 @@ const router = createBrowserRouter([
         <Layout>
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
             <AdminPage />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/cohort-metrics',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+            <CohortMetrics />
           </ProtectedRoute>
         </Layout>
       ),
