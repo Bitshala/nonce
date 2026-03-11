@@ -40,10 +40,6 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 2,
     title: "Payment Channels and Lightning Network Operations",
-    assignmentLinks: {
-      1: "https://classroom.github.com/a/a-Gdh-Qt",
-      2: "https://classroom.github.com/a/igHFIz8x",
-    },
     content: `
 ## Reading Material
 
@@ -73,8 +69,8 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
     week: 3,
     title: "Node Operations and Lightning Architecture",
     assignmentLinks: {
-      1: "https://classroom.github.com/a/BGJBaVCA",
-      2: "https://classroom.github.com/a/29dYwLIq",
+      1: "https://classroom.github.com/a/a-Gdh-Qt",
+      2: "https://classroom.github.com/a/igHFIz8x",
     },
     content: `
 ## Reading Material
@@ -102,10 +98,6 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 4,
     title: "Payment Channels and Routing with HTLCs",
-    assignmentLinks: {
-      1: "https://classroom.github.com/a/Y-Dv1lyW",
-      2: "https://classroom.github.com/a/paU54jYP",
-    },
     content: `
 ## Reading Material
 
@@ -137,6 +129,10 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 5,
     title: "Channel Operations and Onion Routing",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/BGJBaVCA",
+      2: "https://classroom.github.com/a/29dYwLIq",
+    },
     content: `
 ## Reading Material
 
@@ -195,6 +191,10 @@ Download and Install any Lightning wallet of your choice e.g. Aqua, Phoenix.
   {
     week: 7,
     title: "Wire Protocol and Encrypted Transport",
+    assignmentLinks: {
+      1: "https://classroom.github.com/a/Y-Dv1lyW",
+      2: "https://classroom.github.com/a/paU54jYP",
+    },
     content: `
 ## Reading Material
 

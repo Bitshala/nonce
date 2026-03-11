@@ -121,6 +121,18 @@ export const cohortHasExercises = (cohortType: string): boolean => {
 };
 
 /**
+ * Check if a specific week has exercises based on cohort type and week number.
+ * For Lightning Network, only odd weeks (1, 3, 5, 7) have exercises.
+ */
+export const weekHasExercises = (cohortType: string, weekNumber: number): boolean => {
+  if (!cohortHasExercises(cohortType)) return false;
+  if (cohortType === 'MASTERING_LIGHTNING_NETWORK') {
+    return weekNumber % 2 === 1; // Odd weeks: 1, 3, 5, 7
+  }
+  return true;
+};
+
+/**
  * Get max scores based on whether cohort has exercises
  * @param hasExercises - whether cohort has exercises
  * @param scaled - if true, returns scaled values for no-exercise cohorts (default true)
