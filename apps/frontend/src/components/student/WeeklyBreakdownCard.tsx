@@ -32,7 +32,6 @@ export interface WeekData {
   week: number;
   weekId: string;
   weekType?: string;
-  hasExercise?: boolean;
   totalScore: number;
   maxTotalScore: number;
   groupDiscussionScores: GroupDiscussionScores;
@@ -55,17 +54,14 @@ const getScoreColor = (score: number, max: number): string => {
 };
 
 export const WeeklyBreakdownList = ({ weeks, cohortType }: WeeklyBreakdownListProps) => {
-  const cohortExercises = cohortHasExercises(cohortType || '');
-  const maxScores = cohortExercises ? SCORES_WITH_EXERCISES : SCORES_WITHOUT_EXERCISES_SCALED;
+  const hasExercises = cohortHasExercises(cohortType || '');
+  const maxScores = hasExercises ? SCORES_WITH_EXERCISES : SCORES_WITHOUT_EXERCISES_SCALED;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       {weeks.map((week) => {
         const gd = week.groupDiscussionScores;
         const ex = week.exerciseScores || { isSubmitted: false, isPassing: false, totalScore: 0, maxTotalScore: 60 };
-        // Use backend hasExercise flag; fall back to cohort-level check
-        const thisWeekHasExercises = week.hasExercise ?? cohortExercises;
-        const weekMaxTotal = thisWeekHasExercises ? maxScores.total : (maxScores.gd + maxScores.attendance);
 
         return (
           <Accordion
@@ -130,8 +126,8 @@ export const WeeklyBreakdownList = ({ weeks, cohortType }: WeeklyBreakdownListPr
                 </Typography>
               </Box>
 
-              {/* Exercise score - only for weeks that have exercises */}
-              {thisWeekHasExercises && (
+              {/* Exercise score */}
+              {hasExercises && (
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ color: '#a1a1aa', display: { xs: 'none', sm: 'block' } }}>Ex</Typography>
                   <Typography variant="body2" sx={{ color: '#d4d4d8', fontWeight: 600, fontSize: '0.8rem' }}>
@@ -141,13 +137,13 @@ export const WeeklyBreakdownList = ({ weeks, cohortType }: WeeklyBreakdownListPr
               )}
 
               {/* Total */}
-              <Typography sx={{ fontWeight: 700, color: getScoreColor(week.totalScore, weekMaxTotal), fontSize: '0.9rem', minWidth: 56, textAlign: 'right' }}>
-                {week.totalScore}/{weekMaxTotal}
+              <Typography sx={{ fontWeight: 700, color: getScoreColor(week.totalScore, maxScores.total), fontSize: '0.9rem', minWidth: 56, textAlign: 'right' }}>
+                {week.totalScore}/{maxScores.total}
               </Typography>
             </AccordionSummary>
 
             <AccordionDetails sx={{ px: 0, pt: 2, pb: 3 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: thisWeekHasExercises ? '1fr 1fr' : '1fr' }, gap: 3, pl: { xs: 0, sm: 2 } }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: hasExercises ? '1fr 1fr' : '1fr' }, gap: 3, pl: { xs: 0, sm: 2 } }}>
                 {/* GD Breakdown */}
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#fb923c', mb: 1.5, fontSize: '0.85rem' }}>
@@ -163,8 +159,8 @@ export const WeeklyBreakdownList = ({ weeks, cohortType }: WeeklyBreakdownListPr
                   </Box>
                 </Box>
 
-                {/* Exercise Breakdown - only for weeks that have exercises */}
-                {thisWeekHasExercises && (
+                {/* Exercise Breakdown */}
+                {hasExercises && (
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: '#fb923c', mb: 1.5, fontSize: '0.85rem' }}>
                       Exercise

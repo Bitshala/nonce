@@ -17,7 +17,7 @@ import { useCohort } from '../hooks/cohortHooks';
 import { useUserScores, useMyScores } from '../hooks/scoreHooks';
 import { useUser, useUserById } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
-import { cohortHasExercises, SCORES_WITH_EXERCISES } from '../utils/calculations';
+import { cohortHasExercises } from '../utils/calculations';
 
 interface GroupDiscussionScores {
   id: string;
@@ -136,12 +136,6 @@ const StudentDetailPage = () => {
     return map;
   }, [sortedCohortWeeks]);
 
-  const weekIdToHasExerciseMap = useMemo(() => {
-    const map = new Map<string, boolean>();
-    sortedCohortWeeks.forEach(week => map.set(week.id, week.hasExercise));
-    return map;
-  }, [sortedCohortWeeks]);
-
   const sortedWeeklyScores = useMemo(() => {
     if (!selectedCohort?.weeklyScores) return [];
     return [...selectedCohort.weeklyScores].sort((a, b) => {
@@ -151,86 +145,25 @@ const StudentDetailPage = () => {
     });
   }, [selectedCohort?.weeklyScores, weekIdToNumberMap]);
 
+  const totalWeeks = sortedWeeklyScores.length || 0;
+  const attendedWeeks = sortedWeeklyScores.filter(w => w.attended ?? w.groupDiscussionScores?.attendance).length || 0;
   const hasExercises = cohortHasExercises(selectedCohort?.cohortType || '');
 
-  // Regular cohort weeks only (exclude orientation/graduation)
-  const regularCohortWeeks = useMemo(() => {
-    return sortedCohortWeeks.filter(w => w.type === 'GROUP_DISCUSSION');
-  }, [sortedCohortWeeks]);
-
-  // Merge: use API scores where available, fill in empty scores for missing regular weeks
-  const allWeeklyScores = useMemo(() => {
-    const regularWeekIds = new Set(regularCohortWeeks.map(w => w.id));
-    const scoredWeekIds = new Set(sortedWeeklyScores.map(w => w.weekId));
-
-    const emptyGd: GroupDiscussionScores = {
-      id: '', attendance: false,
-      communicationScore: 0, maxCommunicationScore: 0,
-      depthOfAnswerScore: 0, maxDepthOfAnswerScore: 0,
-      technicalBitcoinFluencyScore: 0, maxTechnicalBitcoinFluencyScore: 0,
-      engagementScore: 0, maxEngagementScore: 0,
-      bonusAnswerScore: 0, maxBonusAnswerScore: 0,
-      bonusFollowupScore: 0, maxBonusFollowupScore: 0,
-      totalScore: 0, maxTotalScore: 0, groupNumber: null,
-    };
-    const emptyEx: ExerciseScores = { id: '', isSubmitted: false, isPassing: false, totalScore: 0, maxTotalScore: 0 };
-
-    // Only include API scores for regular weeks (exclude orientation/graduation)
-    const merged = sortedWeeklyScores
-      .filter(ws => regularWeekIds.has(ws.weekId))
-      .map(ws => ({
-        ...ws,
-        _weekNum: weekIdToNumberMap.get(ws.weekId) ?? 0,
-      }));
-
-    // Add placeholder entries for regular cohort weeks that have no scores
-    regularCohortWeeks.forEach(cw => {
-      if (!scoredWeekIds.has(cw.id)) {
-        merged.push({
-          weekId: cw.id,
-          attended: false,
-          groupDiscussionScores: emptyGd,
-          exerciseScores: emptyEx,
-          attendanceScores: undefined,
-          totalScore: 0,
-          maxTotalScore: 0,
-          _weekNum: cw.week,
-        });
-      }
-    });
-
-    return merged.sort((a, b) => a._weekNum - b._weekNum);
-  }, [sortedWeeklyScores, regularCohortWeeks, weekIdToNumberMap]);
-
-  // Stats based on all regular weeks (not just scored weeks from API)
-  const totalWeeks = regularCohortWeeks.length || sortedWeeklyScores.length || 0;
-  const attendedWeeks = allWeeklyScores.filter(w => w.attended ?? w.groupDiscussionScores?.attendance).length || 0;
-
-  // Compute max possible score from all regular weeks (exercise weeks = 100, non-exercise = 40)
-  const maxPossibleScore = useMemo(() => {
-    if (regularCohortWeeks.length === 0) return selectedCohort?.maxTotalScore || 0;
-    const gdOnlyMax = SCORES_WITH_EXERCISES.attendance + SCORES_WITH_EXERCISES.gd; // 40
-    return regularCohortWeeks.reduce((sum, w) => sum + (w.hasExercise ? SCORES_WITH_EXERCISES.total : gdOnlyMax), 0);
-  }, [regularCohortWeeks, selectedCohort?.maxTotalScore]);
-
-  const totalScore = selectedCohort?.totalScore || 0;
-
   const stats = {
-    totalScore,
-    maxPossibleScore,
-    avgScore: totalWeeks > 0 ? totalScore / totalWeeks : 0,
+    totalScore: selectedCohort?.totalScore || 0,
+    maxPossibleScore: selectedCohort?.maxTotalScore || 0,
+    avgScore: totalWeeks > 0 ? (selectedCohort?.totalScore || 0) / totalWeeks : 0,
     attendanceRate: totalWeeks > 0 ? (attendedWeeks / totalWeeks) * 100 : 0,
-    overallPercentage: maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 0,
+    overallPercentage: (selectedCohort?.maxTotalScore || 0) > 0 ? ((selectedCohort?.totalScore || 0) / (selectedCohort?.maxTotalScore || 0)) * 100 : 0,
     attendedWeeks,
     totalWeeks,
   };
 
-  const validWeeks = allWeeklyScores
+  const validWeeks = sortedWeeklyScores
     .map((weekScore) => ({
-      week: weekIdToNumberMap.get(weekScore.weekId) ?? weekScore._weekNum,
+      week: weekIdToNumberMap.get(weekScore.weekId) ?? 0,
       weekId: weekScore.weekId,
       weekType: weekIdToTypeMap.get(weekScore.weekId) ?? 'GROUP_DISCUSSION',
-      hasExercise: weekIdToHasExerciseMap.get(weekScore.weekId) ?? false,
       totalScore: weekScore.totalScore,
       maxTotalScore: weekScore.maxTotalScore,
       groupDiscussionScores: weekScore.groupDiscussionScores,
@@ -238,8 +171,8 @@ const StudentDetailPage = () => {
       attendance: weekScore.attended ?? weekScore.groupDiscussionScores?.attendance ?? false,
     }));
 
-  const chartWeeklyData = allWeeklyScores.map((weekScore) => {
-    const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? weekScore._weekNum;
+  const chartWeeklyData = sortedWeeklyScores.map((weekScore) => {
+    const weekNumber = weekIdToNumberMap.get(weekScore.weekId) ?? 0;
     return {
       week: weekNumber,
       attendance: weekScore.attended ?? weekScore.groupDiscussionScores?.attendance ?? false,

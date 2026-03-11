@@ -23,11 +23,10 @@ const getColor = (pct: number): string => {
 
 export const StudentSummary = ({ stats, hasExercises = true }: StudentSummaryProps) => {
   const maxScores = getMaxScores(hasExercises);
-  const avgMaxPerWeek = stats.totalWeeks > 0 ? Math.round(stats.maxPossibleScore / stats.totalWeeks) : maxScores.total;
 
   const items = [
     { label: 'Score', value: `${Math.round(stats.totalScore)}/${stats.maxPossibleScore}`, color: '#fff' },
-    { label: 'Avg/Week', value: `${Math.round(stats.avgScore)}/${avgMaxPerWeek}`, color: '#fff' },
+    { label: 'Avg/Week', value: `${Math.round(stats.avgScore)}/${maxScores.total}`, color: '#fff' },
     { label: 'Attendance', value: `${Math.round(stats.attendanceRate)}%`, sub: `${stats.attendedWeeks}/${stats.totalWeeks}`, color: getColor(stats.attendanceRate) },
     { label: 'Overall', value: `${Math.round(stats.overallPercentage)}%`, color: getColor(stats.overallPercentage) },
     { label: 'Weeks', value: `${stats.attendedWeeks}`, color: '#fff' },
