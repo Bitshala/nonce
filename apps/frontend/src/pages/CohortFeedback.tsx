@@ -20,40 +20,27 @@ const CohortFeedback = () => {
 
     const handleSubmit = async (data: FeedbackFormData) => {
         if (!data.cohortId) {
-            setNotification({
-                show: true,
-                message: 'Please select a cohort',
-                type: 'error',
-            });
+            setNotification({ show: true, message: 'Please select a cohort', type: 'error' });
             throw new Error('Cohort not selected');
-        }
-
-        if (!data.feedback.trim()) {
-            setNotification({
-                show: true,
-                message: 'Please provide feedback',
-                type: 'error',
-            });
-            throw new Error('Feedback is empty');
         }
 
         try {
             await submitFeedbackMutation.mutateAsync({
                 cohortId: data.cohortId,
-                feedback: data.feedback,
+                body: {
+                    componentRatings: Object.keys(data.componentRatings).length > 0 ? data.componentRatings : undefined,
+                    expectations: data.expectations || undefined,
+                    improvements: data.improvements || undefined,
+                    opportunityInterests: data.opportunityInterests.length > 0 ? data.opportunityInterests : undefined,
+                    fellowshipInterests: data.fellowshipInterests.length > 0 ? data.fellowshipInterests : undefined,
+                    idealProject: data.idealProject || undefined,
+                    testimonial: data.testimonial || undefined,
+                },
             });
 
-            setNotification({
-                show: true,
-                message: 'Feedback submitted successfully!',
-                type: 'success',
-            });
+            setNotification({ show: true, message: 'Feedback submitted successfully!', type: 'success' });
         } catch (error) {
-            setNotification({
-                show: true,
-                message: extractErrorMessage(error),
-                type: 'error',
-            });
+            setNotification({ show: true, message: extractErrorMessage(error), type: 'error' });
             throw error;
         }
     };
@@ -64,7 +51,6 @@ const CohortFeedback = () => {
 
     return (
         <div className="min-h-screen bg-zinc-900 text-zinc-100 flex flex-col" style={{ fontFamily: 'Sora, sans-serif' }}>
-            {/* Header */}
             <header className="px-8 py-6 flex justify-between items-center border-b border-zinc-800">
                 <div className="flex items-center gap-4">
                     <button
@@ -85,9 +71,8 @@ const CohortFeedback = () => {
                 </div>
             </header>
 
-            {/* Main Content */}
-            <div className="flex-1 flex items-center justify-center px-8 py-12">
-                <div className="w-full max-w-2xl">
+            <div className="flex-1 px-8 py-10">
+                <div className="max-w-4xl mx-auto">
                     <CohortFeedbackForm
                         cohorts={cohortsData?.records || []}
                         isLoading={isLoading}
@@ -96,7 +81,6 @@ const CohortFeedback = () => {
                 </div>
             </div>
 
-            {/* Notification Modal */}
             <NotificationModal
                 show={notification.show}
                 message={notification.message}
