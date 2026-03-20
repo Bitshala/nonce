@@ -27,6 +27,30 @@ const MyCohortInstructions: React.FC = () => {
 
   const isLoading = isLoadingCohort || isLoadingUser;
 
+  const content = cohortData
+    ? cohortTypeToContent[cohortData.type as keyof typeof cohortTypeToContent]
+    : undefined;
+
+  // useMemo must be called unconditionally before any early returns
+  const mergedWeeklyContent = useMemo(() => {
+    if (!content || !cohortData) return [];
+    const apiWeeks = cohortData.weeks;
+    if (!apiWeeks || apiWeeks.length === 0) return content.weeks;
+
+    return content.weeks.map((staticWeek) => {
+      const apiWeek = apiWeeks.find((w: GetCohortWeekResponseDto) => w.week === staticWeek.week);
+      if (!apiWeek) return staticWeek;
+
+      return {
+        ...staticWeek,
+        gdQuestions: apiWeek.questions.length > 0 ? apiWeek.questions : staticWeek.gdQuestions,
+        bonusQuestions: apiWeek.bonusQuestion.length > 0 ? apiWeek.bonusQuestion : staticWeek.bonusQuestions,
+        classroomUrl: apiWeek.classroomUrl,
+        classroomInviteLink: apiWeek.classroomInviteLink,
+      };
+    });
+  }, [content, cohortData]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
@@ -56,7 +80,6 @@ const MyCohortInstructions: React.FC = () => {
     );
   }
 
-  const content = cohortTypeToContent[cohortData.type as keyof typeof cohortTypeToContent];
   if (!content) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 px-4 py-6">
@@ -76,25 +99,6 @@ const MyCohortInstructions: React.FC = () => {
   }
 
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
-
-  // Merge API week data (questions, bonusQuestion, classroomUrl, classroomInviteLink) into static content
-  const mergedWeeklyContent = useMemo(() => {
-    const apiWeeks = cohortData.weeks;
-    if (!apiWeeks || apiWeeks.length === 0) return content.weeks;
-
-    return content.weeks.map((staticWeek) => {
-      const apiWeek = apiWeeks.find((w: GetCohortWeekResponseDto) => w.week === staticWeek.week);
-      if (!apiWeek) return staticWeek;
-
-      return {
-        ...staticWeek,
-        gdQuestions: apiWeek.questions.length > 0 ? apiWeek.questions : staticWeek.gdQuestions,
-        bonusQuestions: apiWeek.bonusQuestion.length > 0 ? apiWeek.bonusQuestion : staticWeek.bonusQuestions,
-        classroomUrl: apiWeek.classroomUrl,
-        classroomInviteLink: apiWeek.classroomInviteLink,
-      };
-    });
-  }, [content.weeks, cohortData.weeks]);
 
   return (
     <InstructionsLayout
