@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMyCohorts } from '../hooks/cohortHooks';
 import { useSubmitFeedback } from '../hooks/feedbackHooks';
 import { extractErrorMessage } from '../utils/errorUtils';
@@ -9,6 +9,8 @@ import type { NotificationState, FeedbackFormData } from '../types/feedback';
 
 const CohortFeedback = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const preselectedCohortId = searchParams.get('cohortId') || '';
     const { data: cohortsData, isLoading } = useMyCohorts({ page: 0, pageSize: 100 });
     const submitFeedbackMutation = useSubmitFeedback();
 
@@ -97,6 +99,7 @@ const CohortFeedback = () => {
                     cohorts={cohortsData?.records || []}
                     isLoading={isLoading}
                     onSubmit={handleSubmit}
+                    preselectedCohortId={preselectedCohortId}
                 />
             </div>
 

@@ -13,6 +13,7 @@ interface Props {
   cohorts: GetCohortResponseDto[];
   isLoading: boolean;
   onSubmit: (data: FeedbackFormData) => Promise<void>;
+  preselectedCohortId?: string;
 }
 
 const COMPONENT_LABELS: Record<CohortComponent, string> = {
@@ -126,9 +127,9 @@ const Label = ({ children }: { children: React.ReactNode }) => (
   </label>
 );
 
-const CohortFeedbackForm = ({ cohorts, isLoading, onSubmit }: Props) => {
+const CohortFeedbackForm = ({ cohorts, isLoading, onSubmit, preselectedCohortId = '' }: Props) => {
   const navigate = useNavigate();
-  const [selectedCohortId, setSelectedCohortId] = useState('');
+  const [selectedCohortId, setSelectedCohortId] = useState(preselectedCohortId);
   const [componentRatings, setComponentRatings] = useState<Partial<Record<CohortComponent, ComponentRating>>>({});
   const [expectations, setExpectations] = useState('');
   const [improvements, setImprovements] = useState('');
