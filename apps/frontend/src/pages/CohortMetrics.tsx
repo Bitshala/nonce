@@ -20,7 +20,7 @@ import { useQueries } from '@tanstack/react-query';
 import { useCohorts } from '../hooks/cohortHooks';
 import apiService from '../services/apiService';
 import { computeStatus } from '../utils/cohortUtils';
-import { cohortTypeToName } from '../helpers/cohortHelpers';
+import { cohortTypeToName, cohortTypeToShortName } from '../helpers/cohortHelpers';
 import type { LeaderboardEntryDto, GetCohortLeaderboardResponseDto } from '../types/api';
 import type { CohortType } from '../types/enums';
 
@@ -160,7 +160,7 @@ const CohortMetrics = () => {
           return {
             cohortId: cohort.id,
             label: `${cohortTypeToName(cohort.type)} S${cohort.season}`,
-            shortLabel: `${cohort.type.split('_').map((w) => w[0]).join('')} S${cohort.season}`,
+            shortLabel: `${cohortTypeToShortName(cohort.type)} S${cohort.season}`,
             type: cohort.type,
             season: cohort.season,
             startDate: cohort.startDate,
@@ -193,7 +193,7 @@ const CohortMetrics = () => {
         return {
           cohortId: cohort.id,
           label: `${cohortTypeToName(cohort.type)} S${cohort.season}`,
-          shortLabel: `${cohort.type.split('_').map((w) => w[0]).join('')} S${cohort.season}`,
+          shortLabel: `${cohortTypeToShortName(cohort.type)} S${cohort.season}`,
           type: cohort.type,
           season: cohort.season,
           startDate: cohort.startDate,

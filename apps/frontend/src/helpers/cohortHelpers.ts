@@ -17,6 +17,23 @@ export const cohortTypeToName = (type: CohortType) : string => {
   }
 }
 
+export const cohortTypeToShortName = (type: string): string => {
+  switch (type) {
+    case CohortType.MASTERING_BITCOIN:
+      return 'MB';
+    case CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE:
+      return 'LBTCL';
+    case CohortType.PROGRAMMING_BITCOIN:
+      return 'PB';
+    case CohortType.BITCOIN_PROTOCOL_DEVELOPMENT:
+      return 'BPD';
+    case CohortType.MASTERING_LIGHTNING_NETWORK:
+      return 'MLN';
+    default:
+      return type.split('_').map((w) => w[0]).join('');
+  }
+}
+
 export const formatCohortDate = (isoDate: string) : string => {
   const date = new Date(isoDate);
   return date.toLocaleDateString('en', {
