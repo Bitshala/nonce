@@ -420,6 +420,18 @@ class ApiService {
     return data;
   };
 
+  public downloadBulkCertificates = async (cohortId: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}/download`,
+      responseType: 'blob',
+    });
+    const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? '';
+    const filename = disposition.match(/filename="(.+)"/)?.[1] ?? 'certificates.zip';
+    return { blob: response.data, filename };
+  };
+
   // =========================
   // Calendar
   // =========================

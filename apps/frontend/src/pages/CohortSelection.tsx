@@ -26,10 +26,13 @@ import {
   Plus,
   X,
   Pencil,
+  FileArchive,
 } from 'lucide-react';
+import { Tooltip } from '@mui/material';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { useGenerateCohortCertificates } from '../hooks/certificateHooks';
+import apiService from '../services/apiService';
 import { UserRole, CohortType } from '../types/enums';
 import type { GetCohortResponseDto } from '../types/api';
 import type { ApiCohort, CohortStatus } from '../types/cohort';
@@ -71,6 +74,7 @@ export const CohortSelection = () => {
 
   const [activeTab, setActiveTab] = useState<string>('Active');
   const [generatingCohortId, setGeneratingCohortId] = useState<string | null>(null);
+  const [bulkDownloadingCohortId, setBulkDownloadingCohortId] = useState<string | null>(null);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -206,6 +210,29 @@ export const CohortSelection = () => {
     );
   };
 
+
+  const handleBulkDownloadCertificates = async (cohortId: string) => {
+    if (bulkDownloadingCohortId) return;
+    setBulkDownloadingCohortId(cohortId);
+    try {
+      const { blob, filename } = await apiService.downloadBulkCertificates(cohortId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      let errorMessage = 'Failed to download certificates.';
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const re = err as { response?: { data?: { message?: string } } };
+        if (re.response?.data?.message) errorMessage = re.response.data.message;
+      }
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    } finally {
+      setBulkDownloadingCohortId(null);
+    }
+  };
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -378,59 +405,77 @@ export const CohortSelection = () => {
             loading={isLoading}
             emptyMessage={`No ${activeTab.toLowerCase()} cohorts found.`}
             actions={isAdmin ? (cohort) => (
-              <>
+              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                 {cohort.status !== 'Completed' && (
+                  <Tooltip title="Edit cohort" placement="top">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); openEditModal(cohort); }}
+                      sx={{
+                        color: '#d4d4d8',
+                        border: '1px solid #52525b',
+                        borderRadius: 1,
+                        p: 0.75,
+                        '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+                      }}
+                    >
+                      <Pencil size={14} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {cohort.status === 'Completed' && (
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
-                    startIcon={<Pencil size={13} />}
-                    onClick={() => openEditModal(cohort)}
+                    startIcon={
+                      isGeneratingCerts && generatingCohortId === cohort.id
+                        ? <CircularProgress size={13} sx={{ color: '#fff' }} />
+                        : undefined
+                    }
+                    disabled={isGeneratingCerts && generatingCohortId === cohort.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateCertificates(cohort.id, cohort.name);
+                    }}
                     sx={{
-                      color: '#d4d4d8',
-                      borderColor: '#52525b',
+                      bgcolor: '#f59e0b',
+                      color: '#000',
                       textTransform: 'none',
                       fontSize: '0.75rem',
                       fontWeight: 500,
+                      whiteSpace: 'nowrap',
                       py: 0.5,
-                      '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+                      boxShadow: 'none',
+                      '&:hover': { bgcolor: '#d97706', boxShadow: 'none' },
+                      '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' },
                     }}
                   >
-                    Edit
+                    Generate Certs
                   </Button>
                 )}
-                {cohort.status === 'Completed' && (
-                  <>
-                    <Button
-                      variant="contained"
+                <Tooltip title="Bulk download certificates" placement="top">
+                  <span>
+                    <IconButton
                       size="small"
-                      startIcon={
-                        isGeneratingCerts && generatingCohortId === cohort.id
-                          ? <CircularProgress size={13} sx={{ color: '#fff' }} />
-                          : undefined
-                      }
-                      disabled={isGeneratingCerts && generatingCohortId === cohort.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGenerateCertificates(cohort.id, cohort.name);
-                      }}
+                      disabled={bulkDownloadingCohortId === cohort.id}
+                      onClick={(e) => { e.stopPropagation(); handleBulkDownloadCertificates(cohort.id); }}
                       sx={{
-                        bgcolor: '#f59e0b',
-                        color: '#000',
-                        textTransform: 'none',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                        py: 0.5,
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: '#d97706', boxShadow: 'none' },
-                        '&.Mui-disabled': { bgcolor: '#78350f', color: '#92400e' },
+                        color: '#d4d4d8',
+                        border: '1px solid #52525b',
+                        borderRadius: 1,
+                        p: 0.75,
+                        '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+                        '&.Mui-disabled': { opacity: 0.4 },
                       }}
                     >
-                      Generate Certs
-                    </Button>
-                  </>
-                )}
-              </>
+                      {bulkDownloadingCohortId === cohort.id
+                        ? <CircularProgress size={14} sx={{ color: '#d4d4d8' }} />
+                        : <FileArchive size={14} />
+                      }
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
             ) : undefined}
           />
         </Paper>
