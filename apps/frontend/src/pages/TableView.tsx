@@ -39,7 +39,7 @@ import { useCohort, useRemoveUserFromCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
 import { UserRole } from '../types/enums';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
-import { generateMockTableData, mockWeeks } from '../data/mockTableData';
+import { mockWeeks } from '../data/mockTableData';
 
 
 const TableView: React.FC = () => {
@@ -150,10 +150,8 @@ const TableView: React.FC = () => {
       if (scoresError) {
         console.error('Error fetching weekly data:', scoresError);
       }
-      // Fallback to mock data when no API data
-      const mock = generateMockTableData(weekIndex, 16);
-      setData(mock);
-      setTotalCount(mock.length);
+      setData([]);
+      setTotalCount(0);
       return;
     }
 
