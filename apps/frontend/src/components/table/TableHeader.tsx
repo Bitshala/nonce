@@ -108,7 +108,8 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
     || cohortType === 'LEARNING_BITCOIN_FROM_COMMAND_LINE'
     || cohortType === 'MASTERING_LIGHTNING_NETWORK'
     || cohortType === 'BITCOIN_PROTOCOL_DEVELOPMENT'
-    || cohortType === 'PROGRAMMING_BITCOIN';
+    || cohortType === 'PROGRAMMING_BITCOIN'
+    || cohortType === 'RUST_FOR_BITCOIN';
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 3 }}>
