@@ -15,7 +15,7 @@ export const cohortTypeToName = (type: CohortType) : string => {
       return 'Bitcoin Protocol Development';
     case CohortType.MASTERING_LIGHTNING_NETWORK:
       return 'Mastering Lightning Network';
-    case CohortType.RUST_FOR_BITCOIN:
+    case CohortType.BUILDING_BITCOIN_IN_RUST:
       return 'Rust for Bitcoin';
     default:
       return 'Unknown Cohort';
@@ -34,7 +34,7 @@ export const cohortTypeToShortName = (type: string): string => {
       return 'BPD';
     case CohortType.MASTERING_LIGHTNING_NETWORK:
       return 'MLN';
-    case CohortType.RUST_FOR_BITCOIN:
+    case CohortType.BUILDING_BITCOIN_IN_RUST:
       return 'RFB';
     default:
       return type.split('_').map((w) => w[0]).join('');
