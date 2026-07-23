@@ -29,6 +29,7 @@ const LBTCLInstructions = lazy(() => import('./pages/Students/LBTCLInstructions.
 const LNInstructions = lazy(() => import('./pages/Students/LNInstructions.tsx'));
 const BPDInstructions = lazy(() => import('./pages/Students/BPDInstructions.tsx'));
 const PBInstructions = lazy(() => import('./pages/Students/PBInstructions.tsx'));
+const RFBInstructions = lazy(() => import('./pages/Students/RFBInstructions.tsx'));
 const GeneralInstructions = lazy(() => import('./pages/Students/GeneralInstructions.tsx'));
 const StudentProfileData = lazy(() => import('./components/student/StudentProfileData.tsx'));
 const MyError = lazy(() => import('./pages/404error.tsx'));
@@ -113,6 +114,10 @@ const routes = [
   {
     path: '/pb-instructions',
     element: <Layout><PBInstructions /></Layout>,
+  },
+  {
+    path: '/rfb-instructions',
+    element: <Layout><RFBInstructions /></Layout>,
   },
   {
     path: '/general-instructions',
