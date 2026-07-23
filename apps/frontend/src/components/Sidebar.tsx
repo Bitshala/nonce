@@ -61,7 +61,7 @@ const instructionLinks = [
   { label: 'Lightning Network', path: '/ln-instructions' },
   { label: 'Bitcoin Protocol Dev', path: '/bpd-instructions' },
   { label: 'Programming Bitcoin', path: '/pb-instructions' },
-  { label: 'Building Bitcoin in Rust', path: '/rfb-instructions' },
+  { label: 'Building Bitcoin in Rust', path: '/bbr-instructions' },
 ];
 
 // The apply form has no sidebar entry — it opens from the Apply button on

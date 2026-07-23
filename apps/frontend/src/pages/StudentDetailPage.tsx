@@ -247,7 +247,7 @@ const StudentDetailPage = () => {
                       } else if (selectedCohort.cohortType === "PROGRAMMING_BITCOIN") {
                         navigate('/pb-instructions');
                       } else if (selectedCohort.cohortType === "BUILDING_BITCOIN_IN_RUST") {
-                        navigate('/rfb-instructions');
+                        navigate('/bbr-instructions');
                       }
                     }}
                     sx={{ bgcolor: '#ea580c', textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&:hover': { bgcolor: '#c2410c' } }}
