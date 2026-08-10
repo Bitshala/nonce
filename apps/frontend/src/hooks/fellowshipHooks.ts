@@ -8,6 +8,8 @@ import type {
   FellowshipApplicationNoteWriteDto,
   FellowshipApplicationProposalDto,
   FellowshipDocumentResponseDto,
+  FellowshipReportNote,
+  FellowshipReportNoteWriteDto,
   GetFellowshipApplicationResponseDto,
   GetFellowshipReportContentResponseDto,
   GetFellowshipReportResponseDto,
@@ -187,6 +189,59 @@ export const useDeleteApplicationNote = createUseMutation<
     queryInvalidation: async ({ queryClient, variables }) => {
       await queryClient.invalidateQueries({
         queryKey: ['fellowship-application-notes', variables.applicationId],
+      });
+    },
+  },
+);
+
+// =========================
+// Fellowship Report Notes
+// =========================
+
+// Like the application-note list route, this returns a plain array ordered
+// oldest-first, so the query data is FellowshipReportNote[] — not a PaginatedDataDto.
+export const useReportNotes = createUseQuery<FellowshipReportNote[], string>(
+  (reportId) => ['fellowship-report-notes', reportId],
+  (reportId) => () => fellowshipService.listReportNotes(reportId),
+);
+
+export const useCreateReportNote = createUseMutation<
+  FellowshipReportNote,
+  { reportId: string; body: FellowshipReportNoteWriteDto }
+>(
+  ({ reportId, body }) => fellowshipService.createReportNote(reportId, body),
+  {
+    queryInvalidation: async ({ queryClient, variables }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['fellowship-report-notes', variables.reportId],
+      });
+    },
+  },
+);
+
+export const useUpdateReportNote = createUseMutation<
+  FellowshipReportNote,
+  { reportId: string; noteId: string; body: FellowshipReportNoteWriteDto }
+>(
+  ({ reportId, noteId, body }) => fellowshipService.updateReportNote(reportId, noteId, body),
+  {
+    queryInvalidation: async ({ queryClient, variables }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['fellowship-report-notes', variables.reportId],
+      });
+    },
+  },
+);
+
+export const useDeleteReportNote = createUseMutation<
+  void,
+  { reportId: string; noteId: string }
+>(
+  ({ reportId, noteId }) => fellowshipService.deleteReportNote(reportId, noteId),
+  {
+    queryInvalidation: async ({ queryClient, variables }) => {
+      await queryClient.invalidateQueries({
+        queryKey: ['fellowship-report-notes', variables.reportId],
       });
     },
   },
