@@ -8,6 +8,8 @@ import type {
   FellowshipApplicationNoteWriteDto,
   FellowshipApplicationProposalDto,
   FellowshipDocumentResponseDto,
+  FellowshipReportNote,
+  FellowshipReportNoteWriteDto,
   GetFellowshipApplicationResponseDto,
   GetFellowshipReportContentResponseDto,
   GetFellowshipReportResponseDto,
@@ -264,6 +266,59 @@ class FellowshipService {
       headers: this.getRequestHeaders(),
       method: 'DELETE',
       url: `/fellowship-applications/${applicationId}/notes/${noteId}`,
+    });
+  };
+
+  // =========================
+  // Fellowship Report Notes
+  // =========================
+
+  // Internal admin notes on a report. Like the application-note list route, this
+  // returns a PLAIN ARRAY (oldest-first) — there is no { records, totalRecords }
+  // wrapper here.
+  public listReportNotes = async (reportId: string): Promise<FellowshipReportNote[]> => {
+    const { data } = await this.request<FellowshipReportNote[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/fellowship-reports/${reportId}/notes`,
+    });
+    return data;
+  };
+
+  public createReportNote = async (
+    reportId: string,
+    body: FellowshipReportNoteWriteDto,
+  ): Promise<FellowshipReportNote> => {
+    const { data } = await this.request<FellowshipReportNote>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/fellowship-reports/${reportId}/notes`,
+      data: body,
+    });
+    return data;
+  };
+
+  // Author-only on the server (403 for anyone else); 404 if the note is gone.
+  public updateReportNote = async (
+    reportId: string,
+    noteId: string,
+    body: FellowshipReportNoteWriteDto,
+  ): Promise<FellowshipReportNote> => {
+    const { data } = await this.request<FellowshipReportNote>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/fellowship-reports/${reportId}/notes/${noteId}`,
+      data: body,
+    });
+    return data;
+  };
+
+  // Author-only on the server (403 for anyone else); 204 No Content on success.
+  public deleteReportNote = async (reportId: string, noteId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'DELETE',
+      url: `/fellowship-reports/${reportId}/notes/${noteId}`,
     });
   };
 
