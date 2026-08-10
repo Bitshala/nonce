@@ -8,6 +8,7 @@ import type {
   FellowshipApplicationNoteWriteDto,
   FellowshipApplicationProposalDto,
   FellowshipDocumentResponseDto,
+  FellowshipKind,
   FellowshipReportNote,
   FellowshipReportNoteWriteDto,
   GetFellowshipApplicationResponseDto,
@@ -126,9 +127,9 @@ export const useReviewApplication = createUseMutation<
 // invalidate both the application lists and the fellowship lists.
 export const useAcceptApplication = createUseMutation<
   void,
-  { id: string; file: File }
+  { id: string; file: File; kind: FellowshipKind }
 >(
-  ({ id, file }) => fellowshipService.acceptApplication(id, file),
+  ({ id, file, kind }) => fellowshipService.acceptApplication(id, file, kind),
   {
     queryInvalidation: async ({ queryClient }) => {
       await queryClient.invalidateQueries({ queryKey: ['fellowship-applications'] });

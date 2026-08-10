@@ -7,6 +7,14 @@ export enum FellowshipType {
   EDUCATOR = 'EDUCATOR',
 }
 
+// Orthogonal to `type`: a fellowship is either a regular FELLOWSHIP or a
+// higher-tier, invite-only STARTER_GRANT. An admin sets this when accepting an
+// application; applicants never choose it.
+export enum FellowshipKind {
+  FELLOWSHIP = 'FELLOWSHIP',
+  STARTER_GRANT = 'STARTER_GRANT',
+}
+
 export enum FellowshipApplicationStatus {
   DRAFT = 'DRAFT',
   SUBMITTED = 'SUBMITTED',
@@ -247,6 +255,7 @@ export interface GetFellowshipResponseDto extends FellowshipOnboardingDto {
   // The application this fellowship was created from — links back to the proposal.
   applicationId: string;
   type: FellowshipType;
+  kind: FellowshipKind;
   status: FellowshipStatus;
   startDate: string | null;
   endDate: string | null;
@@ -262,6 +271,7 @@ export type FellowshipsSortBy = 'createdAt' | 'startDate' | 'endDate' | 'amountU
 export interface ListFellowshipsQueryDto extends PaginatedQueryDto {
   status?: FellowshipStatus;
   type?: FellowshipType;
+  kind?: FellowshipKind;
   search?: string;
   sortBy?: FellowshipsSortBy;
   sortOrder?: SortOrder;

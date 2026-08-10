@@ -25,7 +25,7 @@ import type {
   UpdateFellowshipApplicationRequestDto,
   UpdateFellowshipReportRequestDto,
 } from '../types/fellowship.ts';
-import { FellowshipApplicationStatus } from '../types/fellowship.ts';
+import { FellowshipApplicationStatus, FellowshipKind } from '../types/fellowship.ts';
 import type { PaginatedQueryDto } from '../types/api.ts';
 
 const COMMON_REQUEST_HEADERS = {
@@ -190,10 +190,16 @@ class FellowshipService {
   // Accept an application. Multipart: the Bitshala-signed unsigned-contract PDF
   // is required. On success the backend creates the fellowship (in
   // AWAITING_DOCUMENTS) and its three document rows.
-  public acceptApplication = async (id: string, file: File): Promise<void> => {
+  public acceptApplication = async (
+    id: string,
+    file: File,
+    kind: FellowshipKind,
+  ): Promise<void> => {
     const formData = new FormData();
     formData.append('status', FellowshipApplicationStatus.ACCEPTED);
     formData.append('file', file);
+    // Optional server-side (defaults to FELLOWSHIP); always sent for clarity.
+    formData.append('kind', kind);
     await this.request<void>({
       headers: this.getMultipartRequestHeaders(),
       method: 'PATCH',

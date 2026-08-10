@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -42,6 +44,7 @@ import {
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   FellowshipApplicationStatus,
+  FellowshipKind,
   type FellowshipApplicationProposalDto,
   type FellowshipApplicationsSortBy,
   type GetFellowshipApplicationResponseDto,
@@ -140,6 +143,7 @@ const ApplicationsAdmin = () => {
   const [requestChangesOpen, setRequestChangesOpen] = useState(false);
   const [acceptOpen, setAcceptOpen] = useState(false);
   const [acceptFile, setAcceptFile] = useState<File | null>(null);
+  const [acceptKind, setAcceptKind] = useState<FellowshipKind>(FellowshipKind.FELLOWSHIP);
   const [remarks, setRemarks] = useState('');
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null);
 
@@ -197,13 +201,14 @@ const ApplicationsAdmin = () => {
   const handleAccept = async () => {
     if (!selected || !acceptFile) return;
     try {
-      await acceptMut.mutateAsync({ id: selected.id, file: acceptFile });
+      await acceptMut.mutateAsync({ id: selected.id, file: acceptFile, kind: acceptKind });
       setToast({
         kind: 'success',
         msg: 'Accepted — fellowship created, awaiting documents.',
       });
       setAcceptOpen(false);
       setAcceptFile(null);
+      setAcceptKind(FellowshipKind.FELLOWSHIP);
     } catch (e) {
       setToast({ kind: 'error', msg: extractErrorMessage(e) });
     }
@@ -327,6 +332,7 @@ const ApplicationsAdmin = () => {
             canNext={selectedIdx >= 0 && selectedIdx < records.length - 1}
             onAccept={() => {
               setAcceptFile(null);
+              setAcceptKind(FellowshipKind.FELLOWSHIP);
               setAcceptOpen(true);
             }}
             onReject={() => {
@@ -380,9 +386,12 @@ const ApplicationsAdmin = () => {
         open={acceptOpen}
         file={acceptFile}
         onChange={setAcceptFile}
+        kind={acceptKind}
+        onKindChange={setAcceptKind}
         onCancel={() => {
           setAcceptOpen(false);
           setAcceptFile(null);
+          setAcceptKind(FellowshipKind.FELLOWSHIP);
         }}
         onConfirm={handleAccept}
         busy={acceptMut.isPending}
@@ -966,6 +975,8 @@ const AcceptDialog = ({
   open,
   file,
   onChange,
+  kind,
+  onKindChange,
   onCancel,
   onConfirm,
   busy,
@@ -973,6 +984,8 @@ const AcceptDialog = ({
   open: boolean;
   file: File | null;
   onChange: (file: File | null) => void;
+  kind: FellowshipKind;
+  onKindChange: (kind: FellowshipKind) => void;
   onCancel: () => void;
   onConfirm: () => void;
   busy: boolean;
@@ -990,6 +1003,25 @@ const AcceptDialog = ({
         onChange={onChange}
         disabled={busy}
         label="Choose contract PDF"
+      />
+      {/* Starter grants are invite-only — the admin classifies the fellowship
+          here, on accept. Unchecked = regular FELLOWSHIP. */}
+      <FormControlLabel
+        sx={{ mt: 2 }}
+        control={
+          <Checkbox
+            checked={kind === FellowshipKind.STARTER_GRANT}
+            disabled={busy}
+            onChange={(e) =>
+              onKindChange(
+                e.target.checked
+                  ? FellowshipKind.STARTER_GRANT
+                  : FellowshipKind.FELLOWSHIP,
+              )
+            }
+          />
+        }
+        label="Mark as starter grant"
       />
     </DialogContent>
     <DialogActions>
