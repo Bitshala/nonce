@@ -191,6 +191,31 @@ export interface FellowshipApplicationNoteWriteDto {
 }
 
 // =========================
+// Fellowship Report Notes
+// =========================
+
+// Internal, admin-only note on a fellowship report — a shared thread admins use
+// while reviewing a report. These are NEVER shown to the fellow, and are distinct
+// from the fellow-facing `reviewerRemarks` field. The list endpoint returns a
+// PLAIN ARRAY ordered oldest-first (no paginated { records, totalRecords }
+// wrapper). A note can be edited/deleted only by its author — the server enforces
+// this with a 403; the UI only hides the controls. Mirrors FellowshipApplicationNote.
+export interface FellowshipReportNote {
+  id: string;
+  reportId: string;
+  body: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Create and edit share the same payload: a trimmed body of 1..5000 chars.
+export interface FellowshipReportNoteWriteDto {
+  body: string;
+}
+
+// =========================
 // Fellowships
 // =========================
 
