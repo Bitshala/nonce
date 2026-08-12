@@ -51,6 +51,8 @@ const ProposalPrint = lazy(() => import('./pages/fellowship/ProposalPrint.tsx'))
 const ApplicationsAdmin = lazy(() => import('./pages/fellowship/admin/ApplicationsAdmin.tsx'));
 const FellowshipsAdmin = lazy(() => import('./pages/fellowship/admin/FellowshipsAdmin.tsx'));
 const ReportsAdmin = lazy(() => import('./pages/fellowship/admin/ReportsAdmin.tsx'));
+const UsersAdmin = lazy(() => import('./pages/admin/users/UsersAdmin.tsx'));
+const UserOverview = lazy(() => import('./pages/admin/users/UserOverview.tsx'));
 
 const FellowshipFallback = () => (
   <Box
@@ -259,6 +261,26 @@ const routes = [
         <Layout>
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             {withFellowshipFallback(<ReportsAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/users',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<UsersAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/users/:userId',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<UserOverview />)}
           </ProtectedRoute>
         </Layout>
       ),
