@@ -16,6 +16,17 @@ export enum FellowshipKind {
   STARTER_GRANT = 'STARTER_GRANT',
 }
 
+// How the contract is provided when an admin accepts an application. UNSIGNED
+// (default): the admin uploads the unsigned contract, then the fellow signs and
+// uploads their signed copy + W-8BEN for admin review. PRESIGNED: the contract was
+// signed out of band, so the admin uploads the already-signed contract + W-8BEN
+// directly and the fellowship is created straight in DOCUMENTS_APPROVED, skipping
+// the fellow upload/review cycle.
+export enum FellowshipContractMode {
+  UNSIGNED = 'UNSIGNED',
+  PRESIGNED = 'PRESIGNED',
+}
+
 export enum FellowshipApplicationStatus {
   DRAFT = 'DRAFT',
   SUBMITTED = 'SUBMITTED',

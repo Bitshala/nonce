@@ -7,6 +7,7 @@ import type {
   FellowshipApplicationNote,
   FellowshipApplicationNoteWriteDto,
   FellowshipApplicationProposalDto,
+  FellowshipContractMode,
   FellowshipDocumentResponseDto,
   FellowshipKind,
   FellowshipReportNote,
@@ -123,13 +124,21 @@ export const useReviewApplication = createUseMutation<
   },
 );
 
-// Accept = multipart with the signed contract PDF. Creates the fellowship, so
-// invalidate both the application lists and the fellowship lists.
+// Accept = multipart with the contract PDF(s). Creates the fellowship, so
+// invalidate both the application lists and the fellowship lists. See
+// fellowshipService.acceptApplication for the UNSIGNED vs PRESIGNED field shape.
 export const useAcceptApplication = createUseMutation<
   void,
-  { id: string; file: File; kind: FellowshipKind }
+  {
+    id: string;
+    kind: FellowshipKind;
+    contractMode: FellowshipContractMode;
+    file?: File | null;
+    signedContract?: File | null;
+    w8ben?: File | null;
+  }
 >(
-  ({ id, file, kind }) => fellowshipService.acceptApplication(id, file, kind),
+  ({ id, ...params }) => fellowshipService.acceptApplication(id, params),
   {
     queryInvalidation: async ({ queryClient }) => {
       await queryClient.invalidateQueries({ queryKey: ['fellowship-applications'] });
