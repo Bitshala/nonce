@@ -32,6 +32,7 @@ import {
   FileCheck,
   FileText,
   ClipboardList,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useMyFellowships } from '../hooks/fellowshipHooks';
@@ -48,6 +49,7 @@ interface NavItem {
 const adminNavItems: NavItem[] = [
   { label: 'Cohorts', path: '/select', icon: GraduationCap },
   { label: 'Cohort Metrics', path: '/cohort-metrics', icon: BarChart3 },
+  { label: 'Cohort Feedback', path: '/admin/feedback', icon: MessageSquare },
 ];
 
 const studentNavItems: NavItem[] = [
