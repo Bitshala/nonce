@@ -1,61 +1,50 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  AUTH_TOKEN_KEY,
-  clearAuthTokenFromStorage,
-  getAuthTokenFromStorage,
-  saveAuthTokenToStorage,
-} from '../services/authService';
+import { authStore } from '../services/authStore.ts';
 
 export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   login: (newToken: string) => void;
   logout: () => void;
+  isLoginModalOpen: boolean;
+  openLogin: () => void;
+  closeLogin: () => void;
 }
 
 export const useAuth = (): AuthState => {
   const navigate = useNavigate();
 
-  // Initialize from storage once (SSR-safe)
-  const [token, setToken] = useState<string | null>(() => {
-    try {
-      return typeof window !== 'undefined' ? getAuthTokenFromStorage() : null;
-    } catch {
-      return null;
-    }
-  });
+  // Shared module-level store, so every call site sees the same token and
+  // re-renders together on login/logout. See services/authStore.ts.
+  const token = useSyncExternalStore(
+    authStore.subscribe,
+    authStore.getSnapshot,
+    authStore.getSnapshot,
+  );
 
-  // Keep isAuthenticated derived & memoized
+  const isLoginModalOpen = useSyncExternalStore(
+    authStore.subscribe,
+    authStore.getLoginModalSnapshot,
+    authStore.getLoginModalSnapshot,
+  );
+
   const isAuthenticated = useMemo(() => !!token, [token]);
 
   const login = useCallback((newToken: string) => {
-    try {
-      saveAuthTokenToStorage(newToken);
-    } finally {
-      setToken(newToken);
-    }
+    authStore.login(newToken);
   }, []);
 
   const logout = useCallback(() => {
-    try {
-      clearAuthTokenFromStorage();
-    } finally {
-      setToken(null);
-      navigate('/login');
-    }
+    authStore.clear();
+    // Land on the public dashboard rather than a login screen — signing out
+    // drops you to the preview, not out of the app. `replace` because the page
+    // being left is now unreachable; you can't go back to being signed in.
+    navigate('/myDashboard', { replace: true });
   }, [navigate]);
 
-  // Cross-tab sync: respond to storage events (logout/login elsewhere)
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === AUTH_TOKEN_KEY) {
-        setToken(e.newValue);
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  const openLogin = useCallback(() => authStore.openLoginModal(), []);
+  const closeLogin = useCallback(() => authStore.closeLoginModal(), []);
 
-  return { isAuthenticated, token, login, logout };
+  return { isAuthenticated, token, login, logout, isLoginModalOpen, openLogin, closeLogin };
 };
