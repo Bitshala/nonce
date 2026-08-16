@@ -18,9 +18,11 @@ import {
 import { ArrowLeft, Medal, Crown, Flame } from 'lucide-react';
 
 import { useCohort } from '../hooks/cohortHooks';
-import { useCohortLeaderboard } from '../hooks/scoreHooks';
+import { useCohortLeaderboard, usePublicCohortLeaderboard } from '../hooks/scoreHooks';
 import { useUser } from '../hooks/userHooks';
+import { useAuth } from '../hooks/useAuth';
 import { useCohortCertificates } from '../hooks/certificateHooks';
+import { usePageMeta } from '../hooks/usePageMeta';
 import apiService from '../services/apiService';
 
 import { UserRole } from '../types/enums';
@@ -33,6 +35,7 @@ import {
 } from '../utils/resultHelper';
 import { cohortHasExercises } from '../utils/calculations';
 import { computeStatus } from '../utils/cohortUtils';
+import { isAxiosError, isThrottledError } from '../utils/errorUtils';
 
 const getScoreColor = (score: number): string => {
   if (score > 0) return '#4ade80';
@@ -67,7 +70,10 @@ export const ResultPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: cohortIdParam } = useParams<{ id: string }>();
 
-  const { data: userData } = useUser();
+  const { isAuthenticated } = useAuth();
+
+  // Signed out, /users/me would just 401 — don't fire it.
+  const { data: userData } = useUser(undefined, { enabled: isAuthenticated });
 
   const {
     data: cohortData,
@@ -82,10 +88,26 @@ export const ResultPage: React.FC = () => {
   } = useCohortLeaderboard(
     { cohortId: cohortIdParam || '' },
     {
-      enabled: !!cohortIdParam,
+      enabled: isAuthenticated && !!cohortIdParam,
       refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+    },
+  );
+
+  // Anonymous visitors get the PII-free endpoint: handle, rank and total score
+  // only. Never the authenticated one, which carries real names.
+  const {
+    data: publicLeaderboardData,
+    isLoading: publicLeaderboardLoading,
+    error: publicLeaderboardError,
+  } = usePublicCohortLeaderboard(
+    { cohortId: cohortIdParam || '' },
+    {
+      enabled: !isAuthenticated && !!cohortIdParam,
+      // Completed-cohort standings don't move. Long cache keeps public traffic
+      // well under the 5 req/s per-IP throttle.
+      staleTime: 1000 * 60 * 30,
     },
   );
 
@@ -94,7 +116,12 @@ export const ResultPage: React.FC = () => {
     [userData?.role],
   );
 
-  const hasExercises = useMemo(() => cohortHasExercises(cohortData?.type || ''), [cohortData?.type]);
+  // The public payload carries no exercise data, so hide the column rather
+  // than render a "0" for every row.
+  const hasExercises = useMemo(
+    () => isAuthenticated && cohortHasExercises(cohortData?.type || ''),
+    [cohortData?.type, isAuthenticated],
+  );
 
   const isCohortCompleted = useMemo(
     () => cohortData ? computeStatus(cohortData.startDate, cohortData.endDate) === 'Completed' : false,
@@ -113,11 +140,35 @@ export const ResultPage: React.FC = () => {
     return new Set(certificatesData.map((cert) => cert.userId));
   }, [certificatesData]);
 
-  const results = useMemo<StudentResult[]>(() => transformLeaderboardData(leaderboardData), [leaderboardData]);
+  const results = useMemo<StudentResult[]>(() => {
+    if (!isAuthenticated) {
+      // The public payload has no userId, real name, attendance or exercise
+      // score. Fill the unavailable fields rather than inventing them — the
+      // columns that would show them are already role-gated off.
+      return (publicLeaderboardData ?? []).map((entry) => ({
+        userId: '',
+        name: entry.discordUsername,
+        discordUsername: entry.discordUsername,
+        totalScore: entry.totalScore,
+        totalAttendance: 0,
+        maxAttendance: 0,
+        exercisesCompleted: 0,
+        // Authoritative — the server ranks by exercise score first, so this
+        // does not follow from totalScore.
+        rank: entry.rank,
+      }));
+    }
+    return transformLeaderboardData(leaderboardData);
+  }, [isAuthenticated, publicLeaderboardData, leaderboardData]);
 
   const sortedResults = useMemo(() => sortResults(results), [results]);
 
   const cohortName = useMemo(() => formatCohortName(cohortData), [cohortData]);
+
+  usePageMeta(
+    cohortName ? `${cohortName} leaderboard` : 'Leaderboard',
+    cohortName ? `Final standings for the ${cohortName} cohort at Bitshala.` : undefined,
+  );
 
   const [downloadingUserId, setDownloadingUserId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -157,19 +208,52 @@ export const ResultPage: React.FC = () => {
 
   const handleStudentClick = useCallback(
     (student: StudentResult) => {
-      if (!cohortData) return;
+      // Inert for anonymous visitors: the student page shows email, GitHub,
+      // LinkedIn, location and skills, and the public payload has no userId.
+      if (!isAuthenticated || !cohortData || !student.userId) return;
       navigate(`/student/${student.userId}/${cohortData.id}`);
     },
-    [navigate, cohortData],
+    [navigate, cohortData, isAuthenticated],
   );
 
-  const loading = cohortLoading || leaderboardLoading;
-  const error = getErrorMessage(cohortError) || getErrorMessage(leaderboardError);
+  const loading =
+    cohortLoading || (isAuthenticated ? leaderboardLoading : publicLeaderboardLoading);
+  const rawError = cohortError || (isAuthenticated ? leaderboardError : publicLeaderboardError);
+  const error = getErrorMessage(cohortError) ||
+    getErrorMessage(isAuthenticated ? leaderboardError : publicLeaderboardError);
+
+  // The 5 req/s limit is per IP, so an anonymous visitor can be throttled by
+  // someone else's traffic. That deserves a soft "try again" rather than a
+  // red failure state.
+  const throttled = isThrottledError(rawError);
 
   if (loading) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <CircularProgress sx={{ color: '#f97316' }} />
+      </Box>
+    );
+  }
+
+  // An unknown cohort id is a 400 here, not a 404 — a public leaderboard link
+  // is easy to mistype or share stale, so say "not found" rather than surfacing
+  // a bad-request error.
+  if (isAxiosError(rawError) && rawError.response?.status === 400) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
+        <Typography sx={{ color: '#a1a1aa', textAlign: 'center' }}>
+          That cohort doesn&apos;t exist.
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (throttled) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
+        <Typography sx={{ color: '#a1a1aa', textAlign: 'center' }}>
+          This leaderboard is busy right now. Refresh in a moment.
+        </Typography>
       </Box>
     );
   }
@@ -246,16 +330,18 @@ export const ResultPage: React.FC = () => {
               </TableHead>
               <TableBody>
                 {sortedResults.map((student, index) => {
-                  const rank = index + 1;
+                  const rank = student.rank ?? index + 1;
                   const highlight = RANK_HIGHLIGHT[rank];
 
                   return (
                     <TableRow
-                      key={student.userId}
-                      hover
+                      // The public payload has no userId, so fall back to the
+                      // handle to keep keys unique.
+                      key={student.userId || `${student.discordUsername}-${index}`}
+                      hover={isAuthenticated}
                       onClick={() => handleStudentClick(student)}
                       sx={{
-                        cursor: 'pointer',
+                        cursor: isAuthenticated ? 'pointer' : 'default',
                         bgcolor: highlight?.bg ?? 'transparent',
                         borderLeft: highlight ? `3px solid ${highlight.border}` : '3px solid transparent',
                         '&:hover': { bgcolor: highlight ? highlight.bg : 'rgba(255,255,255,0.03)' },

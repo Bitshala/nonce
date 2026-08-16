@@ -4,6 +4,8 @@ import { Box, Typography, Button, CircularProgress } from '@mui/material';
 import { AlertTriangle } from 'lucide-react';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
+import { useAuth } from '../../hooks/useAuth';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { UserRole } from '../../types/enums';
 import GeneralInstructionsContent from '../../components/instructions/GeneralInstructions';
 
@@ -11,23 +13,31 @@ const GeneralInstructions: React.FC = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
-  const { data: userData, isLoading: isLoadingUser } = useUser();
-  const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
+  const { isAuthenticated } = useAuth();
+
+  // Signed out these 401 — the general instructions are public content anyway.
+  const { data: userData, isLoading: isLoadingUser } = useUser(undefined, { enabled: isAuthenticated });
+  const { data: scoresData, isLoading: isLoadingScores } = useMyScores(undefined, { enabled: isAuthenticated });
 
   // Check if user is TA or Admin
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
-  // Check if user has access to any cohort
-  const hasAccess = isAdminOrTA || (scoresData?.cohorts && scoresData.cohorts.length > 0);
+  // Public for anonymous visitors; enrolment-gated for signed-in students.
+  const hasAccess = !isAuthenticated || isAdminOrTA || (scoresData?.cohorts && scoresData.cohorts.length > 0);
 
   const isLoading = isLoadingUser || isLoadingScores;
 
+  usePageMeta(
+    'General instructions',
+    'How Bitshala cohorts work — weekly structure, group discussions, exercises and grading.',
+  );
+
   // Set error if user doesn't have access
   useEffect(() => {
-    if (!isLoading && scoresData && !hasAccess) {
+    if (isAuthenticated && !isLoading && scoresData && !hasAccess) {
       setError('You need to be enrolled in a cohort to access these instructions.');
     }
-  }, [isLoading, scoresData, hasAccess]);
+  }, [isAuthenticated, isLoading, scoresData, hasAccess]);
 
   if (isLoading) {
     return (

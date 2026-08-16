@@ -10,6 +10,8 @@ import { AlertTriangle } from 'lucide-react';
 import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
 import { useMyCohorts, useCohorts } from '../../hooks/cohortHooks';
+import { useAuth } from '../../hooks/useAuth';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { UserRole, CohortType } from '../../types/enums';
 import { cohortTypeToName, toRenderWeeks } from '../../helpers/cohortHelpers';
 import InstructionsLayout from './InstructionsLayout';
@@ -23,30 +25,44 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({ cohortType }) =
   const [activeWeek, setActiveWeek] = useState<number | 'links' | 'exercises'>(1);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: userData, isLoading: isLoadingUser } = useUser();
-  const { data: scoresData, isLoading: isLoadingScores } = useMyScores();
-  const { data: myCohortsData, isLoading: isLoadingCohorts } = useMyCohorts({ page: 0, pageSize: 100 });
+  const { isAuthenticated } = useAuth();
+
+  // Signed out these all 401 — skip them and read the public /cohorts list.
+  const { data: userData, isLoading: isLoadingUser } = useUser(undefined, { enabled: isAuthenticated });
+  const { data: scoresData, isLoading: isLoadingScores } = useMyScores(undefined, { enabled: isAuthenticated });
+  const { data: myCohortsData, isLoading: isLoadingCohorts } = useMyCohorts(
+    { page: 0, pageSize: 100 },
+    { enabled: isAuthenticated },
+  );
   const { data: allCohortsData, isLoading: isLoadingAllCohorts } = useCohorts({ page: 0, pageSize: 100 });
 
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
-  const hasAccess = isAdminOrTA || (scoresData?.cohorts.some(
+  // Curriculum is public. Enrolment only decides whose cohort list we read.
+  const hasAccess = !isAuthenticated || isAdminOrTA || (scoresData?.cohorts.some(
     (record) => record.cohortType === cohortType
   ) ?? false);
 
-  // For Admin/TA: use /cohorts, for Students: use /cohorts/me
-  const source = isAdminOrTA ? allCohortsData : myCohortsData;
+  // Students see their own cohort; staff and anonymous visitors see the latest
+  // season from the public list.
+  const source = isAuthenticated && !isAdminOrTA ? myCohortsData : allCohortsData;
   const apiCohort = source?.records
     .filter((c) => c.type === cohortType)
     .sort((a, b) => b.season - a.season)[0];
 
   const isLoading = isLoadingUser || isLoadingScores || isLoadingCohorts || isLoadingAllCohorts;
 
+  const cohortName = cohortTypeToName(cohortType as CohortType);
+  usePageMeta(
+    cohortName,
+    `Week-by-week curriculum for the Bitshala ${cohortName} cohort — readings, discussion questions and exercises.`,
+  );
+
   useEffect(() => {
-    if (!isLoading && scoresData && !hasAccess) {
+    if (isAuthenticated && !isLoading && scoresData && !hasAccess) {
       setError(`You need to be enrolled in a ${cohortType.replace(/_/g, ' ')} cohort to access these instructions.`);
     }
-  }, [isLoading, scoresData, hasAccess, cohortType]);
+  }, [isAuthenticated, isLoading, scoresData, hasAccess, cohortType]);
 
   if (isLoading) {
     return (
@@ -79,7 +95,7 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({ cohortType }) =
             </Button>
             <Button
               variant="outlined"
-              onClick={() => navigate(-1 as any)}
+              onClick={() => navigate(-1)}
               sx={{ color: '#d4d4d8', borderColor: '#52525b', textTransform: 'none', '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' } }}
             >
               Go Back

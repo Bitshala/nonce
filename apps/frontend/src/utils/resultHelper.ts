@@ -10,6 +10,9 @@ export interface StudentResult {
   totalAttendance: number;
   maxAttendance: number;
   exercisesCompleted: number;
+  // Server-assigned rank, present only on the public leaderboard. When set it
+  // is authoritative — see sortResults.
+  rank?: number;
 }
 
 export interface LeaderboardEntry {
@@ -77,6 +80,14 @@ export const transformLeaderboardData = (
 };
 
 export const sortResults = (results: StudentResult[]): StudentResult[] => {
+  // The public leaderboard arrives pre-ranked. Ranking is primarily by exercise
+  // score and only then by total, so totalScore is deliberately NOT monotonic
+  // down the list — re-sorting it here would disagree with both the
+  // authenticated leaderboard and each member's own view.
+  if (results.some((result) => result.rank !== undefined)) {
+    return [...results].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+  }
+
   return [...results].sort((a, b) => {
     if (b.totalScore !== a.totalScore) {
       return b.totalScore - a.totalScore;
