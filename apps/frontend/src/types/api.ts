@@ -273,6 +273,16 @@ export interface LeaderboardEntryDto {
 
 export type GetCohortLeaderboardResponseDto = LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] };
 
+// GET /scores/cohort/:id/leaderboard/public — public, unauthenticated.
+// Deliberately narrower than LeaderboardEntryDto: no real name, no userId, no
+// attendance, no per-component breakdown. Keep it that way.
+export interface PublicLeaderboardEntryDto {
+  rank: number;
+  discordUsername: string;
+  totalScore: number;
+  maxTotalScore: number;
+}
+
 // =========================
 // Feedback
 // =========================

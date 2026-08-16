@@ -19,6 +19,7 @@ import type {
   ListScoresForCohortAndWeekResponseDto,
   UpdateScoresRequestDto,
   GetCohortLeaderboardResponseDto,
+  PublicLeaderboardEntryDto,
   // Teaching Assistants
   GetTeachingAssistantResponseDto,
   // Certificates
@@ -321,6 +322,19 @@ class ApiService {
       url: `/scores/week/${weekId}/assign-ta-to-group`,
       data: { userId, groupNumber },
     });
+  };
+
+  // Public leaderboard: Discord handle, rank and total score only. Separate
+  // endpoint from getCohortLeaderboard, which returns real names.
+  public getPublicCohortLeaderboard = async (
+    cohortId: string,
+  ): Promise<PublicLeaderboardEntryDto[]> => {
+    const { data } = await this.request<PublicLeaderboardEntryDto[]>({
+      headers: this.getUnauthenticatedRequestHeaders(),
+      method: 'GET',
+      url: `/scores/cohort/${cohortId}/leaderboard/public`,
+    });
+    return data;
   };
 
   public getCohortLeaderboard = async (cohortId: string): Promise<GetCohortLeaderboardResponseDto> => {

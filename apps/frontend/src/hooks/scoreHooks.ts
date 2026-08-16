@@ -5,6 +5,7 @@ import type {
   ListScoresForCohortAndWeekResponseDto,
   UpdateScoresRequestDto,
   GetCohortLeaderboardResponseDto,
+  PublicLeaderboardEntryDto,
 } from '../types/api.ts';
 
 // ===============
@@ -39,6 +40,15 @@ export const useCohortLeaderboard = createUseQuery<
 >(
   ({ cohortId }) => ['scores', 'cohort', cohortId, 'leaderboard'],
   ({ cohortId }) => () => apiService.getCohortLeaderboard(cohortId)
+);
+
+// Public — safe to call signed out. Handle + rank + total score only.
+export const usePublicCohortLeaderboard = createUseQuery<
+  PublicLeaderboardEntryDto[],
+  { cohortId: string }
+>(
+  ({ cohortId }) => ['scores', 'cohort', cohortId, 'leaderboard', 'public'],
+  ({ cohortId }) => () => apiService.getPublicCohortLeaderboard(cohortId)
 );
 
 // ===============
