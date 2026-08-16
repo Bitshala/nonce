@@ -12,6 +12,12 @@ export const { isAxiosError } = axios;
 export const isNetworkError = (error: AxiosError) =>
   error.message?.includes('Network Error') || !error.response;
 
+// The API throttles at 5 requests/sec per IP across all routes. Anonymous
+// visitors share IPs behind NAT, corporate proxies and mobile carriers, so a
+// 429 is often another visitor's burst — transient, and worth retrying.
+export const isThrottledError = (error: unknown): boolean =>
+  isAxiosError(error) && error.response?.status === 429;
+
 // The list endpoints return 400 for invalid filter/search/sort/pagination
 // input (bad enum, pageSize > 100, search too long, …). Callers should treat
 // these as "bad filter input" feedback rather than a generic server failure.
