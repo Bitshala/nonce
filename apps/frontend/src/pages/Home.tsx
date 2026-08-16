@@ -3,14 +3,23 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/enums.ts';
+import { consumeReturnPath } from '../utils/returnPath.ts';
 
+/**
+ * `/` serves double duty: it is the Discord OAuth callback target (the backend
+ * redirects here with `?session_id=`) and the entry point for everyone else.
+ *
+ * Order matters — the callback is handled first, so a returning OAuth redirect
+ * never flashes the wrong screen. Signed-out visitors land on the same
+ * dashboard a student sees; the actions there route them to login.
+ */
 function Home() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
-  const { login, token: storedToken } = useAuth();
-  const { data: user, isLoading, isPending } = useUser(undefined, { enabled: !!storedToken });
+  const { login, token } = useAuth();
+  const { data: user, isLoading } = useUser(undefined, { enabled: !!token });
 
   // Read once and memoize so the effect only cares about the sessionId value
   const sessionId = useMemo(() => searchParams.get('session_id'), [searchParams]);
@@ -22,60 +31,48 @@ function Home() {
   useEffect(() => {
     if (!sessionId) return;
 
-    let cancelled = false;
+    login(sessionId);
+    // Replace current entry to avoid back-button re-login
+    navigate({ pathname: location.pathname }, { replace: true });
+  }, [sessionId, login, navigate, location.pathname]);
 
-    (async () => {
-      try {
-        login(sessionId); // if login is sync, this still works
-      } finally {
-        if (!cancelled) {
-          // Replace current entry to avoid back-button re-login
-          navigate(
-            { pathname: location.pathname },
-            { replace: true }
-          );
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, login, navigate, searchParams, location.pathname]);
-
-  // Once user finished loading, route by auth + role
   useEffect(() => {
-    console.log(isLoading, isPending, sessionId, storedToken, user, hasRedirected.current);
     if (hasRedirected.current) return;
-    if (isLoading) return; // wait until we actually know user/null
 
-    if ((!storedToken && !sessionId) || (!user && !isPending)) {
-      navigate('/login', { replace: true });
+    // Signed out (and no callback in flight): show the same dashboard a student
+    // sees, with nothing enrolled.
+    if (!token && !sessionId) {
       hasRedirected.current = true;
+      navigate('/myDashboard', { replace: true });
       return;
     }
 
-    if (!user) return; // still loading or pending
-
-    const role = user.role;
-
-    if ([UserRole.TEACHING_ASSISTANT, UserRole.ADMIN].includes(role)) {
-      navigate('/select', { replace: true });
-    } else if (role === UserRole.STUDENT) {
-      navigate('/myDashboard', { replace: true });
-    } else {
-      // Fallback if role is unknown
-      navigate('/login', { replace: true });
-    }
+    if (!token) return; // callback still settling
+    if (isLoading || !user) return;
 
     hasRedirected.current = true;
-  }, [isLoading, storedToken, user, navigate]);
+
+    // If they were sent here by the sign-in modal, put them back where they
+    // were rather than on the default landing page.
+    const returnPath = consumeReturnPath();
+    if (returnPath) {
+      navigate(returnPath, { replace: true });
+      return;
+    }
+
+    const role = user.role;
+    if ([UserRole.TEACHING_ASSISTANT, UserRole.ADMIN].includes(role)) {
+      navigate('/select', { replace: true });
+    } else {
+      navigate('/myDashboard', { replace: true });
+    }
+  }, [token, sessionId, isLoading, user, navigate]);
 
   return (
     <div className="min-h-screen bg-zinc-900 flex items-center justify-center font-mono">
       <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-        <p className="text-zinc-400">Processing authentication...</p>
+        <p className="text-zinc-400">Loading...</p>
       </div>
     </div>
   );

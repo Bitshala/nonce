@@ -1,8 +1,8 @@
-import { ReactNode, Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import Sidebar from './Sidebar';
-import { getAuthTokenFromStorage } from '../services/authService';
+import LoginModal from './LoginModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,10 +18,12 @@ const PageFallback = () => (
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
 
-  const hideNavbarRoutes = ['/login', '/unauthorized', '/*'];
-  const showSidebar = !!getAuthTokenFromStorage() && !hideNavbarRoutes.includes(location.pathname);
+  // Signed-out visitors get the same shell as everyone else — the sidebar is
+  // part of the product, not a reward for logging in. Only the routes that
+  // render their own full-screen page opt out.
+  const bareRoutes = ['/unauthorized'];
 
-  if (!showSidebar) {
+  if (bareRoutes.includes(location.pathname)) {
     return <Suspense fallback={<PageFallback />}>{children}</Suspense>;
   }
 
@@ -31,6 +33,8 @@ const Layout = ({ children }: LayoutProps) => {
       <Box component="main" sx={{ flex: 1, overflow: 'auto' }}>
         <Suspense fallback={<PageFallback />}>{children}</Suspense>
       </Box>
+      {/* Rendered here so it overlays whichever page you were on. */}
+      <LoginModal />
     </Box>
   );
 };

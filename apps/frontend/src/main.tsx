@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Box, CircularProgress } from '@mui/material';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
@@ -16,14 +16,12 @@ import 'virtual:uno.css';
 
 // Route components are lazy-loaded so each page ships as its own chunk and is
 // fetched on demand, keeping the initial bundle small. Suspense fallback lives in Layout.
-const Login = lazy(() => import('./pages/Login.tsx'));
+const LoginRedirect = lazy(() => import('./pages/LoginRedirect.tsx'));
 const Home = lazy(() => import('./pages/Home.tsx'));
 const TableView = lazy(() => import('./pages/TableView.tsx'));
 const CohortSelection = lazy(() => import('./pages/CohortSelection.tsx').then((m) => ({ default: m.CohortSelection })));
 const ResultPage = lazy(() => import('./pages/ResultPage.tsx').then((m) => ({ default: m.ResultPage })));
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.tsx'));
-const WeekSelector = lazy(() => import('./pages/Students/weekSelector.tsx'));
-const StudentCohortSelector = lazy(() => import('./pages/Students/studentCohortSelector.tsx'));
 const MBInstructions = lazy(() => import('./pages/Students/MBInstructions.tsx'));
 const LBTCLInstructions = lazy(() => import('./pages/Students/LBTCLInstructions.tsx'));
 const LNInstructions = lazy(() => import('./pages/Students/LNInstructions.tsx'));
@@ -67,16 +65,19 @@ const FellowshipFallback = () => (
   </Box>
 );
 
-const withFellowshipFallback = (node: JSX.Element) => (
+const withFellowshipFallback = (node: ReactElement) => (
   <Suspense fallback={<FellowshipFallback />}>{node}</Suspense>
 );
 
 const routes = [
   {
+    // Kept for old links — redirects to the dashboard with the sign-in modal
+    // open. Signing in itself happens in that modal, not on a page.
     path: '/login',
-    element: <Layout><Login /></Layout>,
+    element: <Layout><LoginRedirect /></Layout>,
   },
   {
+    // OAuth callback target; redirects everyone else to their entry screen.
     path: '/',
     element: <Layout><Home /></Layout>,
   },
@@ -85,14 +86,23 @@ const routes = [
     element: <Layout><ProtectedRoute><CohortSelection /></ProtectedRoute></Layout>,
   },
   {
+    // Full roster with names, handles and per-student grades — staff only.
     path: '/cohort/:cohortId/week/:weekId',
-    element: <Layout><TableView /></Layout>,
+    element: (
+      <Layout>
+        <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+          <TableView />
+        </ProtectedRoute>
+      </Layout>
+    ),
   },
   {
+    // Shows email, GitHub, LinkedIn, location and skills.
     path: '/student/:studentId/:cohortId',
-    element: <Layout><StudentDetailPage /></Layout>,
+    element: <Layout><ProtectedRoute><StudentDetailPage /></ProtectedRoute></Layout>,
   },
   {
+    // Public leaderboard: Discord handle + rank + score.
     path: '/results/:id',
     element: <Layout><ResultPage /></Layout>,
   },
@@ -126,21 +136,15 @@ const routes = [
   },
   {
     path:'/me',
-    element: <Layout><StudentProfileData /></Layout>
+    element: <Layout><ProtectedRoute><StudentProfileData /></ProtectedRoute></Layout>
   },
-    {
-      path: '/weekSelector',
-      element: <Layout><WeekSelector /></Layout>,
-    },
-        {
-      path: '/cohortSelector',
-      element: <Layout><StudentCohortSelector /></Layout>,
-    },
     {
       path: '/*',
       element: <Layout><MyError /></Layout>,
     },
       {
+      // Entry point for signed-out visitors too — shows every cohort with the
+      // join actions routing to login.
       path: '/myDashboard',
       element: <Layout><MyStudentDashboard /></Layout>,
     },
@@ -149,12 +153,13 @@ const routes = [
       element: <Layout><ProfilePage /></Layout>,
     },
     {
+      // Public curriculum for a single cohort.
       path: '/:cohortId/instructions',
       element: <Layout><MyCohortInstructions /></Layout>,
     },
     {
       path: '/cohortfeedback',
-      element: <Layout><CohortFeedback /></Layout>,
+      element: <Layout><ProtectedRoute><CohortFeedback /></ProtectedRoute></Layout>,
     },
     {
       // Full-screen GD presentation — rendered outside Layout (no sidebar), staff only.
