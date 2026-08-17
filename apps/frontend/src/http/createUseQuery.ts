@@ -89,7 +89,7 @@ export const createUseQuery = <TQueryFnData, TPayload = unknown>(
     ): UseQueryResult<TData, TError> & CustomQueryResult => {
         const location = useLocation();
         const [searchParams] = useSearchParams();
-        const { logout } = useAuth();
+        const { logout, isAuthenticated } = useAuth();
         const queryCacheKey = keyResolver(payload);
         const queryMetadata: FnResolverMetadata = {
             getSearchParam: (key: string) => searchParams.get(key),
@@ -126,13 +126,17 @@ export const createUseQuery = <TQueryFnData, TPayload = unknown>(
                 if (!isAxiosError(axiosError)) {
                     throw new Error('Error is not an AxiosError');
                 }
-                if (axiosError.response?.status === 401) {
+                // Only bounce someone who actually had a session. Public pages
+                // fire authenticated queries too (they render for both signed-in
+                // and anonymous visitors), and logout() navigates to /login —
+                // without this guard a browsing visitor gets thrown out.
+                if (axiosError.response?.status === 401 && isAuthenticated) {
                     logout();
                 }
 
                 onError?.(query.error);
             }
-        }, [query.error, location.pathname, logout, onError]);
+        }, [query.error, location.pathname, logout, isAuthenticated, onError]);
 
         useEffect(() => {
             const currentData = query.data;

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static public routes only. Cohort-specific pages (/:cohortId/instructions)
+  and leaderboards (/results/:id) are intentionally absent — the former are
+  reachable by crawling /programs, the latter are disallowed in robots.txt.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://app.bitshala.org/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/myDashboard</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/general-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/mb-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/lbtcl-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/ln-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/bpd-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/pb-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://app.bitshala.org/bbr-instructions</loc>
+    <priority>0.8</priority>
+  </url>
+</urlset>

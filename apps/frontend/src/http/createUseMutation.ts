@@ -54,7 +54,7 @@ export const createUseMutation = <TData = unknown, TPayload = void>(
         CustomMutationResult<TPayload> => {
         const queryClient = useQueryClient();
         const [searchParams] = useSearchParams();
-        const { logout } = useAuth();
+        const { logout, isAuthenticated } = useAuth();
         const debounceTimeoutRef = useRef<number | undefined>(undefined);
         const fnResolverMeta: FnResolverMetadata = {
             getSearchParam: (key: string) => searchParams.get(key),
@@ -66,10 +66,10 @@ export const createUseMutation = <TData = unknown, TPayload = void>(
             onError: async (err, variables, context) => {
                 const axiosError = err as AxiosError;
 
-                if (axiosError.response) {
-                    if (axiosError.response?.status === 401) {
-                        logout();
-                    }
+                // Only bounce someone who actually had a session — see the
+                // matching guard in createUseQuery.
+                if (axiosError.response?.status === 401 && isAuthenticated) {
+                    logout();
                 }
 
                 if (onError) {

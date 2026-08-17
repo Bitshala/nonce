@@ -12,7 +12,6 @@ import {
   Box,
   CircularProgress,
 } from '@mui/material';
-import StatusBadge from './StatusBadge';
 
 type CohortTableProps = {
   cohorts: CohortRow[];
@@ -43,6 +42,22 @@ const headerCellSx = {
   py: 2,
   px: 3,
   whiteSpace: 'nowrap' as const,
+};
+
+// The actions column is pinned right so Join / Waitlist / Leaderboard stay
+// reachable when the table scrolls horizontally on narrower screens. A sticky
+// cell can't be transparent or the scrolling content shows through, so this is
+// the flat equivalent of the container's rgba(39,39,42,0.5) over black. It
+// deliberately does not follow the row hover — the colour change on a pinned
+// column reads as a glitch rather than as feedback.
+const STICKY_BG = '#141415';
+
+const stickyRightSx = {
+  position: 'sticky' as const,
+  right: 0,
+  backgroundColor: STICKY_BG,
+  // Hints that content continues underneath once the table scrolls.
+  boxShadow: '-8px 0 8px -8px rgba(0,0,0,0.8)',
 };
 
 const bodyCellSx = {
@@ -89,7 +104,6 @@ const CohortTable = ({
           <TableRow>
             <TableCell sx={{ ...headerCellSx, maxWidth: 220 }}>Cohort</TableCell>
             <TableCell sx={headerCellSx}>Season</TableCell>
-            <TableCell sx={headerCellSx}>Status</TableCell>
             {hasWeeks && (
               <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Weeks</TableCell>
             )}
@@ -104,7 +118,9 @@ const CohortTable = ({
             )}
             <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>Start Date</TableCell>
             <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>End Date</TableCell>
-            {actions && <TableCell sx={{ ...headerCellSx, textAlign: 'right' }}>Actions</TableCell>}
+            {actions && (
+              <TableCell sx={{ ...headerCellSx, ...stickyRightSx, zIndex: 3 }}>Actions</TableCell>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -137,9 +153,6 @@ const CohortTable = ({
               </TableCell>
               <TableCell sx={bodyCellSx}>
                 <Typography variant="body2" sx={{ color: '#d4d4d8' }}>S{cohort.season}</Typography>
-              </TableCell>
-              <TableCell sx={bodyCellSx}>
-                <StatusBadge status={cohort.status} />
               </TableCell>
               {hasWeeks && (
                 <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
@@ -190,9 +203,12 @@ const CohortTable = ({
                 <Typography variant="body2" sx={{ color: '#a1a1aa' }}>{formatDate(cohort.endDate)}</Typography>
               </TableCell>
               {actions && (
-                <TableCell sx={{ ...bodyCellSx, textAlign: 'right' }}>
+                <TableCell sx={{ ...bodyCellSx, ...stickyRightSx, zIndex: 1 }}>
                   <Box
-                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}
+                    // flex-start, not flex-end: rows carry different numbers of
+                    // actions, and right-aligning them leaves the leading icon
+                    // at a different x on every row.
+                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1 }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {actions(cohort)}

@@ -23,9 +23,9 @@ import {
   ChevronUp,
   GraduationCap,
   LayoutDashboard,
-  User,
   Users,
   LogOut,
+  LogIn,
   BookOpen,
   BarChart3,
   Award,
@@ -52,9 +52,9 @@ const adminNavItems: NavItem[] = [
   { label: 'Cohort Feedback', path: '/admin/feedback', icon: MessageSquare },
 ];
 
+// Profile is reached from the button on the dashboard header, not from here.
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/myDashboard', icon: LayoutDashboard },
-  { label: 'Profile', path: '/me', icon: User },
 ];
 
 const instructionLinks = [
@@ -101,8 +101,9 @@ const getInitial = (name: string | null | undefined): string => {
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: user } = useUser();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated, openLogin } = useAuth();
+  // Signed out these 401; the nav renders from static config regardless.
+  const { data: user } = useUser(undefined, { enabled: isAuthenticated });
 
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [instructionsHover, setInstructionsHover] = useState(false);
@@ -180,7 +181,7 @@ const Sidebar = () => {
 
   // My Fellowships / My Reports only make sense once an application has been
   // approved — approval is what creates the user's first fellowship.
-  const myFellowshipsQuery = useMyFellowships({ page: 0, pageSize: 1 });
+  const myFellowshipsQuery = useMyFellowships({ page: 0, pageSize: 1 }, { enabled: isAuthenticated });
   const hasFellowship = (myFellowshipsQuery.data?.totalRecords ?? 0) > 0;
   const fellowshipStudentLinks = hasFellowship
     ? [...baseFellowshipStudentLinks, ...awardedFellowshipStudentLinks]
@@ -658,27 +659,29 @@ const Sidebar = () => {
           </Tooltip>
         )}
 
-        {/* Logout */}
-        <Tooltip title={collapsed ? 'Logout' : ''} placement="right" arrow>
+        {/* Sign in / Logout */}
+        <Tooltip title={collapsed ? (isAuthenticated ? 'Logout' : 'Sign in') : ''} placement="right" arrow>
           <ListItemButton
-            onClick={logout}
+            onClick={isAuthenticated ? logout : openLogin}
             sx={{
               borderRadius: 1.5,
               py: 1,
               px: collapsed ? 0 : 2,
               justifyContent: collapsed ? 'center' : 'flex-start',
-              color: '#a1a1aa',
-              '&:hover': { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.1)' },
+              color: isAuthenticated ? '#a1a1aa' : '#fb923c',
+              '&:hover': isAuthenticated
+                ? { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.1)' }
+                : { color: '#fdba74', bgcolor: 'rgba(249,115,22,0.1)' },
             }}
           >
             {collapsed ? (
               <ListItemIcon sx={{ minWidth: 0, color: 'inherit', justifyContent: 'center' }}>
-                <LogOut size={20} strokeWidth={1.8} />
+                {isAuthenticated ? <LogOut size={20} strokeWidth={1.8} /> : <LogIn size={20} strokeWidth={1.8} />}
               </ListItemIcon>
             ) : (
               <ListItemText
-                primary="Logout"
-                primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                primary={isAuthenticated ? 'Logout' : 'Sign in'}
+                primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: isAuthenticated ? 500 : 600 }}
               />
             )}
           </ListItemButton>

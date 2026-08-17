@@ -1,28 +1,6 @@
 // Sort types
 export type SortType = 'default' | 'total_score_asc' | 'total_score_desc' | 'exercise_score_asc' | 'exercise_score_desc';
 
-// API Response Types
-export interface ApiStudentRecord {
-  week: number;
-  name: string;
-  mail: string;
-  group_id: string;
-  ta: string;
-  attendance: string;
-  fa: number;
-  fb: number;
-  fc: number;
-  fd: number;
-  bonus_attempt: number;
-  bonus_answer_quality: number;
-  bonus_follow_up: number;
-  exercise_submitted: string;
-  exercise_test_passing: string;
-  exercise_good_structure: string;
-  exercise_good_documentation: string;
-  total: number;
-}
-
 // Score breakdowns
 export interface GdScore {
   fa: number;

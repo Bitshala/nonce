@@ -16,10 +16,11 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { BookOpen, User, Eye, Download, UserPlus, Clock, MessageSquare, CalendarPlus } from 'lucide-react';
+import { BookOpen, User, Eye, Download, UserPlus, Clock, MessageSquare, CalendarPlus, Trophy } from 'lucide-react';
 import { useMyCohorts, useCohorts, useJoinCohort, useJoinCohortWaitlist } from '../../hooks/cohortHooks';
 import apiService from '../../services/apiService';
 import { useUser } from '../../hooks/userHooks';
+import { useAuth } from '../../hooks/useAuth';
 import { useMyCertificates, useDownloadCertificate } from '../../hooks/certificateHooks';
 import { CohortType } from '../../types/enums';
 import Tabs from '../../components/ui/Tabs';
@@ -45,12 +46,18 @@ type DashboardCohortRow = CohortRow & {
 
 const MyStudentDashboard = () => {
   const navigate = useNavigate();
-  const { data, isLoading } = useMyCohorts({ page: 0, pageSize: 100 });
+  const { isAuthenticated, openLogin } = useAuth();
+  // Signed-out visitors see the same screen with nothing enrolled — the "my"
+  // queries would just 401, so skip them. /cohorts is public.
+  const { data, isLoading } = useMyCohorts(
+    { page: 0, pageSize: 100 },
+    { enabled: isAuthenticated },
+  );
   const { data: allCohortsData } = useCohorts({ page: 0, pageSize: 100 });
   const { mutate: joinCohort } = useJoinCohort();
   const { mutate: joinWaitlist } = useJoinCohortWaitlist();
-  const { data: userData } = useUser();
-  const { data: myCertificates } = useMyCertificates();
+  const { data: userData } = useUser(undefined, { enabled: isAuthenticated });
+  const { data: myCertificates } = useMyCertificates(undefined, { enabled: isAuthenticated });
   const { mutate: downloadCertificate, isPending: isDownloading } = useDownloadCertificate();
 
   const [activeTab, setActiveTab] = useState<string>('Active');
@@ -156,6 +163,12 @@ const MyStudentDashboard = () => {
   })();
 
   const handleJoinCohort = (cohortId: string, cohortName: string) => {
+    // Signed out, joining is what we want them to sign in for. The modal
+    // keeps them on the dashboard so they don't lose the cohort they picked.
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
     if (!isProfileComplete(userData)) {
       navigate('/me', { state: { showEmailPopup: true } });
       return;
@@ -164,6 +177,10 @@ const MyStudentDashboard = () => {
   };
 
   const handleJoinWaitlist = (cohortId: string, cohortType: CohortType) => {
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
     if (!isProfileComplete(userData)) {
       navigate('/me', { state: { showEmailPopup: true } });
       return;
@@ -299,7 +316,7 @@ const MyStudentDashboard = () => {
         <Button
           variant="outlined"
           startIcon={<User size={16} />}
-          onClick={() => navigate('/me')}
+          onClick={() => (isAuthenticated ? navigate('/me') : openLogin())}
           sx={{
             color: '#5eead4',
             borderColor: 'rgba(20,184,166,0.25)',
@@ -327,27 +344,45 @@ const MyStudentDashboard = () => {
           emptyMessage={emptyCohortsMessage}
           onRowClick={(cohort) => {
             const row = cohort as DashboardCohortRow;
+            // Clicking a row only ever navigates. Joining is a commitment and
+            // belongs to the explicit Join / Waitlist buttons — it used to fire
+            // from anywhere in the row, which made it far too easy to sign up
+            // for a cohort by accident.
             if (row.enrolled && userData?.id) {
               navigate(`/student/${userData.id}/${row.id}`);
               return;
             }
-
-            if (!row.enrolled) {
-              if (row.registrationOpen) {
-                handleJoinCohort(row.id, formatCohortType(row.type));
-              } else if (row.cohortType) {
-                handleJoinWaitlist(row.id, row.cohortType);
-              }
-            }
+            // Not enrolled: show what the cohort actually covers. Public, so
+            // this works signed out too.
+            navigate(`/${row.id}/instructions`);
           }}
           actions={(cohort) => {
             const row = cohort as DashboardCohortRow;
             const isJoining = loadingCohortId === row.id;
 
+            // Standings are public — no enrolment or account needed. Hidden for
+            // Upcoming cohorts, which have nothing to rank yet.
+            const leaderboardAction = row.status !== 'Upcoming' ? (
+              <Tooltip title="View leaderboard" arrow>
+                <IconButton
+                  size="small"
+                  onClick={() => navigate(`/results/${row.id}`)}
+                  sx={{
+                    color: '#facc15',
+                    bgcolor: 'rgba(250,204,21,0.1)',
+                    '&:hover': { bgcolor: 'rgba(250,204,21,0.2)' },
+                  }}
+                >
+                  <Trophy size={16} />
+                </IconButton>
+              </Tooltip>
+            ) : null;
+
             if (row.enrolled) {
               const certificate = myCertificates?.find((c) => c.cohortId === row.id);
               return (
                 <>
+                  {leaderboardAction}
                   <Tooltip title="View cohort details" arrow>
                     <IconButton
                       size="small"
@@ -424,6 +459,8 @@ const MyStudentDashboard = () => {
 
             if (row.registrationOpen) {
               return (
+                <>
+                {leaderboardAction}
                 <Button
                   size="small"
                   startIcon={
@@ -440,17 +477,20 @@ const MyStudentDashboard = () => {
                     fontWeight: 500,
                     fontSize: '0.75rem',
                     px: 1.5,
-                    minWidth: 'auto',
+                    minWidth: 104,
                     '&:hover': { bgcolor: 'rgba(34,197,94,0.2)' },
                     '&.Mui-disabled': { color: '#4ade80', opacity: 0.5 },
                   }}
                 >
                   Join
                 </Button>
+                </>
               );
             }
 
             return (
+              <>
+              {leaderboardAction}
               <Button
                 size="small"
                 startIcon={
@@ -467,13 +507,14 @@ const MyStudentDashboard = () => {
                   fontWeight: 500,
                   fontSize: '0.75rem',
                   px: 1.5,
-                  minWidth: 'auto',
+                  minWidth: 104,
                   '&:hover': { bgcolor: 'rgba(59,130,246,0.2)' },
                   '&.Mui-disabled': { color: '#60a5fa', opacity: 0.5 },
                 }}
               >
                 Waitlist
               </Button>
+              </>
             );
           }}
         />

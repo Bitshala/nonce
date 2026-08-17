@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
@@ -11,24 +11,33 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const { data: user, isLoading } = useUser();
+  const { isAuthenticated, openLogin } = useAuth();
+  // Signed out this just 401s, and the redirect below doesn't need it.
+  const { data: user, isLoading } = useUser(undefined, { enabled: isAuthenticated });
 
   useEffect(() => {
-    // If not authenticated, redirect to login
+    // Signing in happens in the modal, so a guarded route drops you on the
+    // public dashboard with it open rather than showing an interstitial page.
+    // `replace` keeps the unreachable route out of history — pushing would let
+    // Back land on it and re-run this guard.
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/myDashboard', { replace: true });
+      openLogin();
       return;
     }
 
-    // If authenticated but user data is loaded and doesn't have required role
+    // Signed in but with the wrong role is a dead end, so send them there.
     if (!isLoading && user && requiredRole) {
       const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
       if (!allowedRoles.includes(user.role)) {
-        navigate('/unauthorized');
+        navigate('/unauthorized', { replace: true });
       }
     }
-  }, [isAuthenticated, isLoading, user, requiredRole, navigate]);
+  }, [isAuthenticated, isLoading, user, requiredRole, navigate, openLogin]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -40,11 +49,6 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         </div>
       </div>
     );
-  }
-
-  // If not authenticated, don't render anything (will redirect)
-  if (!isAuthenticated) {
-    return null;
   }
 
   // If user doesn't have required role, don't render anything (will redirect)

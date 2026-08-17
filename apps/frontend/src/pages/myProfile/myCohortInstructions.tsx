@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCohort } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
+import { useAuth } from '../../hooks/useAuth';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { UserRole } from '../../types/enums';
 import { toRenderWeeks } from '../../helpers/cohortHelpers';
 import InstructionsLayout from '../../components/instructions/InstructionsLayout';
@@ -11,14 +13,24 @@ const MyCohortInstructions: React.FC = () => {
   const navigate = useNavigate();
   const [activeWeek, setActiveWeek] = useState<number | 'links' | 'exercises'>(1);
 
+  const { isAuthenticated } = useAuth();
+
   const { data: cohortData, isLoading: isLoadingCohort } = useCohort(cohortId);
-  const { data: userData, isLoading: isLoadingUser } = useUser();
+  // Signed out this 401s; the cohort content itself is public.
+  const { data: userData, isLoading: isLoadingUser } = useUser(undefined, { enabled: isAuthenticated });
 
   const isAdminOrTA = userData?.role === UserRole.ADMIN || userData?.role === UserRole.TEACHING_ASSISTANT;
 
   const isLoading = isLoadingCohort || isLoadingUser;
 
   const weeks = useMemo(() => (cohortData ? toRenderWeeks(cohortData) : []), [cohortData]);
+
+  usePageMeta(
+    cohortData?.displayName,
+    cohortData
+      ? `Week-by-week curriculum for the Bitshala ${cohortData.displayName} cohort.`
+      : undefined,
+  );
 
   if (isLoading) {
     return (

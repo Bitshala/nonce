@@ -1,0 +1,31 @@
+User-agent: *
+
+# Publicly viewable
+Allow: /$
+Allow: /myDashboard
+Allow: /general-instructions
+Allow: /mb-instructions
+Allow: /lbtcl-instructions
+Allow: /ln-instructions
+Allow: /bpd-instructions
+Allow: /pb-instructions
+Allow: /bbr-instructions
+
+# Leaderboards are publicly viewable but deliberately not indexed: they carry
+# individual Discord handles and scores, and being shareable by link is a
+# different thing from being searchable. Remove this to allow indexing.
+Disallow: /results/
+
+# Requires a session.
+Disallow: /admin/
+Disallow: /fellowship/
+Disallow: /student/
+Disallow: /cohort/
+Disallow: /select
+Disallow: /cohort-metrics
+Disallow: /me
+Disallow: /cohortfeedback
+Disallow: /login
+Disallow: /unauthorized
+
+Sitemap: https://app.bitshala.org/sitemap.xml
