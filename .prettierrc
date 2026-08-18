@@ -1,0 +1,31 @@
+{
+  "singleQuote": true,
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": "apps/backend/**/*.ts",
+      "options": {
+        "tabWidth": 4,
+        "trailingComma": "all"
+      }
+    },
+    {
+      "files": ["apps/backend/**/*.{yaml,yml,json}"],
+      "options": {
+        "tabWidth": 2,
+        "trailingComma": "all"
+      }
+    },
+    {
+      "files": ["apps/frontend/**/*.{ts,tsx,js,jsx}", "packages/shared/**/*.ts"],
+      "options": {
+        "tabWidth": 2,
+        "trailingComma": "es5",
+        "printWidth": 80,
+        "semi": true,
+        "bracketSpacing": true,
+        "arrowParens": "avoid"
+      }
+    }
+  ]
+}

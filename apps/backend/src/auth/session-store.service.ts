@@ -29,8 +29,12 @@ export class SessionStoreService {
     }
 
     async get(sessionId: string): Promise<SessionData | null> {
-        return await this.cacheManager.get<SessionData>(
-            this.generateCacheKey(sessionId),
+        // cache-manager reports a miss as undefined; this service's callers are
+        // typed against null, so normalise at the boundary.
+        return (
+            (await this.cacheManager.get<SessionData>(
+                this.generateCacheKey(sessionId),
+            )) ?? null
         );
     }
 
@@ -41,7 +45,7 @@ export class SessionStoreService {
     async update(sessionId: string, data: Partial<SessionData>): Promise<void> {
         const key = this.generateCacheKey(sessionId);
         const raw: SessionData | null =
-            await this.cacheManager.get<SessionData>(key);
+            (await this.cacheManager.get<SessionData>(key)) ?? null;
         if (!raw) return;
 
         const merged: SessionData = { ...raw, ...data };

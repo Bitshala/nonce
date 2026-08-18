@@ -1,0 +1,38 @@
+{
+  "name": "nonce",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:backend": "npm run start:dev -w @nonce/backend",
+    "dev:frontend": "npm run dev -w @nonce/frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @nonce/backend",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "overrides": {
+    "multer": "^2.2.0",
+    "js-yaml": "^5.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "apps/backend/**/*.ts": [
+      "eslint --fix",
+      "bash -c 'npm run typecheck -w @nonce/backend'"
+    ],
+    "apps/backend/**/*.{ts,yaml,json}": [
+      "prettier --write"
+    ]
+  }
+}

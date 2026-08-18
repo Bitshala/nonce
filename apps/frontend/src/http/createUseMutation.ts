@@ -63,7 +63,9 @@ export const createUseMutation = <TData = unknown, TPayload = void>(
 
         const mutation = useMutation<TData, TError, TPayload, TContext>({
             mutationFn: async (payload) => mutationFn(payload, fnResolverMeta),
-            onError: async (err, variables, context) => {
+            // Forward every argument react-query hands us. The third is the
+            // onMutate result; the fourth is the mutation context.
+            onError: async (err, variables, onMutateResult, context) => {
                 const axiosError = err as AxiosError;
 
                 // Only bounce someone who actually had a session — see the
@@ -73,12 +75,12 @@ export const createUseMutation = <TData = unknown, TPayload = void>(
                 }
 
                 if (onError) {
-                    await onError(err, variables, context);
+                    await onError(err, variables, onMutateResult, context);
                 }
             },
-            onSuccess: async (data, variables, context) => {
+            onSuccess: async (data, variables, onMutateResult, context) => {
                 if (onSuccess) {
-                    onSuccess(data, variables, context);
+                    onSuccess(data, variables, onMutateResult, context);
                 }
 
                 const { queryInvalidation } = options;
