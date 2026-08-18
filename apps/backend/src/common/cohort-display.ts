@@ -1,24 +1,14 @@
-import { CohortType } from '@/common/enum';
+import { CohortType, lookupCohortFullName } from '@nonce/shared';
 import { ServiceError } from '@/common/errors';
 
 /**
- * Human-readable, full display names per cohort type. This is the single source
- * of truth for cohort display names — consumed by both the mail templates and
- * the cohorts API response. Names are not derivable from the enum value (they
- * contain articles/casing the slug transform loses), so they are mapped here.
+ * The name table itself lives in @nonce/shared (see COHORT_FULL_NAMES) so the
+ * frontend renders identical strings. This wrapper keeps the backend's strict
+ * behaviour: server-side, an unrecognised cohort type means our own data is
+ * wrong, so it raises a ServiceError rather than degrading to a placeholder.
  */
-const COHORT_FULL_NAMES: Record<CohortType, string> = {
-    [CohortType.MASTERING_BITCOIN]: 'Mastering Bitcoin',
-    [CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE]:
-        'Learning Bitcoin from the Command Line',
-    [CohortType.PROGRAMMING_BITCOIN]: 'Programming Bitcoin',
-    [CohortType.BITCOIN_PROTOCOL_DEVELOPMENT]: 'Bitcoin Protocol Development',
-    [CohortType.MASTERING_LIGHTNING_NETWORK]: 'Mastering the Lightning Network',
-    [CohortType.BUILDING_BITCOIN_IN_RUST]: 'Building Bitcoin in Rust',
-};
-
 export function getCohortFullName(cohortType: CohortType): string {
-    const name = COHORT_FULL_NAMES[cohortType];
+    const name = lookupCohortFullName(cohortType);
     if (!name) {
         throw new ServiceError(
             `Unknown cohort type encountered: ${cohortType}`,

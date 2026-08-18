@@ -1,5 +1,5 @@
 import type { GetFeedbackResponseDto } from '../types/api';
-import { ComponentRating, type CohortType } from '../types/enums';
+import { ComponentRating, type CohortType } from '@nonce/shared';
 
 export const RATING_SCORE: Record<ComponentRating, number> = {
   [ComponentRating.NOT_AT_ALL]: 1,

@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../types/enums';
+import { UserRole } from '@nonce/shared';
 
 interface ProtectedRouteProps {
   children: ReactNode;

@@ -1,5 +1,5 @@
 import { Chip } from '@mui/material';
-import type { UserRole } from '../../types/enums.ts';
+import type { UserRole } from '@nonce/shared';
 import { USER_ROLE_COLORS, formatUserRole } from '../../utils/userFormat.ts';
 
 interface Props {

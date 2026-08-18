@@ -22,7 +22,7 @@ import apiService from '../../services/apiService';
 import { useUser } from '../../hooks/userHooks';
 import { useAuth } from '../../hooks/useAuth';
 import { useMyCertificates, useDownloadCertificate } from '../../hooks/certificateHooks';
-import { CohortType } from '../../types/enums';
+import { CohortType } from '@nonce/shared';
 import Tabs from '../../components/ui/Tabs';
 import CohortTable from '../../components/ui/CohortTable';
 import type { CohortRow } from '../../components/ui/CohortTable';

@@ -1,4 +1,4 @@
-import type { CohortComponent, ComponentRating, OpportunityInterest, FellowshipInterest } from './enums';
+import type { CohortComponent, ComponentRating, OpportunityInterest, FellowshipInterest } from '@nonce/shared';
 
 export type NotificationType = 'success' | 'error';
 

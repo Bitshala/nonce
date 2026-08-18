@@ -58,7 +58,7 @@ import {
   FellowshipType,
   type FellowshipApplicationProposalWriteDto,
 } from '../../types/fellowship';
-import { CohortType, EducationCategory } from '../../types/enums';
+import { CohortType, EducationCategory } from '@nonce/shared';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
 import { COHORT_TYPES } from '../../utils/cohortUtils';
 import fellowshipService from '../../services/fellowshipService';

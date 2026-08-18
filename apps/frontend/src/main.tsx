@@ -6,7 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import { queryClient } from './http/queryClient.ts';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
-import { UserRole } from './types/enums.ts';
+import { UserRole } from '@nonce/shared';
 import Layout from './components/Layout.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import RouteErrorPage from './components/RouteErrorPage.tsx';

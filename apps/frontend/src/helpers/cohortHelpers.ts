@@ -1,45 +1,24 @@
-import { CohortType } from '../types/enums.ts';
+import {
+  cohortInitials,
+  lookupCohortFullName,
+  lookupCohortShortName,
+} from '@nonce/shared';
 import apiService from '../services/apiService.ts';
 import type { CohortWeekQuestion, GetCohortResponseDto } from '../types/api.ts';
 import type { RenderQuestion, RenderWeek } from '../types/instructions.ts';
 
-export const cohortTypeToName = (type: CohortType) : string => {
-  switch (type) {
-    case CohortType.MASTERING_BITCOIN:
-      return 'Mastering Bitcoin';
-    case CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE:
-      return 'Learning Bitcoin from the Command Line';
-    case CohortType.PROGRAMMING_BITCOIN:
-      return 'Programming Bitcoin';
-    case CohortType.BITCOIN_PROTOCOL_DEVELOPMENT:
-      return 'Bitcoin Protocol Development';
-    case CohortType.MASTERING_LIGHTNING_NETWORK:
-      return 'Mastering Lightning Network';
-    case CohortType.BUILDING_BITCOIN_IN_RUST:
-      return 'Building Bitcoin in Rust';
-    default:
-      return 'Unknown Cohort';
-  }
-}
+// The name tables live in @nonce/shared so the backend's mail templates and API
+// responses render identical strings. These wrappers keep the frontend's lenient
+// behaviour: a deployed bundle can be older than the API, so an unrecognised
+// cohort type degrades to a placeholder rather than throwing.
+//
+// Note this previously said 'Mastering Lightning Network' while the backend said
+// 'Mastering the Lightning Network'. The backend spelling is now authoritative.
+export const cohortTypeToName = (type: string): string =>
+  lookupCohortFullName(type) ?? 'Unknown Cohort';
 
-export const cohortTypeToShortName = (type: string): string => {
-  switch (type) {
-    case CohortType.MASTERING_BITCOIN:
-      return 'MB';
-    case CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE:
-      return 'LBTCL';
-    case CohortType.PROGRAMMING_BITCOIN:
-      return 'PB';
-    case CohortType.BITCOIN_PROTOCOL_DEVELOPMENT:
-      return 'BPD';
-    case CohortType.MASTERING_LIGHTNING_NETWORK:
-      return 'MLN';
-    case CohortType.BUILDING_BITCOIN_IN_RUST:
-      return 'BBR';
-    default:
-      return type.split('_').map((w) => w[0]).join('');
-  }
-}
+export const cohortTypeToShortName = (type: string): string =>
+  lookupCohortShortName(type) ?? cohortInitials(type);
 
 export const formatCohortDate = (isoDate: string) : string => {
   const date = new Date(isoDate);

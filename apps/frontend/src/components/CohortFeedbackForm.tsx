@@ -6,7 +6,7 @@ import {
   ComponentRating,
   FellowshipInterest,
   OpportunityInterest,
-} from '../types/enums';
+} from '@nonce/shared';
 import type { FeedbackFormData } from '../types/feedback';
 
 interface Props {

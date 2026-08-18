@@ -5,7 +5,7 @@ import {
   useUpdateApplicationNote,
 } from '../../hooks/fellowshipHooks';
 import { useUser } from '../../hooks/userHooks';
-import { UserRole } from '../../types/enums';
+import { UserRole } from '@nonce/shared';
 import InternalNotes from './InternalNotes';
 
 /**

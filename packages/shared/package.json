@@ -1,0 +1,55 @@
+{
+  "name": "@nonce/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The wire contract shared by @nonce/backend and @nonce/frontend: enums, scoring constants, pure display helpers, and DTO interfaces.",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./enums": {
+      "types": "./dist/cjs/enums.d.ts",
+      "import": "./dist/esm/enums.js",
+      "require": "./dist/cjs/enums.js"
+    },
+    "./constants": {
+      "types": "./dist/cjs/constants.d.ts",
+      "import": "./dist/esm/constants.js",
+      "require": "./dist/cjs/constants.js"
+    },
+    "./cohort-display": {
+      "types": "./dist/cjs/cohort-display.d.ts",
+      "import": "./dist/esm/cohort-display.js",
+      "require": "./dist/cjs/cohort-display.js"
+    },
+    "./dto": {
+      "types": "./dist/cjs/dto/index.d.ts",
+      "import": "./dist/esm/dto/index.js",
+      "require": "./dist/cjs/dto/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "enums": ["./dist/cjs/enums.d.ts"],
+      "constants": ["./dist/cjs/constants.d.ts"],
+      "cohort-display": ["./dist/cjs/cohort-display.d.ts"],
+      "dto": ["./dist/cjs/dto/index.d.ts"]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }, null, 2) + '\\n')\"",
+    "dev": "tsc -p tsconfig.cjs.json --watch",
+    "typecheck": "tsc -p tsconfig.cjs.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3"
+  }
+}

@@ -18,7 +18,7 @@ import {
   type SeasonRatingPoint,
 } from '../utils/feedbackRatingUtils';
 import type { GetCohortResponseDto, GetFeedbackResponseDto } from '../types/api';
-import type { CohortType } from '../types/enums';
+import type { CohortType } from '@nonce/shared';
 
 /** Backend rejects pageSize > 100 */
 const FEEDBACK_PAGE_SIZE = 100;

@@ -1,15 +1,8 @@
-import { CohortType, UserRole, ComponentRating, CohortComponent, OpportunityInterest, FellowshipInterest } from './enums.ts';
+import { CohortType, UserRole, ComponentRating, CohortComponent, OpportunityInterest, FellowshipInterest } from '@nonce/shared';
 
 export interface PaginatedQueryDto {
   pageSize: number;
   page: number;
-}
-
-// Shared sort direction for the server-side list endpoints. Uppercase to match
-// the backend enum exactly — anything else is rejected with a 400.
-export enum SortOrder {
-  ASC = 'ASC',
-  DESC = 'DESC',
 }
 
 export interface PaginatedDataDto<TData> {

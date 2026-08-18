@@ -39,7 +39,7 @@ import {
   type GetFellowshipReportResponseDto,
   type GetFellowshipResponseDto,
 } from '../../../types/fellowship';
-import { SortOrder } from '../../../types/api';
+import { SortOrder } from '@nonce/shared';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';
 import { formatFellowshipType } from '../../../utils/fellowshipFormat';
 

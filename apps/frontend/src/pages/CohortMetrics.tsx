@@ -17,7 +17,7 @@ import apiService from '../services/apiService';
 import { computeStatus } from '../utils/cohortUtils';
 import { cohortTypeToName, cohortTypeToShortName } from '../helpers/cohortHelpers';
 import type { LeaderboardEntryDto, GetCohortLeaderboardResponseDto } from '../types/api';
-import type { CohortType } from '../types/enums';
+import type { CohortType } from '@nonce/shared';
 
 const normalizeLeaderboard = (data: GetCohortLeaderboardResponseDto): LeaderboardEntryDto[] => {
   return Array.isArray(data) ? data : data.leaderboard;

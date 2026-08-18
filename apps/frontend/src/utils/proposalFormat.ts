@@ -2,8 +2,8 @@ import type {
   FellowshipApplicationProposalDto,
   FellowshipApplicationProposalWriteDto,
 } from '../types/fellowship';
-import type { CohortType } from '../types/enums';
-import { EducationCategory } from '../types/enums';
+import type { CohortType } from '@nonce/shared';
+import { EducationCategory } from '@nonce/shared';
 
 // Human labels for the education category enum, shared by the application form
 // and the read-only proposal viewer so the naming stays consistent.

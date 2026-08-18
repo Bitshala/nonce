@@ -1,4 +1,4 @@
-import { UserRole } from '../types/enums.ts';
+import { UserRole } from '@nonce/shared';
 import type { CertificateType } from '../types/api.ts';
 
 // Raw enum values are not user-facing copy — map roles to readable labels.

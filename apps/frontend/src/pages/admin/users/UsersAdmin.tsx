@@ -18,7 +18,7 @@ import { fontFamilyMono } from '../../../components/fellowship/theme';
 import RoleBadge from '../../../components/user/RoleBadge';
 import { useUsers } from '../../../hooks/userHooks';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { SortOrder } from '../../../types/api';
+import { SortOrder } from '@nonce/shared';
 import type { UserSearchResultDto, UsersSortBy } from '../../../types/userOverview';
 import { formatCohortDate } from '../../../helpers/cohortHelpers';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';

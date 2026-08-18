@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../types/enums.ts';
+import { UserRole } from '@nonce/shared';
 import { consumeReturnPath } from '../utils/returnPath.ts';
 
 /**

@@ -38,7 +38,7 @@ import { useUser } from '../hooks/userHooks';
 import { useGenerateCohortCertificates, useCohortCertificates, usePreviewCohortCertificates } from '../hooks/certificateHooks';
 import type { CertificatePreviewResponseDto } from '../types/api';
 import apiService from '../services/apiService';
-import { UserRole, CohortType } from '../types/enums';
+import { UserRole, CohortType } from '@nonce/shared';
 import type { GetCohortResponseDto } from '../types/api';
 import type { CohortStatus } from '../types/cohort';
 import Tabs from '../components/ui/Tabs';

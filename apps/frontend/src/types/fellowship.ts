@@ -1,6 +1,6 @@
 import type { PaginatedQueryDto } from './api.ts';
-import type { SortOrder } from './api.ts';
-import type { CohortType, EducationCategory } from './enums.ts';
+import type { SortOrder } from '@nonce/shared';
+import type { CohortType, EducationCategory } from '@nonce/shared';
 
 export enum FellowshipType {
   DEVELOPER = 'DEVELOPER',

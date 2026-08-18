@@ -25,7 +25,7 @@ import { useCohortCertificates } from '../hooks/certificateHooks';
 import { usePageMeta } from '../hooks/usePageMeta';
 import apiService from '../services/apiService';
 
-import { UserRole } from '../types/enums';
+import { UserRole } from '@nonce/shared';
 import {
   type StudentResult,
   transformLeaderboardData,

@@ -16,7 +16,7 @@ import { ProfileDataCard } from '../components/student/ProfileDataCard';
 import { useCohort } from '../hooks/cohortHooks';
 import { useUserScores, useMyScores } from '../hooks/scoreHooks';
 import { useUser, useUserById } from '../hooks/userHooks';
-import { UserRole } from '../types/enums';
+import { UserRole } from '@nonce/shared';
 import { cohortHasExercises } from '../utils/calculations';
 
 interface GroupDiscussionScores {

@@ -1,0 +1,14 @@
+{
+  // CommonJS build, consumed by the backend (Nest/tsc/ts-node/jest are all CJS)
+  // and by TypeScript's Node10 resolution. This build also emits the .d.ts files
+  // that both formats share.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist/cjs",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}

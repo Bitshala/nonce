@@ -4,7 +4,7 @@ import { useCohort } from '../../hooks/cohortHooks';
 import { useUser } from '../../hooks/userHooks';
 import { useAuth } from '../../hooks/useAuth';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { UserRole } from '../../types/enums';
+import { UserRole } from '@nonce/shared';
 import { toRenderWeeks } from '../../helpers/cohortHelpers';
 import InstructionsLayout from '../../components/instructions/InstructionsLayout';
 

@@ -12,7 +12,7 @@ import { useMyScores } from '../../hooks/scoreHooks';
 import { useMyCohorts, useCohorts } from '../../hooks/cohortHooks';
 import { useAuth } from '../../hooks/useAuth';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { UserRole, CohortType } from '../../types/enums';
+import { UserRole, CohortType } from '@nonce/shared';
 import { cohortTypeToName, toRenderWeeks } from '../../helpers/cohortHelpers';
 import InstructionsLayout from './InstructionsLayout';
 

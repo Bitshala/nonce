@@ -19,7 +19,7 @@ import {
   normalizeGithub,
 } from '../../utils/proposalFormat';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
-import { EducationCategory } from '../../types/enums';
+import { EducationCategory } from '@nonce/shared';
 
 // A long-text section, only rendered when there's content to show.
 const PrintTextSection = ({ title, text }: { title: string; text: string | null | undefined }) =>

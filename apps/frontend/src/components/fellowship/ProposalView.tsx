@@ -9,7 +9,7 @@ import {
   normalizeGithub,
 } from '../../utils/proposalFormat';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
-import { EducationCategory } from '../../types/enums';
+import { EducationCategory } from '@nonce/shared';
 
 export const ProposalSection = ({
   title,

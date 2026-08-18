@@ -28,7 +28,7 @@ import { useUserById } from '../../hooks/userHooks';
 import FeedbackRatingCharts from '../../components/FeedbackRatingCharts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
 import type { GetCohortResponseDto, GetFeedbackResponseDto } from '../../types/api';
-import { CohortComponent, ComponentRating, type CohortType } from '../../types/enums';
+import { CohortComponent, ComponentRating, type CohortType } from '@nonce/shared';
 
 const COMPONENT_LABELS: Record<CohortComponent, string> = {
   [CohortComponent.SESSION_INSTRUCTIONS]: 'Session Instructions',

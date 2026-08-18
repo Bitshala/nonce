@@ -1,0 +1,19 @@
+{
+  // ESM build, consumed by Vite/Rollup.
+  //
+  // This build is not optional. In CommonJS, TypeScript compiles `export *` into
+  // an __exportStar(require(...)) helper, and Rollup cannot statically determine
+  // named exports through it — importing { UserRole } from '@nonce/shared' fails
+  // at build time with "not exported by dist/cjs/index.js". Real ESM output gives
+  // the bundler static named exports, and lets it tree-shake.
+  //
+  // Types come from the CJS build; emitting them twice would be redundant.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "./dist/esm",
+    "declaration": false,
+    "sourceMap": true
+  }
+}

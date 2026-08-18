@@ -37,7 +37,7 @@ import { useTeachingAssistants } from '../hooks/teachingAssistantHooks';
 import apiService from '../services/apiService';
 import { useCohort, useRemoveUserFromCohort, useUpdateCohortWeek } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
-import { UserRole } from '../types/enums';
+import { UserRole } from '@nonce/shared';
 import { cohortTypeToName, formatCohortDate } from '../helpers/cohortHelpers.ts';
 
 

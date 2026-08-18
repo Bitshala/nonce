@@ -1,5 +1,5 @@
 import type { CohortRow, CohortStatus } from '../types/cohort';
-import { CohortType } from '../types/enums';
+import { CohortType } from '@nonce/shared';
 import { cohortTypeToName } from '../helpers/cohortHelpers';
 
 export const getCohortImage = (cohortType: string): string => {

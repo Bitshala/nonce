@@ -38,7 +38,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useMyFellowships } from '../hooks/fellowshipHooks';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../types/enums';
+import { UserRole } from '@nonce/shared';
 
 interface NavItem {
   label: string;

@@ -6,7 +6,7 @@ import { useUser } from '../../hooks/userHooks';
 import { useMyScores } from '../../hooks/scoreHooks';
 import { useAuth } from '../../hooks/useAuth';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { UserRole } from '../../types/enums';
+import { UserRole } from '@nonce/shared';
 import GeneralInstructionsContent from '../../components/instructions/GeneralInstructions';
 
 const GeneralInstructions: React.FC = () => {

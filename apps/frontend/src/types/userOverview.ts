@@ -1,5 +1,6 @@
-import type { CertificateType, PaginatedQueryDto, SortOrder } from './api.ts';
-import type { CohortType, UserRole } from './enums.ts';
+import type { CertificateType, PaginatedQueryDto } from './api.ts';
+import type { SortOrder } from '@nonce/shared';
+import type { CohortType, UserRole } from '@nonce/shared';
 import type { FellowshipStatus, FellowshipType } from './fellowship.ts';
 
 // =========================

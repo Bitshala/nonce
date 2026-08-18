@@ -1,3 +1,12 @@
+import {
+  BONUS_MAX,
+  BONUS_RAW_MAX as SHARED_BONUS_RAW_MAX,
+  EXERCISE_MAX,
+  GD_MAX,
+  GD_RAW_MAX,
+  GD_TRAITS_RAW_MAX as SHARED_GD_TRAITS_RAW_MAX,
+  SCALING_FACTOR,
+} from '@nonce/shared';
 import type { GdScore, BonusScore, ExerciseScore } from '../types/student';
 
 /**
@@ -58,41 +67,48 @@ import type { GdScore, BonusScore, ExerciseScore } from '../types/student';
  */
 
 // === Constants ===
+//
+// Every number below now comes from @nonce/shared, which the backend's scoring
+// service reads too. This file previously held its own copy annotated "matching
+// backend" — kept in step with it by hand. Only the local key names survive
+// (depthOfAnswer vs depth, etc.), mapped explicitly here so the call sites
+// further down are unchanged.
 
 // Raw GD trait weights (out of 5 input, scaled to these max values)
 export const GD_TRAIT_WEIGHTS = {
-  communication: 30,        // fa
-  depthOfAnswer: 30,        // fb
-  technicalFluency: 20,     // fc
-  engagement: 20,           // fd
+  communication: GD_MAX.communication, // fa
+  depthOfAnswer: GD_MAX.depth,         // fb
+  technicalFluency: GD_MAX.technical,  // fc
+  engagement: GD_MAX.engagement,       // fd
 } as const;
 
-export const GD_TRAITS_RAW_MAX = 100; // Sum of all trait weights
+export const GD_TRAITS_RAW_MAX = SHARED_GD_TRAITS_RAW_MAX; // Sum of all trait weights
 
 // Bonus weights
 export const BONUS_WEIGHTS = {
-  attempted: 10,            // flat if attempted
-  answerQuality: 30,        // scaled by grade/5
-  followUp: 10,             // scaled by grade/5
+  attempted: BONUS_MAX.attempt,     // flat if attempted
+  answerQuality: BONUS_MAX.answer,  // scaled by grade/5
+  followUp: BONUS_MAX.followup,     // scaled by grade/5
 } as const;
 
-export const BONUS_RAW_MAX = 50;
-export const GD_TOTAL_RAW_MAX = 150; // GD traits + Bonus
+export const BONUS_RAW_MAX = SHARED_BONUS_RAW_MAX;
+export const GD_TOTAL_RAW_MAX = GD_RAW_MAX; // GD traits + Bonus
 
 // Exercise weights
 export const EXERCISE_WEIGHTS = {
-  submitted: 10,
-  testsPassing: 50,
+  submitted: EXERCISE_MAX.submission,
+  testsPassing: EXERCISE_MAX.tests,
 } as const;
 
-export const EXERCISE_RAW_MAX = 60;
+export const EXERCISE_RAW_MAX = EXERCISE_MAX.submission + EXERCISE_MAX.tests;
 
 // Scaled maximums for cohorts WITH exercises
 export const SCORES_WITH_EXERCISES = {
-  attendance: 10,
-  gd: 30,
-  exercise: 60,
-  total: 100,
+  attendance: SCALING_FACTOR.ATTENDANCE,
+  gd: SCALING_FACTOR.GD,
+  exercise: SCALING_FACTOR.EXERCISE,
+  total:
+    SCALING_FACTOR.ATTENDANCE + SCALING_FACTOR.GD + SCALING_FACTOR.EXERCISE,
 } as const;
 
 // For cohorts WITHOUT exercises, backend gives 40 max, we scale to 100
