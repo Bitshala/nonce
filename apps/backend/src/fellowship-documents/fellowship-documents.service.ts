@@ -622,8 +622,10 @@ export class FellowshipDocumentsService {
             return fallback;
         }
         const base = name.replace(/^.*[\\/]/, '');
-        // eslint-disable-next-line no-control-regex
         const cleaned = base
+            // Control characters are stripped on purpose — this is sanitising a
+            // filename for a Content-Disposition header.
+            // eslint-disable-next-line no-control-regex
             .replace(/[\x00-\x1f"\\]/g, '')
             .trim()
             .slice(0, 200);

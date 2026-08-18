@@ -39,7 +39,7 @@ export class MailService implements OnModuleInit {
     private assertFileExists(filePath: string): void {
         try {
             accessSync(filePath, constants.R_OK);
-        } catch (err) {
+        } catch {
             throw new ServiceError(`Missing template: ${filePath}`);
         }
     }
