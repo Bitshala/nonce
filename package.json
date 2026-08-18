@@ -10,14 +10,16 @@
     "node": ">=20.12"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @nonce/shared && npm run build -w @nonce/backend && npm run build -w @nonce/frontend",
+    "build:shared": "npm run build -w @nonce/shared",
     "dev:backend": "npm run start:dev -w @nonce/backend",
     "dev:frontend": "npm run dev -w @nonce/frontend",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "test": "npm run test -w @nonce/backend",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write \"apps/backend/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
+    "format:check": "prettier --check \"apps/backend/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
+    "format:check:frontend": "prettier --check \"apps/frontend/**/*.{ts,tsx}\""
   },
   "overrides": {
     "multer": "^2.2.0",

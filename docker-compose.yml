@@ -1,4 +1,4 @@
-name: admin-backend
+name: nonce
 services:
   bitshala-db:
     image: postgres

@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  # Which workspaces did this change touch? Everything downstream keys off this
+  # so a frontend-only PR doesn't spin up Postgres, and a shared change rebuilds
+  # both consumers.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'apps/backend/**'
+            frontend:
+              - 'apps/frontend/**'
+
+  shared:
+    needs: changes
+    if: needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.12.x
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @nonce/shared
+      - run: npm run typecheck -w @nonce/shared
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: bitshala
+    env:
+      DB_POSTGRES_HOST: 'localhost'
+      DB_POSTGRES_PORT: '5432'
+      DB_POSTGRES_USERNAME: 'root'
+      DB_POSTGRES_PASSWORD: 'password'
+      DB_POSTGRES_DATABASE_NAME: 'bitshala'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.12.x
+          cache: npm
+      - run: npm ci
+      # @nonce/shared resolves through node_modules to its dist/, so it has to be
+      # built before anything typechecks against it.
+      - name: Build shared
+        run: npm run build -w @nonce/shared
+      - name: Prettier
+        run: npm run format:check
+      - name: ESLint
+        if: success() || failure()
+        run: npm run lint -w @nonce/backend
+      - name: Typecheck
+        if: success() || failure()
+        run: npm run typecheck -w @nonce/backend
+      - name: Unit tests
+        if: success() || failure()
+        run: npm run test -w @nonce/backend
+      - name: Run migrations
+        run: npm run migration:run -w @nonce/backend
+      # Ported from the old actions-check-migration.yml: if generating a migration
+      # against an already-migrated database produces a new file, an entity change
+      # landed without its migration.
+      - name: Check for missing migrations
+        run: |
+          COUNT_AFTER_RUN=$(ls apps/backend/migrations | wc -l) && \
+          (npm run migration:generate -w @nonce/backend || :) && \
+          COUNT_AFTER_GENERATION=$(ls apps/backend/migrations | wc -l)
+          if (( $COUNT_AFTER_RUN < $COUNT_AFTER_GENERATION )); then echo "Migration required but no migration was found."; exit 1; else exit 0; fi
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.12.x
+          cache: npm
+      - run: npm ci
+      - name: Build shared
+        run: npm run build -w @nonce/shared
+      - name: Typecheck
+        run: npm run typecheck -w @nonce/frontend
+      - name: Build
+        if: success() || failure()
+        run: npm run build -w @nonce/frontend
+      # The frontend had no CI before this monorepo, and carries a backlog of 12
+      # eslint errors and 114 unformatted files. Both lanes are reported but not
+      # enforced, so the lane is useful now instead of red on arrival. Flip these
+      # to blocking once the backlog is cleared.
+      - name: ESLint (non-blocking backlog)
+        if: success() || failure()
+        continue-on-error: true
+        run: npm run lint -w @nonce/frontend
+      - name: Prettier (non-blocking backlog)
+        if: success() || failure()
+        continue-on-error: true
+        run: npm run format:check:frontend
