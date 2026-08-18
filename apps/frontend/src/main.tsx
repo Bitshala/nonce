@@ -1,0 +1,307 @@
+import { lazy, Suspense, type ReactElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Box, CircularProgress } from '@mui/material';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+
+import { queryClient } from './http/queryClient.ts';
+import { ProtectedRoute } from './components/ProtectedRoute.tsx';
+import { UserRole } from './types/enums.ts';
+import Layout from './components/Layout.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
+import RouteErrorPage from './components/RouteErrorPage.tsx';
+
+import '@fontsource/sora';
+import 'virtual:uno.css';
+
+// Route components are lazy-loaded so each page ships as its own chunk and is
+// fetched on demand, keeping the initial bundle small. Suspense fallback lives in Layout.
+const LoginRedirect = lazy(() => import('./pages/LoginRedirect.tsx'));
+const Home = lazy(() => import('./pages/Home.tsx'));
+const TableView = lazy(() => import('./pages/TableView.tsx'));
+const CohortSelection = lazy(() => import('./pages/CohortSelection.tsx').then((m) => ({ default: m.CohortSelection })));
+const ResultPage = lazy(() => import('./pages/ResultPage.tsx').then((m) => ({ default: m.ResultPage })));
+const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage.tsx'));
+const MBInstructions = lazy(() => import('./pages/Students/MBInstructions.tsx'));
+const LBTCLInstructions = lazy(() => import('./pages/Students/LBTCLInstructions.tsx'));
+const LNInstructions = lazy(() => import('./pages/Students/LNInstructions.tsx'));
+const BPDInstructions = lazy(() => import('./pages/Students/BPDInstructions.tsx'));
+const PBInstructions = lazy(() => import('./pages/Students/PBInstructions.tsx'));
+const BBRInstructions = lazy(() => import('./pages/Students/BBRInstructions.tsx'));
+const GeneralInstructions = lazy(() => import('./pages/Students/GeneralInstructions.tsx'));
+const StudentProfileData = lazy(() => import('./components/student/StudentProfileData.tsx'));
+const MyError = lazy(() => import('./pages/404error.tsx'));
+const MyStudentDashboard = lazy(() => import('./pages/myProfile/myStudentDashboard.tsx'));
+const ProfilePage = lazy(() => import('./pages/myProfile/profilePage.tsx'));
+const MyCohortInstructions = lazy(() => import('./pages/myProfile/myCohortInstructions.tsx'));
+const CohortFeedback = lazy(() => import('./pages/CohortFeedback.tsx'));
+const FeedbackAdmin = lazy(() => import('./pages/admin/FeedbackAdmin.tsx'));
+const CohortMetrics = lazy(() => import('./pages/CohortMetrics.tsx'));
+const GDPresentation = lazy(() => import('./pages/GDPresentation.tsx'));
+const Apply = lazy(() => import('./pages/fellowship/Apply.tsx'));
+const MyFellowships = lazy(() => import('./pages/fellowship/MyFellowships.tsx'));
+const FellowshipDocuments = lazy(() => import('./pages/fellowship/FellowshipDocuments.tsx'));
+const MyApplications = lazy(() => import('./pages/fellowship/MyApplications.tsx'));
+const MyReports = lazy(() => import('./pages/fellowship/MyReports.tsx'));
+const Report = lazy(() => import('./pages/fellowship/Report.tsx'));
+const ProposalPrint = lazy(() => import('./pages/fellowship/ProposalPrint.tsx'));
+const ApplicationsAdmin = lazy(() => import('./pages/fellowship/admin/ApplicationsAdmin.tsx'));
+const FellowshipsAdmin = lazy(() => import('./pages/fellowship/admin/FellowshipsAdmin.tsx'));
+const ReportsAdmin = lazy(() => import('./pages/fellowship/admin/ReportsAdmin.tsx'));
+const UsersAdmin = lazy(() => import('./pages/admin/users/UsersAdmin.tsx'));
+const UserOverview = lazy(() => import('./pages/admin/users/UserOverview.tsx'));
+
+const FellowshipFallback = () => (
+  <Box
+    sx={{
+      minHeight: '100vh',
+      bgcolor: '#000',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    <CircularProgress size={28} sx={{ color: '#f97316' }} />
+  </Box>
+);
+
+const withFellowshipFallback = (node: ReactElement) => (
+  <Suspense fallback={<FellowshipFallback />}>{node}</Suspense>
+);
+
+const routes = [
+  {
+    // Kept for old links — redirects to the dashboard with the sign-in modal
+    // open. Signing in itself happens in that modal, not on a page.
+    path: '/login',
+    element: <Layout><LoginRedirect /></Layout>,
+  },
+  {
+    // OAuth callback target; redirects everyone else to their entry screen.
+    path: '/',
+    element: <Layout><Home /></Layout>,
+  },
+  {
+    path: '/select',
+    element: <Layout><ProtectedRoute><CohortSelection /></ProtectedRoute></Layout>,
+  },
+  {
+    // Full roster with names, handles and per-student grades — staff only.
+    path: '/cohort/:cohortId/week/:weekId',
+    element: (
+      <Layout>
+        <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+          <TableView />
+        </ProtectedRoute>
+      </Layout>
+    ),
+  },
+  {
+    // Shows email, GitHub, LinkedIn, location and skills.
+    path: '/student/:studentId/:cohortId',
+    element: <Layout><ProtectedRoute><StudentDetailPage /></ProtectedRoute></Layout>,
+  },
+  {
+    // Public leaderboard: Discord handle + rank + score.
+    path: '/results/:id',
+    element: <Layout><ResultPage /></Layout>,
+  },
+  {
+    path: '/mb-instructions',
+    element: <Layout><MBInstructions /></Layout>,
+  },
+  {
+    path: '/lbtcl-instructions',
+    element: <Layout><LBTCLInstructions /></Layout>,
+  },
+  {
+    path: '/ln-instructions',
+    element: <Layout><LNInstructions /></Layout>,
+  },
+  {
+    path: '/bpd-instructions',
+    element: <Layout><BPDInstructions /></Layout>,
+  },
+  {
+    path: '/pb-instructions',
+    element: <Layout><PBInstructions /></Layout>,
+  },
+  {
+    path: '/bbr-instructions',
+    element: <Layout><BBRInstructions /></Layout>,
+  },
+  {
+    path: '/general-instructions',
+    element: <Layout><GeneralInstructions /></Layout>,
+  },
+  {
+    path:'/me',
+    element: <Layout><ProtectedRoute><StudentProfileData /></ProtectedRoute></Layout>
+  },
+    {
+      path: '/*',
+      element: <Layout><MyError /></Layout>,
+    },
+      {
+      // Entry point for signed-out visitors too — shows every cohort with the
+      // join actions routing to login.
+      path: '/myDashboard',
+      element: <Layout><MyStudentDashboard /></Layout>,
+    },
+    {
+      path: '/:userId/aboutMe',
+      element: <Layout><ProfilePage /></Layout>,
+    },
+    {
+      // Public curriculum for a single cohort.
+      path: '/:cohortId/instructions',
+      element: <Layout><MyCohortInstructions /></Layout>,
+    },
+    {
+      path: '/cohortfeedback',
+      element: <Layout><ProtectedRoute><CohortFeedback /></ProtectedRoute></Layout>,
+    },
+    {
+      // Full-screen GD presentation — rendered outside Layout (no sidebar), staff only.
+      path: '/:cohortId/present/:weekId',
+      element: (
+        <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#000' }} />}>
+            <GDPresentation />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/cohort-metrics',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+            <CohortMetrics />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/feedback',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+            <FeedbackAdmin />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/fellowship',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<MyApplications />)}</ProtectedRoute></Layout>,
+    },
+    {
+      path: '/fellowship/apply',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<Apply />)}</ProtectedRoute></Layout>,
+    },
+    {
+      path: '/fellowship/me',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<MyFellowships />)}</ProtectedRoute></Layout>,
+    },
+    {
+      path: '/fellowship/applications',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<MyApplications />)}</ProtectedRoute></Layout>,
+    },
+    {
+      path: '/fellowship/reports',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<MyReports />)}</ProtectedRoute></Layout>,
+    },
+    {
+      path: '/fellowship/fellowships/:fellowshipId/reports/:id?',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<Report />)}</ProtectedRoute></Layout>,
+    },
+    {
+      // Email deep-link target — fellow's contract / W-8BEN documents. Backend
+      // sets buildFellowshipDocumentsUrl to this path.
+      path: '/fellowship/fellowships/:fellowshipId/documents',
+      element: <Layout><ProtectedRoute>{withFellowshipFallback(<FellowshipDocuments />)}</ProtectedRoute></Layout>,
+    },
+    {
+      // Print-friendly proposal view — deliberately unwrapped from Layout so
+      // only the document itself prints. Access control happens server-side
+      // (applicants can read their own proposal, admins any).
+      path: '/fellowship/applications/:id/proposal/print',
+      element: <ProtectedRoute>{withFellowshipFallback(<ProposalPrint />)}</ProtectedRoute>,
+    },
+    {
+      path: '/admin/fellowships',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<FellowshipsAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/fellowships/applications',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<ApplicationsAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/fellowships/reports',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<ReportsAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/users',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<UsersAdmin />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/users/:userId',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            {withFellowshipFallback(<UserOverview />)}
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/unauthorized',
+      element: <Layout><div className="min-h-screen bg-zinc-900 text-zinc-100 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-red-400">Unauthorized</h1>
+          <p className="text-zinc-400">You don't have permission to access this resource.</p>
+        </div>
+      </div></Layout>,
+    }
+];
+
+// Attach the friendly error page to every route so a render/loader throw shows
+// our themed fallback instead of React Router's default developer screen.
+const router = createBrowserRouter(
+  routes.map((route) => ({ ...route, errorElement: <RouteErrorPage /> })),
+);
+
+
+
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </ErrorBoundary>
+);

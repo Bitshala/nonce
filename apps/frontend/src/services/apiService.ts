@@ -1,0 +1,527 @@
+import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import { getAuthTokenFromStorage } from './authService.ts';
+import type {
+  // Users
+  GetUserResponse,
+  UpdateUserRequest,
+  UpdateUserRoleRequest,
+  // Cohorts
+  PaginatedDataDto,
+  PaginatedQueryDto,
+  GetCohortResponseDto,
+  CreateCohortRequestDto,
+  UpdateCohortRequestDto,
+  UpdateCohortWeekRequestDto,
+  JoinWaitlistRequestDto,
+  UserCohortWaitlistResponseDto,
+  // Scores
+  GetUsersScoresResponseDto,
+  ListScoresForCohortAndWeekResponseDto,
+  UpdateScoresRequestDto,
+  GetCohortLeaderboardResponseDto,
+  PublicLeaderboardEntryDto,
+  // Teaching Assistants
+  GetTeachingAssistantResponseDto,
+  // Certificates
+  GetCertificateResponseDto,
+  CertificatePreviewResponseDto,
+  // Feedback
+  CreateFeedbackRequestDto,
+  CreateFeedbackResponseDto,
+  GetFeedbackResponseDto,
+  UpdateFeedbackRequestDto,
+} from '../types/api.ts';
+import type {
+  ListUsersQueryDto,
+  UserSearchResultDto,
+  GetUserOverviewResponseDto,
+} from '../types/userOverview.ts';
+
+const COMMON_REQUEST_HEADERS = {
+  'Content-Type': 'application/json',
+  'ngrok-skip-browser-warning': 'true',
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+class ApiService {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 10000,
+    });
+  }
+
+  private async request<T>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.request<T>(config);
+  }
+
+  private getRequestHeaders(): AxiosHeaders {
+    const headers = new AxiosHeaders(COMMON_REQUEST_HEADERS);
+    const authToken = getAuthTokenFromStorage();
+    if (authToken) {
+      headers.setAuthorization(`Bearer ${authToken}`);
+    }
+    return headers;
+  }
+
+  private getUnauthenticatedRequestHeaders(): AxiosHeaders {
+    return new AxiosHeaders(COMMON_REQUEST_HEADERS);
+  }
+
+  // =========================
+  // Users
+  // =========================
+
+  public getUser = async (): Promise<GetUserResponse> => {
+    const { data } = await this.request<GetUserResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/users/me',
+    });
+    return data;
+  };
+
+  public updateUser = async (body: UpdateUserRequest): Promise<GetUserResponse> => {
+    const { data } = await this.request<GetUserResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: '/users/me',
+      data: body,
+    });
+    return data;
+  };
+
+  public updateUserRole = async (body: UpdateUserRoleRequest): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: '/users/role',
+      data: body,
+    });
+  };
+
+  public getUserById = async (id: string): Promise<GetUserResponse> => {
+    const { data } = await this.request<GetUserResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/users/${id}`,
+    });
+    return data;
+  };
+
+  // Admin-only paginated user search (name/email/Discord). Page is zero-based.
+  public searchUsers = async (
+    query: ListUsersQueryDto,
+  ): Promise<PaginatedDataDto<UserSearchResultDto>> => {
+    const { data } = await this.request<PaginatedDataDto<UserSearchResultDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/users',
+      params: query,
+    });
+    return data;
+  };
+
+  // Admin-only consolidated overview: profile + per-cohort scores/attendance/
+  // certificates + cohort/fellowship summaries. A non-UUID or unknown id → 400.
+  public getUserOverview = async (id: string): Promise<GetUserOverviewResponseDto> => {
+    const { data } = await this.request<GetUserOverviewResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/users/${id}/overview`,
+    });
+    return data;
+  };
+
+  // =========================
+  // Cohorts
+  // =========================
+
+  public listCohorts = async (
+    query: PaginatedQueryDto,
+  ): Promise<PaginatedDataDto<GetCohortResponseDto>> => {
+    const { data } = await this.request<PaginatedDataDto<GetCohortResponseDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/cohorts',
+      params: query,
+    });
+    return data;
+  };
+
+  public listMyCohorts = async (
+    query: PaginatedQueryDto,
+  ): Promise<PaginatedDataDto<GetCohortResponseDto>> => {
+    const { data } = await this.request<PaginatedDataDto<GetCohortResponseDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/cohorts/me',
+      params: query,
+    });
+    return data;
+  };
+
+  public getCohort = async (id: string): Promise<GetCohortResponseDto> => {
+    const { data } = await this.request<GetCohortResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/cohorts/${id}`,
+    });
+    return data;
+  };
+
+  public createCohort = async (body: CreateCohortRequestDto): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: '/cohorts',
+      data: body,
+    });
+  };
+
+  public updateCohort = async (
+    cohortId: string,
+    body: UpdateCohortRequestDto,
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/cohorts/${cohortId}`,
+      data: body,
+    });
+  };
+
+  public updateCohortWeek = async (
+    cohortWeekId: string,
+    body: UpdateCohortWeekRequestDto,
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/cohorts/weeks/${cohortWeekId}`,
+      data: body,
+    });
+  };
+
+  // Destructively re-applies the cohort's config file (questions, bonus questions,
+  // titles, reading material, activity, exercises, links). TA/Admin only.
+  public syncCohortFromConfig = async (cohortId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/cohorts/${cohortId}/sync-from-config`,
+    });
+  };
+
+  public getAttachmentUrl = (cohortId: string, filename: string): string => {
+    return `${API_BASE_URL}/cohorts/attachments/${cohortId}/${filename}`;
+  };
+
+  public joinCohort = async (cohortId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/cohorts/${cohortId}/join`,
+    });
+  };
+
+  public joinCohortWaitlist = async (body: JoinWaitlistRequestDto): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: '/cohorts/waitlist',
+      data: body,
+    });
+  };
+
+  public getUserWaitlistStatus = async (): Promise<UserCohortWaitlistResponseDto> => {
+    const { data } = await this.request<UserCohortWaitlistResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/cohorts/waitlist/me',
+    });
+    return data;
+  };
+
+  public removeUserFromCohort = async (
+    cohortId: string,
+    userId: string,
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/cohorts/${cohortId}/remove/${userId}`,
+    });
+  };
+
+  // =========================
+  // Scores
+  // =========================
+
+  public listScoresForCohortAndWeek = async (
+    cohortId: string,
+    weekId: string,
+  ): Promise<ListScoresForCohortAndWeekResponseDto> => {
+    const { data } = await this.request<ListScoresForCohortAndWeekResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/scores/cohort/${cohortId}/week/${weekId}`,
+    });
+    return data;
+  };
+
+  public updateScoresForUserCohortAndWeek = async (
+    userId: string,
+    cohortId: string,
+    weekId: string,
+    body: UpdateScoresRequestDto,
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/scores/user/${userId}/cohort/${cohortId}/week/${weekId}`,
+      data: body,
+    });
+    return;
+  };
+
+  public getMyScores = async (): Promise<GetUsersScoresResponseDto> => {
+    const { data } = await this.request<GetUsersScoresResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/scores/me',
+    });
+    return data;
+  };
+
+  public getUserScores = async (userId: string): Promise<GetUsersScoresResponseDto> => {
+    const { data } = await this.request<GetUsersScoresResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/scores/user/${userId}`,
+    });
+    return data;
+  };
+
+  public assignGroupsForCohortWeek = async (weekId: string, body: { participantsPerWeek: number; groupsAvailable: number }): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/scores/week/${weekId}/assign-groups`,
+      data: body,
+    });
+  };
+
+  public assignTAToGroup = async (weekId: string, groupNumber: number, userId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/scores/week/${weekId}/assign-ta-to-group`,
+      data: { userId, groupNumber },
+    });
+  };
+
+  // Public leaderboard: Discord handle, rank and total score only. Separate
+  // endpoint from getCohortLeaderboard, which returns real names.
+  public getPublicCohortLeaderboard = async (
+    cohortId: string,
+  ): Promise<PublicLeaderboardEntryDto[]> => {
+    const { data } = await this.request<PublicLeaderboardEntryDto[]>({
+      headers: this.getUnauthenticatedRequestHeaders(),
+      method: 'GET',
+      url: `/scores/cohort/${cohortId}/leaderboard/public`,
+    });
+    return data;
+  };
+
+  public getCohortLeaderboard = async (cohortId: string): Promise<GetCohortLeaderboardResponseDto> => {
+    const { data } = await this.request<GetCohortLeaderboardResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/scores/cohort/${cohortId}/leaderboard`,
+    });
+    return data;
+  };
+
+  // =========================
+  // Feedback
+  // =========================
+
+  public submitFeedback = async (cohortId: string, body: CreateFeedbackRequestDto): Promise<CreateFeedbackResponseDto> => {
+    const { data } = await this.request<CreateFeedbackResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/feedback/${cohortId}`,
+      data: body,
+    });
+    return data;
+  };
+
+  public getMyFeedback = async (query: PaginatedQueryDto): Promise<PaginatedDataDto<GetFeedbackResponseDto>> => {
+    const { data } = await this.request<PaginatedDataDto<GetFeedbackResponseDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/feedback/me',
+      params: query,
+    });
+    return data;
+  };
+
+  public updateFeedback = async (id: string, body: UpdateFeedbackRequestDto): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/feedback/${id}`,
+      data: body,
+    });
+  };
+
+  public listAllFeedback = async (query: PaginatedQueryDto): Promise<PaginatedDataDto<GetFeedbackResponseDto>> => {
+    const { data } = await this.request<PaginatedDataDto<GetFeedbackResponseDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/feedback',
+      params: query,
+    });
+    return data;
+  };
+
+  public listFeedbackByCohort = async (cohortId: string, query: PaginatedQueryDto): Promise<PaginatedDataDto<GetFeedbackResponseDto>> => {
+    const { data } = await this.request<PaginatedDataDto<GetFeedbackResponseDto>>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/feedback/cohort/${cohortId}`,
+      params: query,
+    });
+    return data;
+  };
+
+  public getFeedbackById = async (id: string): Promise<GetFeedbackResponseDto> => {
+    const { data } = await this.request<GetFeedbackResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/feedback/${id}`,
+    });
+    return data;
+  };
+
+  // =========================
+  // Teaching Assistants
+  // =========================
+
+  public listTeachingAssistants = async (): Promise<GetTeachingAssistantResponseDto[]> => {
+    const { data } = await this.request<GetTeachingAssistantResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/teaching-assistants',
+    });
+    return data;
+  };
+
+  public getTeachingAssistant = async (id: string): Promise<GetTeachingAssistantResponseDto> => {
+    const { data } = await this.request<GetTeachingAssistantResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/teaching-assistants/${id}`,
+    });
+    return data;
+  };
+  // =========================
+  // Certificates
+  // =========================
+
+  public generateCohortCertificates = async (cohortId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/certificates/cohort/${cohortId}/generate`,
+      data: { sendEmail: true },
+    });
+  };
+
+  public previewCohortCertificates = async (cohortId: string): Promise<CertificatePreviewResponseDto[]> => {
+    const { data } = await this.request<CertificatePreviewResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}/preview`,
+    });
+    return data;
+  };
+
+  public getMyCertificateForCohort = async (cohortId: string): Promise<GetCertificateResponseDto> => {
+    const { data } = await this.request<GetCertificateResponseDto>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}/me`,
+    });
+    return data;
+  };
+
+  public getMyCertificates = async (): Promise<GetCertificateResponseDto[]> => {
+    const { data } = await this.request<GetCertificateResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/certificates/me',
+    });
+    return data;
+  };
+
+  public getCohortCertificates = async (cohortId: string): Promise<GetCertificateResponseDto[]> => {
+    const { data } = await this.request<GetCertificateResponseDto[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}`,
+    });
+    return data;
+  };
+
+  public downloadCertificate = async (id: string): Promise<Blob> => {
+    const { data } = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/${id}/download`,
+      responseType: 'blob',
+    });
+    return data;
+  };
+
+  public downloadBulkCertificates = async (cohortId: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/certificates/cohort/${cohortId}/download`,
+      responseType: 'blob',
+      timeout: 120000, // 2 minutes — bulk certificate generation can be slow
+    });
+    const disposition = (response.headers as Record<string, string>)['content-disposition'] ?? '';
+    const filename = disposition.match(/filename="(.+)"/)?.[1] ?? 'certificates.zip';
+    return { blob: response.data, filename };
+  };
+
+  // =========================
+  // Calendar
+  // =========================
+
+  /**
+   * Returns the webcal:// subscribe URL for a cohort calendar.
+   * This is a public endpoint — no auth needed.
+   */
+  public getCalendarSubscribeUrl = (cohortId: string): string => {
+    const httpUrl = `${API_BASE_URL}/cohort-calendar/${cohortId}/subscribe`;
+    return httpUrl.replace(/^https?:\/\//, 'webcal://');
+  };
+
+  /**
+   * Returns the raw HTTP URL for downloading the .ics file.
+   */
+  public getCalendarDownloadUrl = (cohortId: string): string => {
+    return `${API_BASE_URL}/cohort-calendar/${cohortId}/subscribe`;
+  };
+}
+
+const serviceInstance = new ApiService();
+
+export default serviceInstance;
