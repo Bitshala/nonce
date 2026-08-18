@@ -1,0 +1,79 @@
+import { FellowshipReportStatus } from '@/common/enum';
+import { FellowshipReport } from '@/entities/fellowship-report.entity';
+import { FellowshipResponseDto } from '@/fellowships/fellowships.response.dto';
+
+export class FellowshipReportContentResponseDto {
+    summary!: string;
+    // Ordered GitHub PR/issue URLs; [] when none.
+    links!: string[];
+    // Reflective answers; '' when unanswered.
+    challengingWork!: string;
+    keyLearning!: string;
+    reviewerFeedback!: string;
+    growthGoal!: string;
+
+    static fromEntity(
+        report: FellowshipReport,
+    ): FellowshipReportContentResponseDto {
+        const dto = new FellowshipReportContentResponseDto();
+        dto.summary = report.summary;
+        dto.links = report.links;
+        dto.challengingWork = report.challengingWork;
+        dto.keyLearning = report.keyLearning;
+        dto.reviewerFeedback = report.reviewerFeedback;
+        dto.growthGoal = report.growthGoal;
+        return dto;
+    }
+}
+
+export class FellowshipReportResponseDto {
+    id!: string;
+    month!: number;
+    year!: number;
+    status!: FellowshipReportStatus;
+    reviewerRemarks!: string | null;
+    fellowshipId!: string;
+    fellowName!: string;
+    reviewedById!: string | null;
+    reviewedByName!: string | null;
+    createdAt!: string;
+    updatedAt!: string;
+    // The full fellowship the report belongs to, identical field-for-field to a
+    // GET /fellowships list item. A report always references an existing
+    // fellowship (non-nullable FK), so this is never null.
+    fellowship!: FellowshipResponseDto;
+
+    constructor(obj: FellowshipReportResponseDto) {
+        this.id = obj.id;
+        this.month = obj.month;
+        this.year = obj.year;
+        this.status = obj.status;
+        this.reviewerRemarks = obj.reviewerRemarks;
+        this.fellowshipId = obj.fellowshipId;
+        this.fellowName = obj.fellowName;
+        this.reviewedById = obj.reviewedById;
+        this.reviewedByName = obj.reviewedByName;
+        this.createdAt = obj.createdAt;
+        this.updatedAt = obj.updatedAt;
+        this.fellowship = obj.fellowship;
+    }
+
+    static fromEntity(report: FellowshipReport): FellowshipReportResponseDto {
+        return new FellowshipReportResponseDto({
+            id: report.id,
+            month: report.month,
+            year: report.year,
+            status: report.status,
+            reviewerRemarks: report.reviewerRemarks,
+            fellowshipId: report.fellowship.id,
+            fellowName: report.fellowship.user.displayName,
+            reviewedById: report.reviewedBy?.id ?? null,
+            reviewedByName: report.reviewedBy
+                ? report.reviewedBy.displayName
+                : null,
+            createdAt: report.createdAt.toISOString(),
+            updatedAt: report.updatedAt.toISOString(),
+            fellowship: FellowshipResponseDto.fromEntity(report.fellowship),
+        });
+    }
+}

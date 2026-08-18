@@ -1,0 +1,367 @@
+import {
+    IsBoolean,
+    IsDefined,
+    IsEmail,
+    IsInt,
+    IsNotEmpty,
+    IsNumberString,
+    IsOptional,
+    IsString,
+    IsUrl,
+    Max,
+    Min,
+    ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayContains } from 'class-validator';
+
+class PostgresConfig {
+    @IsString()
+    @IsNotEmpty()
+    host: string;
+
+    @IsInt()
+    port: number;
+
+    @IsString()
+    @IsNotEmpty()
+    username: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password: string;
+
+    @IsString()
+    @IsNotEmpty()
+    databaseName: string;
+}
+
+class DbConfig {
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => PostgresConfig)
+    postgres: PostgresConfig;
+
+    @IsBoolean()
+    synchronize: boolean;
+}
+
+class RedisConfig {
+    @IsUrl({
+        require_protocol: true,
+        protocols: ['redis', 'rediss'],
+        require_tld: false,
+    })
+    url: string;
+}
+
+class CacheConfig {
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => RedisConfig)
+    redis: RedisConfig;
+}
+
+class DiscordRolesConfig {
+    @IsNumberString({ no_symbols: true })
+    admin: string;
+
+    @IsNumberString({ no_symbols: true })
+    teachingAssistant: string;
+
+    @IsNumberString({ no_symbols: true })
+    masteringBitcoin: string;
+
+    @IsNumberString({ no_symbols: true })
+    learningBitcoinFromCommandLine: string;
+
+    @IsNumberString({ no_symbols: true })
+    programmingBitcoin: string;
+
+    @IsNumberString({ no_symbols: true })
+    bitcoinProtocolDevelopment: string;
+
+    @IsNumberString({ no_symbols: true })
+    masteringLightningNetwork: string;
+
+    @IsNumberString({ no_symbols: true })
+    buildingBitcoinInRust: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniMasteringBitcoin: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniLearningBitcoinFromCommandLine: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniProgrammingBitcoin: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniBitcoinProtocolDevelopment: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniMasteringLightningNetwork: string;
+
+    @IsNumberString({ no_symbols: true })
+    alumniBuildingBitcoinInRust: string;
+}
+
+class DiscordInviteUrlsConfig {
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    masteringBitcoin: string;
+
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    learningBitcoinFromCommandLine: string;
+
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    programmingBitcoin: string;
+
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    bitcoinProtocolDevelopment: string;
+
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    masteringLightningNetwork: string;
+
+    @IsUrl({
+        protocols: ['https'],
+        require_protocol: true,
+        require_tld: true,
+        host_whitelist: ['discord.gg'],
+    })
+    buildingBitcoinInRust: string;
+}
+
+class DiscordConfig {
+    @IsString()
+    @IsNotEmpty()
+    clientId: string;
+
+    @IsString()
+    @IsNotEmpty()
+    clientSecret: string;
+
+    @IsString()
+    @IsNotEmpty()
+    botToken: string;
+
+    @IsInt()
+    @Min(60)
+    stateTtlSeconds: number;
+
+    @IsUrl({
+        require_protocol: true,
+        protocols: ['https'],
+    })
+    apiBaseUrl: string;
+
+    @IsUrl({
+        require_protocol: true,
+        protocols: ['https'],
+    })
+    oauthUrl: string;
+
+    @IsNumberString({ no_symbols: true })
+    guildId: string;
+
+    @IsString({ each: true })
+    @IsNotEmpty({ each: true })
+    @ArrayContains([
+        'identify',
+        'email',
+        'guilds',
+        'guilds.join',
+        'guilds.members.read',
+    ])
+    authScopes: string[];
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => DiscordRolesConfig)
+    roles: DiscordRolesConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => DiscordInviteUrlsConfig)
+    inviteUrls: DiscordInviteUrlsConfig;
+}
+
+class AppAuthConfig {
+    @IsString()
+    @IsNotEmpty()
+    callbackPath: string;
+
+    @IsString()
+    @IsNotEmpty()
+    dashboardRedirectPath: string;
+
+    @IsInt()
+    @Min(300)
+    sessionTtlSeconds: number;
+}
+
+class AppConfig {
+    @IsUrl({ require_tld: false })
+    baseUrl: string;
+
+    @IsUrl({ require_tld: false })
+    frontEndUrl: string;
+
+    @IsInt()
+    @Min(1)
+    @Max(65535)
+    port: number;
+
+    @IsOptional()
+    @IsBoolean()
+    verbose?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    debug?: boolean;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => AppAuthConfig)
+    auth: AppAuthConfig;
+}
+
+class SmtpTransportConfig {
+    @IsString()
+    @IsNotEmpty()
+    host: string;
+
+    @IsInt()
+    @Min(1)
+    @Max(65535)
+    port: number;
+
+    @IsBoolean()
+    secure: boolean;
+
+    @IsString()
+    @IsNotEmpty()
+    user: string;
+
+    @IsString()
+    @IsNotEmpty()
+    pass: string;
+}
+
+class MailFromIdentity {
+    @IsEmail()
+    email: string;
+
+    @IsString()
+    @IsNotEmpty()
+    name: string;
+}
+
+class GitHubConfig {
+    @IsString()
+    @IsNotEmpty()
+    token: string;
+}
+
+class GoogleDriveConfig {
+    // Base64-encoded service-account JSON. Decoded by the Drive client factory.
+    // In real environments this is supplied via env (GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY).
+    @IsString()
+    @IsNotEmpty()
+    serviceAccountKey: string;
+
+    // The Workspace Shared Drive the service account is a member of.
+    @IsString()
+    @IsNotEmpty()
+    sharedDriveId: string;
+
+    // Optional folder within the Shared Drive to anchor per-application folders
+    // under. Defaults to the Shared Drive root when null/omitted.
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    rootFolderId?: string;
+}
+
+class MailConfig {
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => SmtpTransportConfig)
+    smtp: SmtpTransportConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => MailFromIdentity)
+    from: MailFromIdentity;
+}
+
+class MonitoringConfig {
+    @IsString()
+    @IsNotEmpty()
+    discordErrorWebhookUrl: string;
+}
+
+export class Config {
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => DbConfig)
+    db: DbConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => CacheConfig)
+    cache: CacheConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => DiscordConfig)
+    discord: DiscordConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => AppConfig)
+    app: AppConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => MailConfig)
+    email: MailConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => GitHubConfig)
+    github: GitHubConfig;
+
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => GoogleDriveConfig)
+    googleDrive: GoogleDriveConfig;
+
+    @ValidateNested()
+    @Type(() => MonitoringConfig)
+    monitoring: MonitoringConfig;
+}

@@ -1,0 +1,380 @@
+import {
+    BadRequestException,
+    Injectable,
+    Logger,
+    StreamableFile,
+} from '@nestjs/common';
+import * as archiver from 'archiver';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Cohort } from '@/entities/cohort.entity';
+import { DbTransactionService } from '@/db-transaction/db-transaction.service';
+import { ServiceError } from '@/common/errors';
+import { CertificatesGenerationService } from '@/certificates/certificates-generation.service';
+import { CertificateType } from '@/common/enum';
+import { ScoresService } from '@/scores/scores.service';
+import {
+    ABSENCE_THRESHOLD_DAYS,
+    TOP_PERFORMER_CUTOFF,
+} from '@/certificates/certificates.constants';
+import { Certificate } from '@/entities/certificate.entity';
+import { User } from '@/entities/user.entity';
+import {
+    CertificatePreviewResponseDto,
+    GetCertificateResponseDto,
+} from '@/certificates/certificates.response.dto';
+import { generateCertificateFileName } from '@/certificates/certificates.utils';
+import { APITask } from '@/entities/api-task.entity';
+import { TaskType } from '@/task-processor/task.enums';
+import { MailService } from '@/mail/mail.service';
+
+@Injectable()
+export class CertificatesService {
+    private readonly logger = new Logger(CertificatesService.name);
+
+    constructor(
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
+        @InjectRepository(Certificate)
+        private readonly certificateRepository: Repository<Certificate>,
+        @InjectRepository(Cohort)
+        private readonly cohortRepository: Repository<Cohort>,
+        private readonly scoresService: ScoresService,
+        private readonly certificatesGenerationService: CertificatesGenerationService,
+        private readonly mailService: MailService,
+        private readonly dbTransactionService: DbTransactionService,
+    ) {}
+
+    private async buildCertificateEntities(
+        cohortId: string,
+    ): Promise<{ cohort: Cohort; certificateEntities: Certificate[] }> {
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+            relations: { weeks: true },
+        });
+
+        if (!cohort) {
+            throw new ServiceError(`Cohort with id ${cohortId} not found`);
+        }
+
+        if (cohort.getEndDate() > new Date()) {
+            throw new BadRequestException(
+                `Cohort with id ${cohortId} has not ended yet. Certificates can only be generated after the cohort ends.`,
+            );
+        }
+
+        const leaderboard =
+            await this.scoresService.getCohortLeaderboard(cohortId);
+
+        const absenceThresholdDays = ABSENCE_THRESHOLD_DAYS[cohort.type];
+
+        const certificateEntities = leaderboard
+            .filter(
+                (entry) =>
+                    entry.totalGroupDiscussionAttendance >=
+                    entry.maxGroupDiscussionAttendance - absenceThresholdDays,
+            )
+            .map((entry, index) => {
+                const certificateType: CertificateType =
+                    index < TOP_PERFORMER_CUTOFF
+                        ? CertificateType.PERFORMER
+                        : CertificateType.PARTICIPANT;
+
+                const certificateEntity = new Certificate();
+                certificateEntity.type = certificateType;
+                certificateEntity.name = entry.displayName;
+                certificateEntity.cohort = cohort;
+                certificateEntity.user = {
+                    id: entry.userId,
+                } as User;
+
+                if (certificateType === CertificateType.PERFORMER) {
+                    certificateEntity.rank = index + 1;
+                } else {
+                    certificateEntity.rank = null;
+                }
+
+                certificateEntity.withExercises =
+                    entry.exerciseMaxTotalScore > 0 &&
+                    entry.exerciseTotalScore === entry.exerciseMaxTotalScore;
+
+                return certificateEntity;
+            });
+
+        return { cohort, certificateEntities };
+    }
+
+    async previewCertificatesForCohort(
+        cohortId: string,
+    ): Promise<CertificatePreviewResponseDto[]> {
+        const { certificateEntities } =
+            await this.buildCertificateEntities(cohortId);
+        return CertificatePreviewResponseDto.fromCertificateEntities(
+            certificateEntities,
+        );
+    }
+
+    async generateCertificatesForCohort(
+        cohortId: string,
+        sendEmail: boolean,
+    ): Promise<void> {
+        const { certificateEntities } =
+            await this.buildCertificateEntities(cohortId);
+
+        // We first delete existing certificates for the cohort to avoid duplicates
+        // This is to ensure that if the generation process is re-run, we don't end up with multiple
+        await this.dbTransactionService.execute(async (manager) => {
+            await manager.delete(Certificate, { cohort: { id: cohortId } });
+            await manager.save(Certificate, certificateEntities);
+            this.logger.log(
+                `Saved ${certificateEntities.length} certificate records for cohort ${cohortId}`,
+            );
+
+            if (certificateEntities.length > 0) {
+                const alumniTask =
+                    new APITask<TaskType.ASSIGN_COHORT_ALUMNI_ROLE>();
+                alumniTask.type = TaskType.ASSIGN_COHORT_ALUMNI_ROLE;
+                alumniTask.data = { cohortId };
+                alumniTask.executeOnTime = new Date();
+                await manager.save(alumniTask);
+                this.logger.log(
+                    `Created ASSIGN_COHORT_ALUMNI_ROLE task for cohort ${cohortId}`,
+                );
+            }
+
+            if (sendEmail) {
+                const emailTask =
+                    new APITask<TaskType.SEND_CERTIFICATE_EMAILS>();
+                emailTask.type = TaskType.SEND_CERTIFICATE_EMAILS;
+                emailTask.data = { cohortId };
+                emailTask.executeOnTime = new Date();
+                await manager.save(emailTask);
+                this.logger.log(
+                    `Created SEND_CERTIFICATE_EMAILS task for cohort ${cohortId}`,
+                );
+            }
+        });
+    }
+
+    async getUserCertificateForCohort(
+        userId: string,
+        cohortId: string,
+    ): Promise<GetCertificateResponseDto> {
+        const certificate = await this.certificateRepository.findOne({
+            where: {
+                user: { id: userId },
+                cohort: { id: cohortId },
+            },
+            relations: {
+                cohort: true,
+                user: true,
+            },
+        });
+
+        if (!certificate) {
+            throw new BadRequestException(
+                `Certificate not found for user ${userId} in cohort ${cohortId}`,
+            );
+        }
+
+        return GetCertificateResponseDto.fromEntity(certificate);
+    }
+
+    async getUserCertificates(
+        userId: string,
+    ): Promise<GetCertificateResponseDto[]> {
+        const certificates = await this.certificateRepository.find({
+            where: {
+                user: { id: userId },
+            },
+            relations: {
+                cohort: true,
+                user: true,
+            },
+        });
+
+        return GetCertificateResponseDto.fromEntities(certificates);
+    }
+
+    async getCohortCertificates(
+        cohortId: string,
+    ): Promise<GetCertificateResponseDto[]> {
+        const certificates = await this.certificateRepository.find({
+            where: {
+                cohort: { id: cohortId },
+            },
+            relations: {
+                cohort: true,
+                user: true,
+            },
+        });
+
+        return GetCertificateResponseDto.fromEntities(certificates);
+    }
+
+    async handleSendCertificateEmails(
+        task: APITask<TaskType.SEND_CERTIFICATE_EMAILS>,
+    ): Promise<void> {
+        const { cohortId } = task.data;
+
+        const certificates = await this.certificateRepository.find({
+            where: { cohort: { id: cohortId } },
+            relations: { cohort: { weeks: true }, user: true },
+        });
+
+        if (certificates.length === 0) {
+            this.logger.warn(
+                `No certificates found for cohort ${cohortId}, skipping email send`,
+            );
+            return;
+        }
+
+        const cohort = certificates[0].cohort;
+        const cohortShortName = this.mailService.getCohortShortName(
+            cohort.type,
+        );
+        const season = `Season ${cohort.season.toString().padStart(2, '0')}`;
+
+        this.logger.log(
+            `Sending certificate emails to ${certificates.length} users for cohort ${cohortId}`,
+        );
+
+        for (const certificate of certificates) {
+            const user = certificate.user;
+
+            if (!user.email) {
+                this.logger.warn(
+                    `User ${user.id} does not have an email address, skipping certificate email`,
+                );
+                continue;
+            }
+
+            try {
+                const pdfBuffer =
+                    await this.certificatesGenerationService.generateCertificateFromEntity(
+                        certificate,
+                    );
+
+                const fileName = generateCertificateFileName(
+                    user.id,
+                    cohort.type,
+                );
+
+                await this.mailService.sendCohortCertificateEmail(
+                    user.email,
+                    user.displayName,
+                    cohortShortName,
+                    season,
+                    pdfBuffer,
+                    fileName,
+                );
+            } catch (error) {
+                this.logger.error(
+                    `Failed to send certificate email to ${user.email}: ${error?.message}`,
+                    error?.stack,
+                );
+            }
+        }
+    }
+
+    async downloadCertificate(id: string): Promise<{
+        fileName: string;
+        fileBuffer: StreamableFile;
+    }> {
+        const certificate = await this.certificateRepository.findOne({
+            where: { id },
+            relations: {
+                cohort: { weeks: true },
+                user: true,
+            },
+        });
+
+        if (!certificate) {
+            throw new BadRequestException(
+                `Certificate with id ${id} not found`,
+            );
+        }
+
+        const fileBuffer =
+            await this.certificatesGenerationService.generateCertificateFromEntity(
+                certificate,
+            );
+
+        return {
+            fileName: generateCertificateFileName(
+                certificate.user.id,
+                certificate.cohort.type,
+            ),
+            fileBuffer: new StreamableFile(fileBuffer),
+        };
+    }
+
+    async bulkDownloadCohortCertificates(cohortId: string): Promise<{
+        fileName: string;
+        fileStream: StreamableFile;
+    }> {
+        const certificates = await this.certificateRepository.find({
+            where: { cohort: { id: cohortId } },
+            relations: { cohort: { weeks: true }, user: true },
+        });
+
+        if (certificates.length === 0) {
+            throw new BadRequestException(
+                `No certificates found for cohort ${cohortId}`,
+            );
+        }
+
+        const cohort = certificates[0].cohort;
+
+        const settledResults = await Promise.allSettled(
+            certificates.map(async (certificate) => ({
+                pdfBuffer:
+                    await this.certificatesGenerationService.generateCertificateFromEntity(
+                        certificate,
+                    ),
+                fileName: generateCertificateFileName(
+                    certificate.user.id,
+                    cohort.type,
+                ),
+            })),
+        );
+
+        const pdfResults = settledResults
+            .filter(
+                (
+                    r,
+                ): r is PromiseFulfilledResult<{
+                    pdfBuffer: Buffer;
+                    fileName: string;
+                }> => r.status === 'fulfilled',
+            )
+            .map((r) => r.value);
+
+        if (pdfResults.length === 0) {
+            throw new BadRequestException(
+                `Failed to generate any certificates for cohort ${cohortId}`,
+            );
+        }
+
+        const archive = archiver('zip', { zlib: { level: 5 } });
+
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        for (const { pdfBuffer, fileName } of pdfResults) {
+            archive.append(pdfBuffer, { name: fileName });
+        }
+
+        // Not awaited: finalize() signals no more entries, but awaiting it would deadlock
+        // since the stream has no consumer yet — NestJS drains it when piping the response.
+        archive.finalize();
+
+        return {
+            fileName: `certificates_${cohort.type.toLowerCase()}_s${
+                cohort.season
+            }.zip`,
+            fileStream: new StreamableFile(archive),
+        };
+    }
+}

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome to the Bitshala Fellowship</title>
+</head>
+<body style="margin:0; padding:0; background-color:#111111; font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; visibility:hidden; opacity:0; color:transparent;">
+    Your Bitshala Fellowship contract and next steps are inside the app.
+    &#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111111; padding:24px 0;">
+    <tr>
+      <td align="center">
+
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#1b1b1b; border-radius:16px; overflow:hidden;">
+
+          <tr>
+            <td align="center" style="background-color:#000000; padding:24px 24px 20px 24px;">
+              <h1 style="margin:0; font-size:24px; color:#ffffff; font-weight:700;">
+                Welcome <%~ it.userName %>!
+              </h1>
+              <p style="margin:8px 0 0 0; font-size:14px; color:#f9b233; font-weight:500;">
+                Your <%~ it.fellowshipType %> Fellowship Application Has Been Accepted
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 32px 8px 32px; color:#eaeaea; font-size:14px; line-height:1.6;">
+              <p style="margin:0 0 12px 0;">Dear <%~ it.userName %>,</p>
+              <p style="margin:0 0 12px 0;">
+                We are thrilled to inform you that you have been selected for the
+                <strong style="color:#f9b233;">Bitshala <%~ it.fellowshipType %> Fellowship</strong>!
+                We're excited to see your impact and contributions and look forward to
+                working with you over the months ahead.
+              </p>
+              <p style="margin:0;">
+                Everything happens right inside the
+                <a href="<%~ it.documentsUrl %>" style="color:#f9b233; text-decoration:underline;">Bitshala app</a>:
+                download your contract, upload your signed copy and tax form, and
+                submit your monthly work reports — all in one place.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 32px 0 32px;">
+              <div style="height:1px; background-color:#2e2e2e; line-height:1px; font-size:1px;">&nbsp;</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px 8px 32px;">
+              <h2 style="margin:0 0 16px 0; font-size:18px; color:#ffd580;">Next Steps</h2>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px; background-color:#262626; border-radius:12px;">
+                <tr>
+                  <td width="48" valign="top" style="padding:16px 0 16px 16px;">
+                    <div style="width:32px; height:32px; line-height:32px; text-align:center; border-radius:999px; background-color:#f7931a; color:#000000; font-weight:700; font-size:14px;">1</div>
+                  </td>
+                  <td style="padding:16px 16px 16px 12px; color:#eaeaea; font-size:13px; line-height:1.6;">
+                    <strong style="color:#ffffff;">Sign the Contract.</strong>
+                    Open the app and download your contract — already signed by
+                    Bitshala. Add your signature and upload the signed copy back in
+                    the app. Make sure the contract date matches the date in the
+                    contract document.
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px; background-color:#262626; border-radius:12px;">
+                <tr>
+                  <td width="48" valign="top" style="padding:16px 0 16px 16px;">
+                    <div style="width:32px; height:32px; line-height:32px; text-align:center; border-radius:999px; background-color:#f7931a; color:#000000; font-weight:700; font-size:14px;">2</div>
+                  </td>
+                  <td style="padding:16px 16px 16px 12px; color:#eaeaea; font-size:13px; line-height:1.6;">
+                    <strong style="color:#ffffff;">Submit Your W-8BEN Form.</strong>
+                    We require a completed W-8BEN form for U.S. tax compliance on
+                    monthly payouts. Download the form from
+                    <a href="https://www.irs.gov/pub/irs-pdf/fw8ben.pdf" style="color:#f9b233; text-decoration:underline;">irs.gov</a>,
+                    fill it out (India-specific guidance below), and upload the
+                    completed form in the app.
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#262626; border-radius:12px;">
+                <tr>
+                  <td width="48" valign="top" style="padding:16px 0 16px 16px;">
+                    <div style="width:32px; height:32px; line-height:32px; text-align:center; border-radius:999px; background-color:#f7931a; color:#000000; font-weight:700; font-size:14px;">3</div>
+                  </td>
+                  <td style="padding:16px 16px 16px 12px; color:#eaeaea; font-size:13px; line-height:1.6;">
+                    <strong style="color:#ffffff;">Share Account Details.</strong>
+                    Monthly payments are processed through <strong>Skydo</strong>.
+                    You'll receive a separate email from Skydo with a form for your
+                    account and contact info — please fill it in.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 32px 0 32px;">
+              <div style="height:1px; background-color:#2e2e2e; line-height:1px; font-size:1px;">&nbsp;</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px 4px 32px;">
+              <p style="margin:0 0 4px 0; font-size:11px; color:#888888; text-transform:uppercase; letter-spacing:0.6px;">Reference</p>
+              <h3 style="margin:0 0 4px 0; font-size:14px; color:#cfcfcf;">W-8BEN Form — India-Specific Guidance</h3>
+              <p style="margin:0 0 12px 0; font-size:11px; color:#888888; line-height:1.5;">
+                Use this if you're filing from India. Skip if it doesn't apply.
+                Form:
+                <a href="https://www.irs.gov/pub/irs-pdf/fw8ben.pdf" style="color:#888888; text-decoration:underline;">irs.gov/pub/irs-pdf/fw8ben.pdf</a>
+              </p>
+
+              <p style="margin:8px 0 2px 0; font-size:11px; color:#aaaaaa; font-weight:600;">
+                Part I — Identification of Beneficial Owner
+              </p>
+              <ul style="padding-left:18px; margin:0 0 10px 0; color:#888888; font-size:11px; line-height:1.6;">
+                <li><strong style="color:#aaaaaa;">1:</strong> Your full name</li>
+                <li><strong style="color:#aaaaaa;">2:</strong> Your country of citizenship</li>
+                <li><strong style="color:#aaaaaa;">3:</strong> Full street address — city, state/province, postal code, country</li>
+                <li><strong style="color:#aaaaaa;">4:</strong> Optional, only if mailing address differs from line 3</li>
+                <li><strong style="color:#aaaaaa;">5:</strong> Leave blank (unless you have a U.S. tax ID)</li>
+                <li><strong style="color:#aaaaaa;">6a:</strong> Your PAN card or relevant tax ID</li>
+                <li><strong style="color:#aaaaaa;">6b:</strong> Leave blank</li>
+                <li><strong style="color:#aaaaaa;">7:</strong> Date of birth (MM-DD-YYYY)</li>
+              </ul>
+
+              <p style="margin:8px 0 2px 0; font-size:11px; color:#aaaaaa; font-weight:600;">
+                Part II — Claim of Tax Treaty Benefits
+              </p>
+              <ul style="padding-left:18px; margin:0 0 10px 0; color:#888888; font-size:11px; line-height:1.6;">
+                <li><strong style="color:#aaaaaa;">9a:</strong> India</li>
+                <li><strong style="color:#aaaaaa;">10:</strong> Article <strong>15 (Independent Personal Services)</strong> of the treaty on line 9 — claims a <strong>0% withholding rate</strong>.</li>
+                <li><strong style="color:#aaaaaa;">Additional conditions:</strong> "Beneficial owner has a permanent establishment only in India and all work is done in India as per Article 5 (Permanent Establishment)."</li>
+              </ul>
+
+              <p style="margin:8px 0 2px 0; font-size:11px; color:#aaaaaa; font-weight:600;">
+                Part III — Certification
+              </p>
+              <ul style="padding-left:18px; margin:0; color:#888888; font-size:11px; line-height:1.6;">
+                <li>Sign, date, and complete the form.</li>
+              </ul>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 32px 0 32px;">
+              <div style="height:1px; background-color:#2e2e2e; line-height:1px; font-size:1px;">&nbsp;</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:24px 32px 8px 32px; color:#eaeaea; font-size:13px; line-height:1.6;">
+              <p style="margin:0 0 16px 0;">Ready to get started? Open your fellowship in the app below.</p>
+              <table cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td align="center" bgcolor="#f7931a" style="border-radius:999px;">
+                    <a href="<%~ it.documentsUrl %>"
+                       style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#000000; text-decoration:none;">
+                      Open Your Fellowship Documents
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 32px 32px 32px; color:#eaeaea; font-size:13px; line-height:1.6;">
+              <p style="margin:0 0 12px 0;">
+                If you have any questions or need clarification, email us at
+                <a href="mailto:fellowship@bitshala.org" style="color:#f9b233; text-decoration:underline;">fellowship@bitshala.org</a>
+                — we're here to support you every step of the way.
+              </p>
+              <p style="margin:0;">Welcome aboard, and we look forward to achieving great things together!</p>
+              <p style="margin:16px 0 0 0; color:#9a9a9a;">— Team Bitshala</p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

@@ -1,0 +1,253 @@
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Feedback } from '@/entities/feedback.entity';
+import { User } from '@/entities/user.entity';
+import { Cohort } from '@/entities/cohort.entity';
+import { Attendance } from '@/entities/attendance.entity';
+import {
+    CreateFeedbackRequestDto,
+    UpdateFeedbackRequestDto,
+} from '@/feedback/feedback.request.dto';
+import {
+    CreateFeedbackResponseDto,
+    GetFeedbackResponseDto,
+} from '@/feedback/feedback.response.dto';
+import { PaginatedDataDto, PaginatedQueryDto } from '@/common/dto';
+
+@Injectable()
+export class FeedbackService {
+    private readonly logger = new Logger(FeedbackService.name);
+
+    constructor(
+        @InjectRepository(Feedback)
+        private readonly feedbackRepository: Repository<Feedback>,
+        @InjectRepository(Cohort)
+        private readonly cohortRepository: Repository<Cohort>,
+        @InjectRepository(Attendance)
+        private readonly attendanceRepository: Repository<Attendance>,
+    ) {}
+
+    async createFeedback(
+        user: User,
+        cohortId: string,
+        feedbackData: CreateFeedbackRequestDto,
+    ): Promise<CreateFeedbackResponseDto> {
+        // Verify cohort exists
+        const cohortExists = await this.cohortRepository.exists({
+            where: { id: cohortId },
+        });
+
+        if (!cohortExists) {
+            throw new NotFoundException(
+                `Cohort with id ${cohortId} does not exist.`,
+            );
+        }
+
+        // Check if user is enrolled in the cohort
+        const isEnrolled = await this.cohortRepository.exists({
+            where: {
+                id: cohortId,
+                memberships: { user: { id: user.id } },
+            },
+        });
+
+        if (!isEnrolled) {
+            throw new BadRequestException(
+                `You are not enrolled in this cohort.`,
+            );
+        }
+
+        // Check if user has attended at least one week
+        const hasAttended = await this.attendanceRepository.exists({
+            where: {
+                user: { id: user.id },
+                cohort: { id: cohortId },
+                attended: true,
+            },
+        });
+
+        if (!hasAttended) {
+            throw new BadRequestException(
+                `You must attend at least one week before submitting feedback.`,
+            );
+        }
+
+        // Check if user has already submitted feedback for this cohort
+        const hasSubmittedFeedback = await this.feedbackRepository.exists({
+            where: {
+                user: { id: user.id },
+                cohort: { id: cohortId },
+            },
+        });
+
+        if (hasSubmittedFeedback) {
+            throw new BadRequestException(
+                `You have already submitted feedback for this cohort.`,
+            );
+        }
+
+        // Create feedback
+        const feedback = this.feedbackRepository.create({
+            componentRatings: feedbackData.componentRatings ?? null,
+            expectations: feedbackData.expectations ?? null,
+            improvements: feedbackData.improvements ?? null,
+            opportunityInterests: feedbackData.opportunityInterests ?? [],
+            fellowshipInterests: feedbackData.fellowshipInterests ?? [],
+            idealProject: feedbackData.idealProject ?? null,
+            testimonial: feedbackData.testimonial ?? null,
+            user: { id: user.id },
+            cohort: { id: cohortId },
+        });
+
+        const savedFeedback = await this.feedbackRepository.save(feedback);
+
+        this.logger.log(
+            `User ${user.id} submitted feedback for cohort ${cohortId}`,
+        );
+
+        return new CreateFeedbackResponseDto({
+            id: savedFeedback.id,
+            message: 'Feedback submitted successfully',
+        });
+    }
+
+    async getFeedbackById(feedbackId: string): Promise<GetFeedbackResponseDto> {
+        const feedback = await this.feedbackRepository.findOne({
+            where: { id: feedbackId },
+            relations: { user: true, cohort: true },
+        });
+
+        if (!feedback) {
+            throw new NotFoundException(
+                `Feedback with id ${feedbackId} does not exist.`,
+            );
+        }
+
+        return GetFeedbackResponseDto.fromEntity(feedback);
+    }
+
+    async listFeedback(
+        query: PaginatedQueryDto,
+    ): Promise<PaginatedDataDto<GetFeedbackResponseDto>> {
+        const [feedbacks, total] = await this.feedbackRepository.findAndCount({
+            skip: query.page * query.pageSize,
+            take: query.pageSize,
+            order: { createdAt: 'DESC' },
+            relations: { user: true, cohort: true },
+        });
+
+        return new PaginatedDataDto({
+            totalRecords: total,
+            records: feedbacks.map((feedback) =>
+                GetFeedbackResponseDto.fromEntity(feedback),
+            ),
+        });
+    }
+
+    async listFeedbackByCohort(
+        cohortId: string,
+        query: PaginatedQueryDto,
+    ): Promise<PaginatedDataDto<GetFeedbackResponseDto>> {
+        // Verify cohort exists
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+        });
+
+        if (!cohort) {
+            throw new NotFoundException(
+                `Cohort with id ${cohortId} does not exist.`,
+            );
+        }
+
+        const [feedbacks, total] = await this.feedbackRepository.findAndCount({
+            where: { cohort: { id: cohortId } },
+            skip: query.page * query.pageSize,
+            take: query.pageSize,
+            order: { createdAt: 'DESC' },
+            relations: { user: true, cohort: true },
+        });
+
+        return new PaginatedDataDto({
+            totalRecords: total,
+            records: feedbacks.map((feedback) =>
+                GetFeedbackResponseDto.fromEntity(feedback),
+            ),
+        });
+    }
+
+    async listMyFeedback(
+        user: User,
+        query: PaginatedQueryDto,
+    ): Promise<PaginatedDataDto<GetFeedbackResponseDto>> {
+        const [feedbacks, total] = await this.feedbackRepository.findAndCount({
+            where: { user: { id: user.id } },
+            skip: query.page * query.pageSize,
+            take: query.pageSize,
+            order: { createdAt: 'DESC' },
+            relations: { user: true, cohort: true },
+        });
+
+        return new PaginatedDataDto({
+            totalRecords: total,
+            records: feedbacks.map((feedback) =>
+                GetFeedbackResponseDto.fromEntity(feedback),
+            ),
+        });
+    }
+
+    async updateFeedback(
+        user: User,
+        feedbackId: string,
+        updateData: UpdateFeedbackRequestDto,
+    ): Promise<GetFeedbackResponseDto> {
+        // Find the feedback
+        const feedback = await this.feedbackRepository.findOne({
+            where: { id: feedbackId },
+            relations: { user: true, cohort: true },
+        });
+
+        if (!feedback) {
+            throw new NotFoundException(
+                `Feedback with id ${feedbackId} does not exist.`,
+            );
+        }
+
+        // Verify the user owns this feedback
+        if (feedback.user.id !== user.id) {
+            throw new ForbiddenException(
+                `You are not authorized to update this feedback.`,
+            );
+        }
+
+        // Update the feedback
+        if (updateData.componentRatings !== undefined)
+            feedback.componentRatings = updateData.componentRatings ?? null;
+        if (updateData.expectations !== undefined)
+            feedback.expectations = updateData.expectations;
+        if (updateData.improvements !== undefined)
+            feedback.improvements = updateData.improvements;
+        if (updateData.opportunityInterests !== undefined)
+            feedback.opportunityInterests = updateData.opportunityInterests;
+        if (updateData.fellowshipInterests !== undefined)
+            feedback.fellowshipInterests = updateData.fellowshipInterests;
+        if (updateData.idealProject !== undefined)
+            feedback.idealProject = updateData.idealProject;
+        if (updateData.testimonial !== undefined)
+            feedback.testimonial = updateData.testimonial;
+
+        const updatedFeedback = await this.feedbackRepository.save(feedback);
+
+        this.logger.log(
+            `User ${user.id} updated feedback ${feedbackId} for cohort ${feedback.cohort.id}`,
+        );
+
+        return GetFeedbackResponseDto.fromEntity(updatedFeedback);
+    }
+}

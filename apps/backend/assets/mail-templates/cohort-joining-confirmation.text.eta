@@ -1,0 +1,27 @@
+🎉 Welcome <%~ it.userName %>!
+
+You've joined the <%~ it.cohortName %>
+
+We're thrilled to have you onboard! 🚀
+
+Connect with fellow Bitcoiners and developers in our Bitshala Discord community. This is where the magic happens – discussions, collaboration, and learning together.
+
+Register for the private cohort channels with the link below (one-time use):
+
+🚀 Join Discord Server: <%~ it.discordInviteLink %>
+
+If you face any issue while registering, please connect with the Admins on Bitshala Discord: <%~ it.discordSupportLink %>
+
+---
+
+What's Next?
+
+• Click the link above to join your private cohort channels.
+• Introduce yourself in the #introductions channel.
+• Check out the #general and #notice-board channels under the <%~ it.cohortCategory %> category. (Ask Admins if you can't see the channels even after registering.)
+• Stay tuned in the channels for further updates and connect with your peers.
+
+---
+
+Having trouble with the link?
+Copy and paste this into your browser: <%~ it.discordInviteLink %>

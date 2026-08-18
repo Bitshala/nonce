@@ -1,0 +1,43 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Cohort } from '@/entities/cohort.entity';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { CohortWeek } from '@/entities/cohort-week.entity';
+import { CohortsService } from '@/cohorts/cohorts.service';
+import { CohortsController } from '@/cohorts/cohorts.controller';
+import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
+import { CohortReminderService } from '@/cohorts/cohort-reminder.service';
+import { DbTransactionModule } from '@/db-transaction/db-transaction.module';
+import { DiscordClientModule } from '@/discord-client/discord.client.module';
+import { CohortWaitlist } from '@/entities/cohort-waitlist.entity';
+import { User } from '@/entities/user.entity';
+import { Feedback } from '@/entities/feedback.entity';
+import { Attendance } from '@/entities/attendance.entity';
+import { Certificate } from '@/entities/certificate.entity';
+import { APITask } from '@/entities/api-task.entity';
+import { MailModule } from '@/mail/mail.module';
+import { CohortCalendarModule } from '@/cohort-calendar/cohort-calendar.module';
+
+@Module({
+    imports: [
+        TypeOrmModule.forFeature([
+            Cohort,
+            CohortMembership,
+            CohortWeek,
+            CohortWaitlist,
+            User,
+            Feedback,
+            Attendance,
+            Certificate,
+            APITask,
+        ]),
+        DbTransactionModule,
+        DiscordClientModule,
+        MailModule,
+        CohortCalendarModule,
+    ],
+    providers: [CohortsConfigService, CohortsService, CohortReminderService],
+    controllers: [CohortsController],
+    exports: [CohortsService, CohortReminderService],
+})
+export class CohortsModule {}

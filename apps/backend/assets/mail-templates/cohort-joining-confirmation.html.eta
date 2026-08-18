@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome to <%~ it.cohortName %></title>
+</head>
+<body style="margin:0; padding:0; background-color:#111111; font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+
+  <!-- Full-width background -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111111; padding:24px 0;">
+    <tr>
+      <td align="center">
+
+        <!-- Main card -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#1b1b1b; border-radius:16px; overflow:hidden;">
+          <!-- Header strip -->
+          <tr>
+            <td align="center" style="background-color:#000000; padding:24px 24px 20px 24px;">
+              <h1 style="margin:0; font-size:24px; color:#ffffff; font-weight:700;">
+                🎉 Welcome <%~ it.userName %>!
+              </h1>
+              <p style="margin:8px 0 0 0; font-size:14px; color:#f9b233; font-weight:500;">
+                You've joined the <%~ it.cohortName %>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body copy -->
+          <tr>
+            <td style="padding:24px 32px 16px 32px; color:#eaeaea; font-size:14px; line-height:1.6;">
+              <p style="margin:0 0 12px 0;">
+                We're thrilled to have you onboard! 🚀
+              </p>
+
+              <p style="margin:0 0 16px 0;">
+                Connect with fellow Bitcoiners and developers in our
+                <strong style="color:#f9b233;">Bitshala Discord community</strong>.
+                This is where the magic happens – discussions, collaboration, and learning together.
+              </p>
+
+              <p style="margin:0 0 16px 0; color:#ffd580; font-weight:500;">
+                Register for the private cohort channels with the link below (one-time use):
+              </p>
+
+              <!-- Button -->
+              <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:16px auto 8px auto;">
+                <tr>
+                  <td align="center" bgcolor="#f7931a" style="border-radius:999px;">
+                    <a href="<%~ it.discordInviteLink %>"
+                       style="display:inline-block; padding:12px 28px; font-size:15px; font-weight:600; color:#000000; text-decoration:none;">
+                      🚀 Join Discord Server
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:12px 0 0 0; font-size:12px; color:#b3b3b3; text-align:center;">
+                If you face any issue while registering, please connect with the Admins on
+                <a href="<%~ it.discordSupportLink %>" style="color:#f9b233; text-decoration:underline;">Bitshala Discord</a>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- What's next block -->
+          <tr>
+            <td style="padding:0 32px 32px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#262626; border-radius:12px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <h3 style="margin:0 0 8px 0; font-size:16px; color:#ffd580;">What's Next?</h3>
+                    <ul style="padding-left:18px; margin:8px 0 0 0; color:#eaeaea; font-size:13px; line-height:1.7;">
+                      <li>Click the button above to join your private cohort channels.</li>
+                      <li>Introduce yourself in the <strong style="color:#ffd580;">#introductions</strong> channel.</li>
+                      <li>
+                        Check out the <strong>#general</strong> and <strong>#notice-board</strong> channels
+                        under the <strong><%~ it.cohortCategory %></strong> category.
+                        <span style="font-size:12px; color:#b3b3b3;">
+                          (Ask Admins if you can't see the channels even after registering.)
+                        </span>
+                      </li>
+                      <li>Stay tuned in the channels for further updates and connect with your peers.</li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td style="padding:0 32px 28px 32px; font-size:12px; color:#b3b3b3;">
+              <p style="margin:0 0 4px 0; font-weight:500; color:#eaeaea;">
+                Having trouble with the button?
+              </p>
+              <p style="margin:0;">
+                Copy and paste this link into your browser:<br />
+                <span style="word-break:break-all; color:#f9b233;"><%~ it.discordInviteLink %></span>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Main card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
