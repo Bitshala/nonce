@@ -102,4 +102,42 @@ wire shapes belong in shared — frontend render models (e.g.
 - DTO extraction into `@nonce/shared` is partial. `common` and `cohorts` are
   done; `scores`, `users`, `teaching-assistants`, `certificates`, `feedback`, and
   `fellowships` still have hand-maintained mirrors in
-  `apps/frontend/src/types/`.
+  `apps/frontend/src/types/`. The pattern to follow is in
+  `packages/shared/src/dto/cohorts.ts` plus the `implements` clauses in
+  `apps/backend/src/cohorts/*.dto.ts`.
+
+### Known contract drift in the not-yet-migrated modules
+
+Found while surveying `scores` for migration. These are pre-existing and are the
+reason finishing the extraction is worth doing — each one becomes a compile error
+once the module moves into `@nonce/shared`.
+
+Frontend claims fields the backend never sends:
+
+- `GroupDiscussionScore.attendance` — absent from the backend DTO.
+  `apps/frontend/src/pages/StudentDetailPage.tsx` reads
+  `w.groupDiscussionScores?.attendance` in three places. It is always
+  `undefined`; the expressions only work because `w.attended ?? …` shadows it,
+  so this is dead code rather than a live bug.
+- `GroupDiscussionScore.teachingAssistant` — absent from the backend's
+  `GroupDiscussionScore` (TA info lives on `UsersWeekScoreResponseDto` instead).
+
+Backend fields missing from the frontend mirror, some of which the frontend
+recomputes client-side even though the API already provides them:
+
+`displayName`, `attendanceTotalScore`, `attendanceMaxTotalScore`,
+`totalGroupDiscussionAttendance`, `maxGroupDiscussionAttendance`,
+`attendedWeeks`, `totalWeeks`, `scorePercent`, `attendancePercent`, `avgScore`.
+
+The backend also has `StudentLeaderboardEntryDto` and
+`CrossCohortPerformanceEntryDto` with no frontend counterpart, and
+`GetCohortLeaderboardResponseDto` is typed in the frontend as
+`LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] }` — a defensive
+union hedging an unknown response shape that should be collapsed to whatever the
+controller actually returns.
+
+Note the two `*LeaderboardEntryDto` projections in
+`apps/backend/src/scores/scores.response.dto.ts` are deliberately hand-written
+field-by-field to keep member real names out of student- and anonymous-facing
+responses. Preserve that when moving them; do not turn them into `Omit<>` or a
+spread.
