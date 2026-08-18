@@ -13,6 +13,11 @@ Formed by merging `Bitshala/admin-backend` and `Bitshala/portal-frontend`. Both
 histories are preserved in full — `git log --follow apps/frontend/<file>` reaches
 back past the merge.
 
+One exception: `packages/shared/src/enums.ts` was moved out of the backend and
+reindented in the same commit, which drops it under git's default 50% rename
+similarity threshold. Use `git log --follow -M40% packages/shared/src/enums.ts`
+to see its full history.
+
 ## Prerequisites
 
 - Node.js >= 20.12 and npm
