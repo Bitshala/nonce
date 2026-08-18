@@ -1,0 +1,57 @@
+# Build context is the repo root (see apps/backend/Dockerfile), so paths here are
+# repo-relative and `**` is used for anything that can appear in any workspace.
+
+# git
+.git
+.gitignore
+.github
+
+# dependencies — the image runs its own npm ci
+node_modules
+**/node_modules
+
+# compiled output — the image builds from source
+**/dist
+**/build
+**/*.tsbuildinfo
+
+# logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# tests and coverage
+**/coverage
+**/.nyc_output
+
+# OS
+.DS_Store
+
+# editors and IDEs
+.idea
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# agent and workspace tooling
+.claude
+.conductor
+
+# local config carrying real credentials
+apps/backend/config/dev.config.yaml
+apps/backend/config/e2e.config.yaml
+
+# db snapshots and e2e artifacts
+apps/backend/snapshots
+apps/backend/e2e/.logs

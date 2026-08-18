@@ -1,0 +1,85 @@
+# Patterns here are deliberately unanchored (no leading slash) so they match at
+# any depth — `dist/` covers both apps/backend/dist and apps/frontend/dist.
+# Anchored, app-specific paths live in the section at the bottom.
+
+# Dependencies
+node_modules/
+.npm
+.yarn-integrity
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+.vite
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Tests and coverage
+coverage/
+*.lcov
+.nyc_output
+
+# Caches
+.eslintcache
+.cache
+.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editors and IDEs
+.idea/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Agent and workspace tooling
+.claude/
+.conductor/settings.local.toml
+
+# Runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+.node_repl_history
+*.tgz
+
+# --- apps/backend: local config carrying real credentials, never commit ---
+apps/backend/config/dev.config.yaml
+apps/backend/config/e2e.config.yaml
+apps/backend/snapshots/
+apps/backend/e2e/.logs
