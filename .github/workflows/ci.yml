@@ -12,6 +12,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  # Lets every lane be forced regardless of path filters — useful for verifying
+  # the workflow itself, and after a change that touches no filtered path.
+  workflow_dispatch:
 
 jobs:
   # Which workspaces did this change touch? Everything downstream keys off this
@@ -41,7 +44,7 @@ jobs:
 
   shared:
     needs: changes
-    if: needs.changes.outputs.shared == 'true'
+    if: needs.changes.outputs.shared == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +58,7 @@ jobs:
 
   backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true'
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.shared == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -108,7 +111,7 @@ jobs:
 
   frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true'
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.shared == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
