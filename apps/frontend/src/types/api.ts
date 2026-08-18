@@ -1,102 +1,35 @@
 import { CohortType, UserRole, ComponentRating, CohortComponent, OpportunityInterest, FellowshipInterest } from '@nonce/shared';
 
-export interface PaginatedQueryDto {
-  pageSize: number;
-  page: number;
-}
+// The pagination envelope, cohort shapes, and cohort request bodies now live in
+// @nonce/shared, where the backend DTO classes `implements` them — so a backend
+// change that isn't mirrored here is a compile error rather than something the
+// UI discovers at runtime.
+//
+// They are re-exported under this file's existing *Dto names so the 25 modules
+// importing from '../types/api' are unchanged. Prefer importing from
+// '@nonce/shared' directly in new code.
+export type {
+  PaginatedQuery as PaginatedQueryDto,
+  PaginatedData as PaginatedDataDto,
+  CohortWeekQuestion,
+  ReadingMaterialLink,
+  CohortLink as CohortQuickLink,
+  CohortWeekExercise,
+  GetCohortWeekResponse as GetCohortWeekResponseDto,
+  GetCohortResponse as GetCohortResponseDto,
+  PublicCohortResponse as PublicCohortResponseDto,
+  ListAvailableCohortsResponse as ListAvailableCohortsResponseDto,
+  UserCohortWaitlistResponse as UserCohortWaitlistResponseDto,
+  UpdateCohortRequest as UpdateCohortRequestDto,
+  CreateCohortRequest as CreateCohortRequestDto,
+  UpdateCohortWeekRequest as UpdateCohortWeekRequestDto,
+  JoinWaitlistRequest as JoinWaitlistRequestDto,
+} from '@nonce/shared';
 
-export interface PaginatedDataDto<TData> {
-  totalRecords: number;
-  records: TData[];
-}
-
-export interface UpdateCohortRequestDto {
-  startDate?: string;
-  registrationDeadline?: string;
-}
-
-export interface CreateCohortRequestDto {
-  type: CohortType;
-  startDate: string;
-  registrationDeadline: string;
-}
-
-export interface CohortWeekQuestion {
-  text: string;
-  attachments: string[];
-}
-
-// Instruction-sheet content is no longer edited via the API — it comes from the
-// course config files and is applied with POST /cohorts/:id/sync-from-config.
-// PATCH /cohorts/weeks/:id now only carries operational (non-config) fields.
-export interface UpdateCohortWeekRequestDto {
-  scheduledDate?: string;
-  classroomAssignmentId?: string;
-}
-
-export interface JoinWaitlistRequestDto {
-  type: CohortType;
-}
-
-// --- Instruction-sheet content shapes (served by GET /cohorts/:id) ---
-
-export interface ReadingMaterialLink {
-  label: string;
-  url: string;
-}
-
-// Links are pre-filtered by role server-side; the UI renders exactly what it receives.
-export interface CohortQuickLink {
-  label: string;
-  url: string;
-}
-
-// Node-setup exercise for a single week (drives the "Exercises" tab), or null.
-export interface CohortWeekExercise {
-  title: string;
-  concepts: string;
-  problem: string;
-  expectedOutput: string[];
-}
-
-export type CohortWeekType = 'ORIENTATION' | 'GROUP_DISCUSSION' | 'GRADUATION';
-
-export interface GetCohortWeekResponseDto {
-  id: string;
-  week: number;
-  type: CohortWeekType;
-  hasExercise: boolean;
-  title: string | null;
-  questions: CohortWeekQuestion[];
-  // Empty ([]) for STUDENTs — bonus content is role-filtered server-side.
-  bonusQuestions: CohortWeekQuestion[];
-  readingMaterial: ReadingMaterialLink[];
-  activity: string | null;
-  exercise: CohortWeekExercise | null;
-  classroomAssignmentUrl: string | null;
-  classroomInviteLink: string | null;
-  scheduledDate: string | null;
-}
-
-export interface GetCohortResponseDto {
-  id: string;
-  type: CohortType;
-  displayName: string;
-  season: number;
-  startDate: string;
-  endDate: string;
-  registrationDeadline: string;
-  // Graded GitHub-Classroom flag — NOT the Exercises tab (that is driven per-week).
-  hasExercises: boolean;
-  classroomId: string | null;
-  // Already role-filtered server-side.
-  links: CohortQuickLink[];
-  weeks: GetCohortWeekResponseDto[];
-}
-
-export interface UserCohortWaitlistResponseDto {
-  cohortWaitlist: CohortType[];
-}
+// CohortWeekType was a string union here and an enum on the backend; the shared
+// enum is now the single definition. Re-exported as a value since call sites
+// compare against it.
+export { CohortWeekType } from '@nonce/shared';
 
 export interface UpdateScoresRequestDto {
   attendance?: boolean;

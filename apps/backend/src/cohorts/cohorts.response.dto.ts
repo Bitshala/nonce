@@ -1,4 +1,12 @@
 import { CohortType, CohortWeekType } from '@/common/enum';
+import type {
+    CohortLink as SharedCohortLink,
+    GetCohortResponse,
+    GetCohortWeekResponse,
+    ListAvailableCohortsResponse,
+    PublicCohortResponse,
+    UserCohortWaitlistResponse,
+} from '@nonce/shared';
 import { Cohort } from '@/entities/cohort.entity';
 import {
     Exercise,
@@ -12,12 +20,11 @@ import {
     ViewerRole,
 } from '@/cohorts/cohort-access.util';
 
-export interface CohortLink {
-    label: string;
-    url: string;
-}
+// Defined in @nonce/shared so the frontend renders the same shape; aliased here
+// so existing '@/cohorts/cohorts.response.dto' importers are unchanged.
+export type CohortLink = SharedCohortLink;
 
-export class GetCohortWeekResponseDto {
+export class GetCohortWeekResponseDto implements GetCohortWeekResponse {
     id!: string;
     week!: number;
     type!: CohortWeekType;
@@ -49,9 +56,9 @@ export class GetCohortWeekResponseDto {
     }
 }
 
-export class GetCohortResponseDto {
+export class GetCohortResponseDto implements GetCohortResponse {
     id!: string;
-    type!: string;
+    type!: CohortType;
     displayName!: string;
     season!: number;
     startDate!: string;
@@ -145,9 +152,9 @@ export class GetCohortResponseDto {
     }
 }
 
-export class PublicCohortResponseDto {
+export class PublicCohortResponseDto implements PublicCohortResponse {
     id!: string;
-    type!: string;
+    type!: CohortType;
     season!: number;
     startDate!: string;
     endDate!: string;
@@ -163,7 +170,7 @@ export class PublicCohortResponseDto {
     }
 }
 
-export class ListAvailableCohortsResponseDto {
+export class ListAvailableCohortsResponseDto implements ListAvailableCohortsResponse {
     [CohortType.MASTERING_LIGHTNING_NETWORK]: PublicCohortResponseDto | null;
     [CohortType.MASTERING_BITCOIN]: PublicCohortResponseDto | null;
     [CohortType.LEARNING_BITCOIN_FROM_COMMAND_LINE]: PublicCohortResponseDto | null;
@@ -176,6 +183,6 @@ export class ListAvailableCohortsResponseDto {
     }
 }
 
-export class UserCohortWaitlistResponseDto {
+export class UserCohortWaitlistResponseDto implements UserCohortWaitlistResponse {
     cohortWaitlist!: CohortType[];
 }

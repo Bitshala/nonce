@@ -6,8 +6,14 @@ import {
     IsOptional,
 } from 'class-validator';
 import { CohortType } from '@/common/enum';
+import type {
+    CreateCohortRequest,
+    JoinWaitlistRequest,
+    UpdateCohortRequest,
+    UpdateCohortWeekRequest,
+} from '@nonce/shared';
 
-export class UpdateCohortRequestDto {
+export class UpdateCohortRequestDto implements UpdateCohortRequest {
     @IsOptional()
     @IsDateString({ strict: true })
     startDate?: string;
@@ -17,7 +23,7 @@ export class UpdateCohortRequestDto {
     registrationDeadline?: string;
 }
 
-export class CreateCohortRequestDto {
+export class CreateCohortRequestDto implements CreateCohortRequest {
     @IsEnum(CohortType)
     type!: CohortType;
 
@@ -28,7 +34,7 @@ export class CreateCohortRequestDto {
     registrationDeadline!: string;
 }
 
-export class UpdateCohortWeekRequestDto {
+export class UpdateCohortWeekRequestDto implements UpdateCohortWeekRequest {
     @IsOptional()
     @IsNumberString({
         no_symbols: true,
@@ -42,7 +48,7 @@ export class UpdateCohortWeekRequestDto {
     scheduledDate!: string | undefined;
 }
 
-export class JoinWaitlistRequestDto {
+export class JoinWaitlistRequestDto implements JoinWaitlistRequest {
     @IsEnum(CohortType)
     type!: CohortType;
 }

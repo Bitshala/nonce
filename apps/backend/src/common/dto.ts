@@ -1,7 +1,8 @@
 import { IsNumber, IsOptional, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { PaginatedData, PaginatedQuery } from '@nonce/shared';
 
-export class PaginatedQueryDto {
+export class PaginatedQueryDto implements PaginatedQuery {
     @IsNumber()
     @Type(() => Number)
     @Max(100)
@@ -13,7 +14,7 @@ export class PaginatedQueryDto {
     page = 0;
 }
 
-export class PaginatedDataDto<TData> {
+export class PaginatedDataDto<TData> implements PaginatedData<TData> {
     totalRecords: number;
 
     records: TData[];
