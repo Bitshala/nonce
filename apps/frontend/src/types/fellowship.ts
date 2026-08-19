@@ -307,8 +307,7 @@ export interface ListFellowshipsQueryDto extends PaginatedQueryDto {
 
 export interface StartFellowshipContractRequestDto {
   startDate: string;
-  // The backend derives the end date from the start date + duration.
-  periodMonths: number;
+  endDate: string;
   amountUsd: number;
 }
 
