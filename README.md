@@ -113,19 +113,23 @@ checks so a red PR says which thing broke:
 | `backend.yml` | `format`, `lint`, `typecheck`, `test`, `build`, `migrations` |
 | `frontend.yml` | `typecheck`, `build`, `lint (non-blocking backlog)` |
 
-`backend.yml` and `frontend.yml` both also trigger on `packages/shared/**`, since
-a contract change can break either app without touching a file in it. Shared
-setup (install + build shared) lives in the `.github/actions/setup` composite
-action rather than being copy-pasted into all eleven jobs.
+`backend.yml` and `frontend.yml` also key off `packages/shared/**`, since a
+contract change can break either app without touching a file in it. Shared setup
+(install + build shared) lives in the `.github/actions/setup` composite action
+rather than being copy-pasted into every job.
 
-Each workflow uses GitHub's native `paths:` filters, so a backend-only PR runs
-none of the frontend checks. Note the consequence for branch protection: a
-workflow filtered out entirely reports no status at all, so don't mark these as
-*required* checks without also adding an always-running gate job — a required
-check that never reports blocks the PR forever.
+Each workflow always runs on PRs to `main`; a `changes` job (`dorny/paths-filter`)
+decides whether the granular jobs above actually run, and a roll-up job named
+after the workspace — **`backend`**, **`frontend`**, **`shared`** — always
+reports a status: green when that workspace's paths were untouched (its jobs
+skip), red if any of its checks failed. Those three roll-ups are the checks to
+mark *required* in branch protection. Because they always report, a docs-only PR
+isn't blocked, while a real failure still is. (Requiring the granular jobs
+directly would wedge any PR that doesn't touch that workspace — a job that never
+runs never reports, and the PR waits forever.)
 
-Any workflow can be run manually via `workflow_dispatch` (Actions tab → select
-workflow → Run workflow), which ignores the path filters.
+Any workflow can also be run manually via `workflow_dispatch` (Actions tab →
+select workflow → Run workflow).
 
 ## Things worth knowing before you change something
 

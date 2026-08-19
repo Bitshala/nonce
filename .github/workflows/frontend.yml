@@ -1,35 +1,49 @@
 name: Frontend
 
-# Triggers on packages/shared/** as well as apps/frontend/**: the frontend
-# consumes the shared DTO interfaces, so a contract change can break it without
-# any frontend file being touched.
+# Always triggers on PRs to main; the `changes` job decides which per-concern
+# jobs run. The REQUIRED check is the roll-up `frontend` job at the bottom — it
+# always reports a status, so requiring it never wedges an unrelated PR while a
+# real failure still blocks. Do not mark the granular jobs required.
 on:
   push:
     branches: ['main']
-    paths:
-      - 'apps/frontend/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.prettierrc'
-      - '.github/actions/setup/**'
-      - '.github/workflows/frontend.yml'
   pull_request:
     branches: ['main']
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'apps/frontend/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.prettierrc'
-      - '.github/actions/setup/**'
-      - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  # The frontend consumes the shared DTO interfaces, so a contract change can
+  # break it without any frontend file being touched — packages/shared/** is
+  # included here too.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'apps/frontend/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.prettierrc'
+              - '.github/actions/setup/**'
+              - '.github/workflows/frontend.yml'
+
   typecheck:
     name: typecheck
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +53,8 @@ jobs:
 
   build:
     name: build
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,12 +70,16 @@ jobs:
 
   # This app had no CI at all before the monorepo and arrives with a backlog:
   # 12 eslint errors and 114 files prettier would reformat. These run so the
-  # backlog is visible and doesn't grow unnoticed, but they don't block, because
-  # a check that is red on arrival just teaches people to ignore it.
+  # backlog is visible and doesn't grow unnoticed, but they don't block (both
+  # steps are continue-on-error, so this job's result stays success and the
+  # `frontend` roll-up is unaffected), because a check that is red on arrival
+  # just teaches people to ignore it.
   #
   # Clear the backlog, then delete the continue-on-error lines below.
   lint:
     name: lint (non-blocking backlog)
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,3 +91,21 @@ jobs:
         if: success() || failure()
         continue-on-error: true
         run: npm run format:check:frontend
+
+  # Required roll-up check. Always reports the `frontend` status; passes when the
+  # blocking jobs (typecheck, build) succeeded or were skipped. The non-blocking
+  # lint job is included but never fails the roll-up.
+  frontend:
+    name: frontend
+    needs: [changes, typecheck, build, lint]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any frontend check failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "::error::A required frontend check failed or was cancelled: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - name: Report
+        run: |
+          echo "frontend checks OK (results: ${{ join(needs.*.result, ', ') }})"
