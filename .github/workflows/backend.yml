@@ -1,35 +1,52 @@
 name: Backend
 
-# Triggers on packages/shared/** as well as apps/backend/**: the backend
-# `implements` the shared DTO interfaces, so a contract change can break it
-# without any backend file being touched.
+# Always triggers on PRs to main; the `changes` job decides which per-concern
+# jobs actually run. The REQUIRED check is the roll-up `backend` job at the
+# bottom — it always reports a status (green when apps/backend + packages/shared
+# are untouched), so requiring it never wedges a PR that doesn't touch the
+# backend, while a real failure still blocks. Do not mark the granular jobs
+# (format/lint/typecheck/…) required: they don't run on unrelated PRs and a job
+# that never runs never reports.
 on:
   push:
     branches: ['main']
-    paths:
-      - 'apps/backend/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.prettierrc'
-      - '.github/actions/setup/**'
-      - '.github/workflows/backend.yml'
   pull_request:
     branches: ['main']
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'apps/backend/**'
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.prettierrc'
-      - '.github/actions/setup/**'
-      - '.github/workflows/backend.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  # Detects whether backend-relevant paths changed. The backend `implements` the
+  # shared DTO interfaces, so a contract change can break it without any backend
+  # file being touched — hence packages/shared/** is included.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'apps/backend/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.prettierrc'
+              - '.github/actions/setup/**'
+              - '.github/workflows/backend.yml'
+
   format:
     name: format
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +56,8 @@ jobs:
 
   lint:
     name: lint
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +67,8 @@ jobs:
 
   typecheck:
     name: typecheck
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +78,8 @@ jobs:
 
   test:
     name: test
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +89,8 @@ jobs:
 
   build:
     name: build
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +105,8 @@ jobs:
 
   migrations:
     name: migrations
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -110,3 +137,21 @@ jobs:
           (npm run migration:generate -w @nonce/backend || :) && \
           COUNT_AFTER_GENERATION=$(ls apps/backend/migrations | wc -l)
           if (( $COUNT_AFTER_RUN < $COUNT_AFTER_GENERATION )); then echo "Migration required but no migration was found."; exit 1; else exit 0; fi
+
+  # Required roll-up check. `if: always()` so it runs (and reports the `backend`
+  # status) even when the jobs above were skipped or failed. Passes when every
+  # dependency succeeded or was skipped; fails if any failed or was cancelled.
+  backend:
+    name: backend
+    needs: [changes, format, lint, typecheck, test, build, migrations]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any backend check failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "::error::A required backend check failed or was cancelled: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - name: Report
+        run: |
+          echo "backend checks OK (results: ${{ join(needs.*.result, ', ') }})"

@@ -1,31 +1,44 @@
 name: Shared
 
 # Only the contract package. Its consumers are checked by backend.yml and
-# frontend.yml, which both also trigger on packages/shared/** so a contract
-# change is verified against both sides.
+# frontend.yml, which both also key off packages/shared/** so a contract change
+# is verified against both sides. Always triggers on PRs to main; the REQUIRED
+# check is the roll-up `shared` job at the bottom, which always reports a status.
 on:
   push:
     branches: ['main']
-    paths:
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/actions/setup/**'
-      - '.github/workflows/shared.yml'
   pull_request:
     branches: ['main']
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'packages/shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/actions/setup/**'
-      - '.github/workflows/shared.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/shared.yml'
+
   build:
     name: build
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,9 +48,28 @@ jobs:
 
   format:
     name: format
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Prettier
         run: npm run format:check:shared
+
+  # Required roll-up check. Always reports the `shared` status; passes when build
+  # and format succeeded or were skipped, fails if either failed or was cancelled.
+  shared:
+    name: shared
+    needs: [changes, build, format]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any shared check failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "::error::A required shared check failed or was cancelled: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - name: Report
+        run: |
+          echo "shared checks OK (results: ${{ join(needs.*.result, ', ') }})"

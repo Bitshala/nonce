@@ -1,6 +1,58 @@
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
 
-[scripts]
-run_mode = "concurrent"
+# Gitignored files every new workspace needs to boot, copied from the repo-root worktree.
+# These are per-developer local files (env + backend credentials + DB snapshots), not
+# committed secrets — only the glob LIST is shared here, never the file contents.
+file_include_globs = """
+# Environment
+.env
+.env.local
+.env.*.local
 
-file_include_globs = "# Environment\n.env\n.env.local\n.env.*.local\n\n# --- apps/backend: local config carrying real credentials, never commit ---\napps/backend/config/dev.config.yaml\napps/backend/snapshots/\n"
+# apps/backend: local config carrying real credentials, never commit
+apps/backend/config/dev.config.yaml
+apps/backend/config/e2e.config.yaml
+
+# apps/backend: local DB snapshots (pg_dump output)
+apps/backend/snapshots/
+"""
+
+[scripts]
+# One workspace runs the dev stack at a time: all workspaces share one Docker
+# Postgres/Redis/Mailcrab stack (fixed host ports) and the single `bitshala` database.
+run_mode = "nonconcurrent"
+
+# Dev orchestration lives in the root Makefile (single source of truth, `make help`);
+# these hooks just delegate. `make setup` = npm install + build:shared (build:shared is
+# mandatory — both apps resolve @nonce/shared from node_modules/dist).
+setup = "make setup"
+
+# Runs when a workspace is archived. `make destroy` = `docker compose down -v`, which wipes
+# the shared DB volume for a clean slate. Guarded to local: cloud sandboxes have no Docker.
+archive = "test \"$CONDUCTOR_IS_LOCAL\" = 1 && make destroy || true"
+
+# Backend: `make dev-backend` brings the shared stack up, waits for Postgres, applies
+# migrations, then starts Nest in watch mode (the wait/migrate details live in the Makefile).
+[scripts.run.backend]
+command = "make dev-backend"
+available_in = [ "local" ]
+default = true
+icon = "server"
+
+# Frontend: Vite dev server. Reads VITE_API_BASE_URL from the environment (defaults
+# to the backend at :3000 when set in the copied .env).
+[scripts.run.frontend]
+command = "make dev-frontend"
+available_in = [ "local" ]
+icon = "monitor"
+
+# Docker stack only (Postgres + Redis + Mailcrab), foregrounded — handy without a dev server.
+[scripts.run.services]
+command = "make up-fg"
+available_in = [ "local" ]
+icon = "database"
+
+# Backend unit tests in watch mode. No DB needed, so it runs locally AND in the cloud.
+[scripts.run.test]
+command = "make test-watch"
+icon = "test-tube"
