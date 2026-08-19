@@ -1,0 +1,73 @@
+name: Frontend
+
+# Triggers on packages/shared/** as well as apps/frontend/**: the frontend
+# consumes the shared DTO interfaces, so a contract change can break it without
+# any frontend file being touched.
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'apps/frontend/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.prettierrc'
+      - '.github/actions/setup/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'apps/frontend/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.prettierrc'
+      - '.github/actions/setup/**'
+      - '.github/workflows/frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Typecheck
+        run: npm run typecheck -w @nonce/frontend
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Vite build
+        run: npm run build -w @nonce/frontend
+      # nginx serves these via brotli_static/gzip_static, so losing the
+      # compression plugin would silently regress every response.
+      - name: Assert precompressed assets were emitted
+        run: |
+          ls apps/frontend/dist/assets/*.br >/dev/null
+          ls apps/frontend/dist/assets/*.gz >/dev/null
+
+  # This app had no CI at all before the monorepo and arrives with a backlog:
+  # 12 eslint errors and 114 files prettier would reformat. These run so the
+  # backlog is visible and doesn't grow unnoticed, but they don't block, because
+  # a check that is red on arrival just teaches people to ignore it.
+  #
+  # Clear the backlog, then delete the continue-on-error lines below.
+  lint:
+    name: lint (non-blocking backlog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: ESLint
+        continue-on-error: true
+        run: npm run lint -w @nonce/frontend
+      - name: Prettier
+        if: success() || failure()
+        continue-on-error: true
+        run: npm run format:check:frontend

@@ -1,0 +1,43 @@
+name: Shared
+
+# Only the contract package. Its consumers are checked by backend.yml and
+# frontend.yml, which both also trigger on packages/shared/** so a contract
+# change is verified against both sides.
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/actions/setup/**'
+      - '.github/workflows/shared.yml'
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/actions/setup/**'
+      - '.github/workflows/shared.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Typecheck
+        run: npm run typecheck -w @nonce/shared
+
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Prettier
+        run: npm run format:check:shared

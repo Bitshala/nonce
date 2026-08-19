@@ -1,0 +1,24 @@
+name: Setup
+description: >
+  Install workspace dependencies and build @nonce/shared. Every check needs both,
+  because the two apps resolve @nonce/shared through node_modules to its compiled
+  dist/ — typechecking either one against an unbuilt shared package fails.
+
+  Callers must run actions/checkout before using this, since the action itself is
+  read from the repository.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20.12.x
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Build @nonce/shared
+      shell: bash
+      run: npm run build -w @nonce/shared

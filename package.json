@@ -18,7 +18,9 @@
     "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "test": "npm run test -w @nonce/backend",
     "format": "prettier --write \"apps/backend/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
-    "format:check": "prettier --check \"apps/backend/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
+    "format:check": "npm run format:check:backend && npm run format:check:shared",
+    "format:check:backend": "prettier --check \"apps/backend/src/**/*.ts\"",
+    "format:check:shared": "prettier --check \"packages/shared/src/**/*.ts\"",
     "format:check:frontend": "prettier --check \"apps/frontend/**/*.{ts,tsx}\""
   },
   "overrides": {

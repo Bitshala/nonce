@@ -52,8 +52,31 @@ npm run typecheck      # builds shared, then typechecks all three workspaces
 npm run test           # backend jest suite
 npm run lint
 npm run build          # shared -> backend -> frontend, in that order
-npm run format:check   # backend + shared only (see backlog note below)
+npm run format:check   # backend + shared (frontend has a backlog, see below)
 ```
+
+CI mirrors these as one workflow per workspace, each with granular per-concern
+checks so a red PR says which thing broke:
+
+| Workflow | Checks |
+|---|---|
+| `shared.yml` | `build`, `format` |
+| `backend.yml` | `format`, `lint`, `typecheck`, `test`, `build`, `migrations` |
+| `frontend.yml` | `typecheck`, `build`, `lint (non-blocking backlog)` |
+
+`backend.yml` and `frontend.yml` both also trigger on `packages/shared/**`, since
+a contract change can break either app without touching a file in it. Shared
+setup (install + build shared) lives in the `.github/actions/setup` composite
+action rather than being copy-pasted into all eleven jobs.
+
+Each workflow uses GitHub's native `paths:` filters, so a backend-only PR runs
+none of the frontend checks. Note the consequence for branch protection: a
+workflow filtered out entirely reports no status at all, so don't mark these as
+*required* checks without also adding an always-running gate job — a required
+check that never reports blocks the PR forever.
+
+Any workflow can be run manually via `workflow_dispatch` (Actions tab → select
+workflow → Run workflow), which ignores the path filters.
 
 ## Things worth knowing before you change something
 
@@ -93,9 +116,10 @@ wire shapes belong in shared — frontend render models (e.g.
 ## Known backlog
 
 - The frontend has **12 eslint errors** and **114 files** prettier would
-  reformat, both inherited — it had no CI at all before the merge. Its CI lane
-  runs those checks with `continue-on-error` so the lane is useful rather than
-  permanently red. Clear the backlog, then make them blocking.
+  reformat, both inherited — it had no CI at all before the merge. Its `lint`
+  check runs with `continue-on-error` so the backlog is visible rather than
+  permanently red. Clear it, then delete those `continue-on-error` lines from
+  `.github/workflows/frontend.yml`.
 - `apps/frontend/package.json` pins `unocss` to exactly `66.1.2`. Later 66.x
   releases pull in the native `oxc-parser`, whose platform binding npm fails to
   install, which breaks the vite build. Upgrading unocss needs its own PR.
