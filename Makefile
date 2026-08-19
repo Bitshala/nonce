@@ -11,7 +11,7 @@ export DB_POSTGRES_PASSWORD ?= password
 export DB_POSTGRES_DATABASE_NAME ?= bitshala
 
 .PHONY: help install setup config up up-fg wait-db down destroy \
-        migrate clear-tasks snapshot restore dev-backend dev-frontend \
+        migrate clear-tasks snapshot restore dev dev-backend dev-frontend \
         test test-watch typecheck lint build format
 
 help: ## Show this help
@@ -63,6 +63,9 @@ dev-backend: clear-tasks ## up + migrate + clear UNPROCESSED tasks, then run Nes
 
 dev-frontend: ## Run the Vite dev server
 	npm run dev:frontend
+
+dev: clear-tasks ## up + migrate + clear tasks, then run backend (NestJS) + frontend (Vite) together
+	npx concurrently -k -n backend,frontend -c blue,magenta "npm run dev:backend" "npm run dev:frontend"
 
 test: ## Run the backend Jest suite
 	npm test

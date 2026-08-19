@@ -36,7 +36,6 @@ archive = "test \"$CONDUCTOR_IS_LOCAL\" = 1 && make destroy || true"
 [scripts.run.backend]
 command = "make dev-backend"
 available_in = [ "local" ]
-default = true
 icon = "server"
 
 # Frontend: Vite dev server. Reads VITE_API_BASE_URL from the environment (defaults
@@ -45,6 +44,14 @@ icon = "server"
 command = "make dev-frontend"
 available_in = [ "local" ]
 icon = "monitor"
+
+# Full stack: backend setup (docker + migrate + clear tasks) then NestJS watch and
+# the Vite dev server together via `concurrently` (killed as a group on stop).
+[scripts.run.dev]
+command = "make dev"
+available_in = [ "local" ]
+default = true
+icon = "layers"
 
 # Docker stack only (Postgres + Redis + Mailcrab), foregrounded — handy without a dev server.
 [scripts.run.services]
