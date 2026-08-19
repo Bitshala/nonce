@@ -43,6 +43,25 @@ npm run dev:backend        # NestJS, watch mode
 npm run dev:frontend       # Vite dev server
 ```
 
+## Make targets
+
+A root `Makefile` wraps the npm scripts and Docker for convenience — `make help` lists
+everything. The common ones:
+
+```shell
+make setup          # npm install + build @nonce/shared
+make dev-backend    # docker up -> migrate -> clear due UNPROCESSED tasks -> NestJS watch
+make dev-frontend   # Vite dev server
+make up / make down # start / stop the Docker stack
+make destroy        # stop the stack AND wipe the DB volume (clean slate)
+make migrate        # apply pending migrations
+make test / typecheck / lint / build
+```
+
+Copy `apps/backend/config/dev.config.example.yaml` to `dev.config.yaml` first (or run
+`make config`). These are the same commands Conductor uses for its setup/run/archive hooks
+(`.conductor/settings.toml`); npm remains authoritative for CI.
+
 ## Database
 
 Root scripts delegate to `@nonce/backend`, so these work from anywhere in the repo.
