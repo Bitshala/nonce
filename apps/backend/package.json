@@ -27,7 +27,9 @@
     "test:e2e": " NODE_ENV=e2e node --trace-warnings node_modules/.bin/jest --runInBand --no-cache --forceExit --config jest-e2e.config.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate ./migrations/migrations -d migrations/data-source.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d migrations/data-source.ts -t each",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d migrations/data-source.ts"
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d migrations/data-source.ts",
+    "db:snapshot": "bash scripts/db-snapshot.sh",
+    "db:restore": "bash scripts/db-restore.sh"
   },
   "dependencies": {
     "@googleapis/drive": "^20.2.0",

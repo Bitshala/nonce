@@ -16,6 +16,17 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "Taking snapshot of database '${DB_NAME}' on ${DB_HOST}:${DB_PORT}..."
 
+# Dump to a temporary file in the same directory and move it into place only on
+# success. Redirecting straight to $OUTPUT_FILE created the file before pg_dump
+# ran, so any failure (a client/server version mismatch, bad credentials, a
+# dropped connection) left a 0-byte .sql behind — and db-restore.sh defaults to
+# the newest .sql in this directory, so the next restore would drop every table
+# and then restore nothing. The dotted prefix also keeps the partial file out of
+# the *.sql globs while it is being written.
+TMP_FILE="$(mktemp "${OUTPUT_DIR}/.${DB_NAME}_${TIMESTAMP}.sql.XXXXXX")"
+cleanup() { rm -f "$TMP_FILE"; }
+trap cleanup EXIT
+
 PGPASSWORD="$DB_PASS" pg_dump \
   --host="$DB_HOST" \
   --port="$DB_PORT" \
@@ -24,7 +35,10 @@ PGPASSWORD="$DB_PASS" pg_dump \
   --format=plain \
   --no-owner \
   --no-privileges \
-  > "$OUTPUT_FILE"
+  > "$TMP_FILE"
+
+mv "$TMP_FILE" "$OUTPUT_FILE"
+trap - EXIT
 
 chmod 444 "$OUTPUT_FILE"
 

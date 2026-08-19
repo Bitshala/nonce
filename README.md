@@ -37,11 +37,41 @@ holds real credentials — never commit it.
 ## Running
 
 ```shell
-docker compose up -d                          # Postgres, Redis, Mailcrab
-npm run migration:run -w @nonce/backend
-npm run dev:backend                           # NestJS, watch mode
-npm run dev:frontend                          # Vite dev server
+docker compose up -d       # Postgres, Redis, Mailcrab
+npm run migration:run
+npm run dev:backend        # NestJS, watch mode
+npm run dev:frontend       # Vite dev server
 ```
+
+## Database
+
+Root scripts delegate to `@nonce/backend`, so these work from anywhere in the repo.
+Paths and the `snapshots/` directory resolve relative to `apps/backend`.
+
+```shell
+npm run migration:run
+npm run migration:generate
+npm run migration:revert
+
+npm run db:snapshot                 # pg_dump into apps/backend/snapshots/
+npm run db:restore -- --list        # what is available
+npm run db:restore -- --dry-run     # verify container + snapshot, write nothing
+npm run db:restore -- --yes         # restore the newest snapshot, no prompt
+```
+
+Flags need `--` when invoked through npm, so they reach the shell script rather
+than being eaten by npm.
+
+`db:snapshot` reads the same `DB_POSTGRES_*` variables as the app and can target
+any database. `db:restore` deliberately hardcodes `root`/`bitshala` and only ever
+writes to the local `bitshala-db` container — that asymmetry is intentional, so a
+restore can't be pointed at an upstream database by accident.
+
+`pg_dump` refuses to dump a server newer than itself, and `docker-compose.yml`
+uses an unpinned `image: postgres` that tracks the latest major. If you hit
+`aborting because of server version mismatch`, either upgrade your local client
+or pin the image to the major version you have. See
+[`apps/backend/docs/db-snapshot.md`](apps/backend/docs/db-snapshot.md).
 
 The frontend reads `VITE_API_BASE_URL` from its environment.
 

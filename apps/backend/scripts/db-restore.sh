@@ -58,14 +58,22 @@ done
 if [ "$LIST" = true ]; then
   echo "Available snapshots in '${SNAPSHOT_DIR}':"
   echo ""
-  if ! find_snapshots 2>/dev/null | sort -rn | while read -r _epoch size file; do
+  # Collected via command substitution rather than piped into `grep -q .`.
+  # `grep -q` exits on its first match and closes the pipe, so under `set -o
+  # pipefail` the upstream loop died of SIGPIPE and the pipeline reported
+  # failure — printing "(none)" precisely when snapshots did exist, while grep
+  # swallowed the listing itself.
+  listing="$(find_snapshots 2>/dev/null | sort -rn | while read -r _epoch size file; do
     if command -v numfmt > /dev/null 2>&1; then
       human_size=$(numfmt --to=iec --suffix=B "$size")
     else
       human_size=$(awk "BEGIN { split(\"B KB MB GB\",u); s=$size; i=1; while(s>=1024 && i<4){s/=1024;i++} printf \"%.1f%s\",s,u[i] }")
     fi
     printf "  %-8s  %s\n" "$human_size" "$file"
-  done | grep -q .; then
+  done)"
+  if [ -n "$listing" ]; then
+    echo "$listing"
+  else
     echo "  (none)"
   fi
   exit 0

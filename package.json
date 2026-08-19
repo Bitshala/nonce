@@ -21,7 +21,12 @@
     "format:check": "npm run format:check:backend && npm run format:check:shared",
     "format:check:backend": "prettier --check \"apps/backend/src/**/*.ts\"",
     "format:check:shared": "prettier --check \"packages/shared/src/**/*.ts\"",
-    "format:check:frontend": "prettier --check \"apps/frontend/**/*.{ts,tsx}\""
+    "format:check:frontend": "prettier --check \"apps/frontend/**/*.{ts,tsx}\"",
+    "migration:generate": "npm run migration:generate -w @nonce/backend",
+    "migration:run": "npm run migration:run -w @nonce/backend",
+    "migration:revert": "npm run migration:revert -w @nonce/backend",
+    "db:snapshot": "npm run db:snapshot -w @nonce/backend --",
+    "db:restore": "npm run db:restore -w @nonce/backend --"
   },
   "overrides": {
     "multer": "^2.2.0",

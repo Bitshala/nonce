@@ -23,8 +23,14 @@ These are the same `DB_POSTGRES_*` variables the application already uses, so if
 
 ## Usage
 
+Both scripts are exposed as npm scripts and can be run from the repo root; paths
+below resolve relative to `apps/backend` either way.
+
 ```bash
-# Using existing env vars
+# From the repo root (or with -w @nonce/backend from anywhere)
+npm run db:snapshot
+
+# Equivalently, from apps/backend
 bash scripts/db-snapshot.sh
 
 # Or inline
@@ -33,19 +39,25 @@ DB_POSTGRES_PORT=5432 \
 DB_POSTGRES_DATABASE_NAME=admin \
 DB_POSTGRES_USERNAME=admin \
 DB_POSTGRES_PASSWORD=secret \
-  bash scripts/db-snapshot.sh
+  npm run db:snapshot
 
 # Custom output directory
-SNAPSHOT_DIR=./backups bash scripts/db-snapshot.sh
+SNAPSHOT_DIR=./backups npm run db:snapshot
 ```
 
 The script writes files to `./snapshots/` (or `$SNAPSHOT_DIR`) with the naming pattern `<database>_<YYYYmmdd_HHMMSS>.sql` and sets them to read-only (mode 444).
+
+The dump goes to a temporary dotfile in the same directory and is moved into place only after `pg_dump` succeeds, so a failed run leaves no partial `.sql` behind. That matters because the restore script defaults to the newest `.sql` in the directory — a 0-byte snapshot would otherwise cause the next restore to drop every table and restore nothing.
+
+Note `pg_dump` refuses to dump a server newer than itself. `docker-compose.yml` uses an unpinned `image: postgres`, so the container tracks the latest major version; if you see `aborting because of server version mismatch`, upgrade your local client (`brew upgrade postgresql@18`) or pin the image.
 
 ---
 
 ## Restoring a Snapshot
 
-`scripts/db-restore.sh` loads a `.sql` snapshot into the `bitshala-db` Docker container defined in `docker-compose.yml`. The container must already be running.
+`scripts/db-restore.sh` (or `npm run db:restore`) loads a `.sql` snapshot into the `bitshala-db` Docker container defined in the repo-root `docker-compose.yml`. The container must already be running. Docker Compose searches parent directories for the compose file, so this works from `apps/backend` as well as the root.
+
+Flags need `--` when going through npm, e.g. `npm run db:restore -- --list`.
 
 ### Prerequisites
 
@@ -66,6 +78,13 @@ The database user (`root`) and name (`bitshala`) are hardcoded to match `docker-
 | `--dry-run` | Validate snapshot, container, and DB connectivity without restoring |
 | `--list` | List available snapshots with sizes and exit |
 | `-h`, `--help` | Show help |
+
+```bash
+npm run db:restore -- --list          # what is available
+npm run db:restore -- --dry-run       # check container + snapshot without writing
+npm run db:restore -- --yes           # restore newest, no prompt
+npm run db:restore -- ./snapshots/bitshala_20260810_144640.sql
+```
 
 ### Usage
 
