@@ -18,7 +18,12 @@ describe('FellowshipsService — startContract', () => {
         id: 'fellowship-1',
         status: FellowshipStatus.DOCUMENTS_APPROVED,
         user: { id: 'user-1', displayName: 'Alice', location: 'Remote' },
-        application: { id: 'app-1', mentorContact: 'mentor', projectName: 'Project', github: 'alice' },
+        application: {
+            id: 'app-1',
+            mentorContact: 'mentor',
+            projectName: 'Project',
+            github: 'alice',
+        },
         createdAt: new Date('2026-01-01'),
         updatedAt: new Date('2026-01-01'),
     };
@@ -46,7 +51,10 @@ describe('FellowshipsService — startContract', () => {
                     provide: getRepositoryToken(Fellowship),
                     useValue: fellowshipRepository,
                 },
-                { provide: DbTransactionService, useValue: dbTransactionService },
+                {
+                    provide: DbTransactionService,
+                    useValue: dbTransactionService,
+                },
             ],
         }).compile();
 
