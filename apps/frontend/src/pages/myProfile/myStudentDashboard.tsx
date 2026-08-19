@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Link,
   Snackbar,
   Alert,
   CircularProgress,
@@ -536,6 +537,17 @@ const MyStudentDashboard = () => {
             {confirmationModal.isWaitlist
               ? `You are not a part of this cohort. Please join the ${confirmationModal.cohortName} cohort waitlist.`
               : `You are not a part of this cohort. Please join the ${confirmationModal.cohortName} cohort.`}
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#d4d4d8', mt: 1.5 }}>
+            You can check details about the cohort and Frequently Asked Questions (FAQs) at{' '}
+            <Link
+              href="https://bitshala.org/cohorts"
+              target="_blank"
+              rel="noreferrer"
+              sx={{ color: '#fb923c' }}
+            >
+              https://bitshala.org/cohorts
+            </Link>
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
