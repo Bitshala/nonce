@@ -2,3 +2,5 @@
 
 [scripts]
 run_mode = "concurrent"
+
+file_include_globs = "# Environment\n.env\n.env.local\n.env.*.local\n\n# --- apps/backend: local config carrying real credentials, never commit ---\napps/backend/config/dev.config.yaml\napps/backend/snapshots/\n"
