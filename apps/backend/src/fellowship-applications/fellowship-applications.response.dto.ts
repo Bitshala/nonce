@@ -85,6 +85,10 @@ export class FellowshipApplicationResponseDto {
     reviewerRemarks!: string | null;
     applicantId!: string;
     applicantName!: string | null;
+    applicantEmail!: string | null;
+    applicantDiscordUsername!: string;
+    applicantDiscordGlobalName!: string | null;
+    applicantLinkedinProfileUrl!: string | null;
     reviewedById!: string | null;
     reviewedByName!: string | null;
     createdAt!: string;
@@ -97,6 +101,10 @@ export class FellowshipApplicationResponseDto {
         this.reviewerRemarks = obj.reviewerRemarks;
         this.applicantId = obj.applicantId;
         this.applicantName = obj.applicantName;
+        this.applicantEmail = obj.applicantEmail;
+        this.applicantDiscordUsername = obj.applicantDiscordUsername;
+        this.applicantDiscordGlobalName = obj.applicantDiscordGlobalName;
+        this.applicantLinkedinProfileUrl = obj.applicantLinkedinProfileUrl;
         this.reviewedById = obj.reviewedById;
         this.reviewedByName = obj.reviewedByName;
         this.createdAt = obj.createdAt;
@@ -113,6 +121,11 @@ export class FellowshipApplicationResponseDto {
             reviewerRemarks: application.reviewerRemarks,
             applicantId: application.applicant.id,
             applicantName: application.applicant.displayName,
+            applicantEmail: application.applicant.email,
+            applicantDiscordUsername: application.applicant.discordUserName,
+            applicantDiscordGlobalName: application.applicant.discordGlobalName,
+            applicantLinkedinProfileUrl:
+                application.applicant.linkedinProfileUrl,
             reviewedById: application.reviewedBy?.id ?? null,
             reviewedByName: application.reviewedBy
                 ? application.reviewedBy.displayName
