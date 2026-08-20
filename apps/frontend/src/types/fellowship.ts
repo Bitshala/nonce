@@ -82,6 +82,10 @@ export interface GetFellowshipApplicationResponseDto {
   reviewerRemarks: string | null;
   applicantId: string;
   applicantName: string | null;
+  applicantEmail: string | null;
+  applicantDiscordUsername: string;
+  applicantDiscordGlobalName: string | null;
+  applicantLinkedinProfileUrl: string | null;
   reviewedById: string | null;
   reviewedByName: string | null;
   createdAt: string;

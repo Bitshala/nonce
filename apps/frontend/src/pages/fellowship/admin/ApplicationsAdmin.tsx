@@ -29,14 +29,18 @@ import {
   ChevronLeft,
   ChevronRight,
   FileDown,
+  Linkedin,
+  Mail,
+  MessageCircle,
   MessageSquare,
   Search,
   X,
 } from 'lucide-react';
 import ApplicationNotes from '../../../components/fellowship/ApplicationNotes';
 import FellowshipPageLayout from '../../../components/fellowship/FellowshipPageLayout';
+import LinkChip from '../../../components/fellowship/LinkChip';
 import PdfUploadField from '../../../components/fellowship/PdfUploadField';
-import ProposalView from '../../../components/fellowship/ProposalView';
+import ProposalView, { ProposalSection } from '../../../components/fellowship/ProposalView';
 import StatusChip from '../../../components/fellowship/StatusChip';
 import { fontFamilyMono } from '../../../components/fellowship/theme';
 import {
@@ -897,6 +901,58 @@ const DetailPane = ({
         </Stack>
 
         <Box sx={{ mt: 2.5 }} />
+
+        <ProposalSection title="Applicant details">
+          <Stack spacing={1}>
+            <Typography variant="body2" sx={{ color: 'text.primary' }}>
+              {app.applicantName ?? '—'}
+              <Box component="span" sx={{ color: 'text.secondary' }}>
+                {' '}
+                · submitted{' '}
+                {new Date(app.createdAt).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Box>
+            </Typography>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" sx={{ rowGap: 1 }}>
+              {app.applicantEmail && (
+                <LinkChip
+                  href={`mailto:${app.applicantEmail}`}
+                  icon={<Mail size={13} />}
+                  label={app.applicantEmail}
+                />
+              )}
+              <Stack
+                direction="row"
+                spacing={0.75}
+                alignItems="center"
+                sx={{
+                  px: 1.25,
+                  py: 0.5,
+                  borderRadius: 0.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  color: 'text.primary',
+                  fontSize: '0.78rem',
+                }}
+              >
+                <MessageCircle size={13} />
+                <Typography sx={{ fontSize: '0.78rem' }}>
+                  {app.applicantDiscordGlobalName ?? app.applicantDiscordUsername}
+                </Typography>
+              </Stack>
+              {app.applicantLinkedinProfileUrl && (
+                <LinkChip
+                  href={app.applicantLinkedinProfileUrl}
+                  icon={<Linkedin size={13} />}
+                  label={app.applicantLinkedinProfileUrl.replace(/^https?:\/\//, '')}
+                />
+              )}
+            </Stack>
+          </Stack>
+        </ProposalSection>
 
         {isLoadingProposal && !proposal ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
