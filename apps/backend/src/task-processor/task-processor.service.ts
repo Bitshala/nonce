@@ -17,6 +17,10 @@ import { FellowshipReportsService } from '@/fellowship-reports/fellowship-report
 export class APITaskProcessorService {
     private readonly logger = new Logger(APITaskProcessorService.name);
     private readonly MESSAGE_BATCH_SIZE = 10;
+    // How long a finished task is kept before pruning. Terminal rows were previously
+    // never deleted, so ~93% of api_task was PROCESSED history that the poller had to
+    // scan past on every run.
+    private readonly TASK_RETENTION_DAYS = 30;
 
     constructor(
         private readonly dbTransactionService: DbTransactionService,
@@ -30,14 +34,26 @@ export class APITaskProcessorService {
     ) {}
 
     private async fetchUnprocessedTasks(): Promise<APITask<any>[]> {
+        // One timestamp for the whole statement rather than three separate new Date()
+        // calls interpolated at different points.
+        const now = new Date();
+
         const queryResult = await this.dbTransactionService.execute(
             async (manager: EntityManager) => {
-                return manager.query(`
+                // The status values stay inlined. They are compile-time enum constants,
+                // never user input, and they MUST remain literals: the api_task partial
+                // indexes are defined `WHERE "status" = '...'`, and the planner can only
+                // prove a query matches that predicate when the value is known at plan
+                // time. Passing them as bind parameters would let a generic plan fall
+                // back to a sequential scan. The timestamp and limit are parameterised,
+                // which is what actually varies between executions.
+                return manager.query(
+                    `
                     UPDATE
                         api_task ca
                     SET
                         "status" = '${APITaskStatus.PROCESSING}',
-                        "processStartTime" = '${new Date().toISOString()}'::timestamptz
+                        "processStartTime" = $1::timestamptz
                     FROM (
                         SELECT
                             "id",
@@ -50,18 +66,18 @@ export class APITaskProcessorService {
                         FROM
                             api_task
                         WHERE
-                            ("status" = '${
-                                APITaskStatus.UNPROCESSED
-                            }' AND "executeOnTime" <= '${new Date().toISOString()}'::timestamptz)  OR
-                            (status = 'FAILED' AND "retryCount" < "retryLimit" AND "lastRetryTime" < '${new Date().toISOString()}'::timestamptz - (2 ^ ("retryCount" - 1)) * INTERVAL '8 seconds')
+                            ("status" = '${APITaskStatus.UNPROCESSED}' AND "executeOnTime" <= $1::timestamptz)  OR
+                            ("status" = '${APITaskStatus.FAILED}' AND "retryCount" < "retryLimit" AND "lastRetryTime" < $1::timestamptz - (2 ^ ("retryCount" - 1)) * INTERVAL '8 seconds')
                         ORDER BY
                             "updatedAt"
-                        LIMIT ${this.MESSAGE_BATCH_SIZE}
+                        LIMIT $2
                         FOR UPDATE SKIP LOCKED) sub
                     WHERE
                         ca. "id" = sub. "id"
                     RETURNING *;
-                    `);
+                    `,
+                    [now, this.MESSAGE_BATCH_SIZE],
+                );
             },
         );
         return queryResult[0];
@@ -173,6 +189,51 @@ export class APITaskProcessorService {
                 await Promise.all(
                     tasks.map((task) => this.processTask(task), this),
                 );
+            })
+            .catch((error) => {
+                this.logger.error(error, error.stack);
+                const wrappedError =
+                    error instanceof ServiceError
+                        ? error
+                        : ServiceError.fromError(error);
+                void this.discordAlert.sendErrorAlert(wrappedError);
+            });
+    }
+
+    private async pruneFinishedTasks(): Promise<number> {
+        const cutoff = new Date();
+        cutoff.setUTCDate(cutoff.getUTCDate() - this.TASK_RETENTION_DAYS);
+
+        return this.dbTransactionService.execute(
+            async (manager: EntityManager) => {
+                // Only genuinely finished work. FAILED rows are deliberately kept: those
+                // under their retry limit are still due to be picked up, and the
+                // exhausted ones are the ones worth looking at when something breaks.
+                // No index backs this predicate on purpose -- one would have to cover
+                // the ~93% of the table we are trying to get rid of, and this runs once
+                // a day rather than every ten seconds.
+                const result = await manager.query(
+                    `
+                    DELETE FROM api_task
+                    WHERE "status" IN ('${APITaskStatus.PROCESSED}', '${APITaskStatus.CANCELLED}')
+                      AND "updatedAt" < $1::timestamptz
+                    `,
+                    [cutoff],
+                );
+                return result?.[1] ?? 0;
+            },
+        );
+    }
+
+    @Cron(CronExpression.EVERY_DAY_AT_3AM)
+    pruneTasks(): void {
+        this.pruneFinishedTasks()
+            .then((deleted) => {
+                if (deleted > 0) {
+                    this.logger.log(
+                        `Pruned ${deleted} api_task rows finished more than ${this.TASK_RETENTION_DAYS} days ago`,
+                    );
+                }
             })
             .catch((error) => {
                 this.logger.error(error, error.stack);
