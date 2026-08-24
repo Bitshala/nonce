@@ -3,6 +3,7 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
+    Index,
     Unique,
 } from 'typeorm';
 import { User } from '@/entities/user.entity';
@@ -11,6 +12,9 @@ import { BaseEntity } from '@/entities/base.entity';
 
 @Entity()
 @Unique(['user', 'cohort'])
+// UQ(userId, cohortId) covers userId-leading lookups; listing a cohort's members
+// is the more frequent direction and was uncovered.
+@Index(['cohort'])
 export class CohortMembership extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

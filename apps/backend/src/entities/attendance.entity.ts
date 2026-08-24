@@ -3,6 +3,7 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
+    Index,
     Unique,
 } from 'typeorm';
 import { User } from '@/entities/user.entity';
@@ -13,6 +14,10 @@ import { SCALING_FACTOR } from '@/common/constants';
 
 @Entity()
 @Unique(['user', 'cohort', 'cohortWeek'])
+// The unique above only serves userId-leading lookups. Scoreboards read by week
+// and the leaderboard reads by cohort.
+@Index(['cohortWeek', 'user'])
+@Index(['cohort', 'user'])
 export class Attendance extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

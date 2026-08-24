@@ -66,6 +66,9 @@ import { FellowshipReportsModule } from '@/fellowship-reports/fellowship-reports
                 synchronize: configService.get<boolean>('db.synchronize'),
                 autoLoadEntities: true,
                 entities: entities,
+                // Log any query slower than this. Cheap early warning for the next
+                // missing index without having to re-derive it from the schema.
+                maxQueryExecutionTime: 200,
             }),
         }),
         ThrottlerModule.forRootAsync({
