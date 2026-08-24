@@ -260,13 +260,24 @@ export class CohortsService {
     }
 
     async listPublicCohorts(): Promise<ListAvailableCohortsResponseDto> {
-        const latestCohorts = await this.cohortRepository
+        // Resolve the latest season per type first, WITHOUT joining weeks. DISTINCT ON
+        // collapses to a single raw row per type, so joining here would hydrate exactly
+        // one cohort_week per cohort and make Cohort.getEndDate() reduce over a
+        // one-element array -- reporting an arbitrary week as the cohort's end date.
+        const latestIdRows = await this.cohortRepository
             .createQueryBuilder('c')
-            .leftJoinAndSelect('c.weeks', 'weeks')
+            .select('c.id', 'id')
             .distinctOn(['c.type'])
             .orderBy('c.type', 'ASC')
             .addOrderBy('c.season', 'DESC')
-            .getMany();
+            .getRawMany<{ id: string }>();
+
+        const latestCohorts = latestIdRows.length
+            ? await this.cohortRepository.find({
+                  where: { id: In(latestIdRows.map((row) => row.id)) },
+                  relations: { weeks: true },
+              })
+            : [];
 
         return {
             [CohortType.MASTERING_LIGHTNING_NETWORK]:
