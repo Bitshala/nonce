@@ -29,11 +29,13 @@
         { "text": "What is an elliptic curve? What was the earliest known elliptic curve? Why elliptic curves are useful in cryptography?" },
         { "text": "Explain elliptic curve point addition in simple terms." },
         { "text": "For elliptic curve point addition the last step is to reflect the resulting point across x-axis. Why is this needed? What happens if there was no reflection?" },
-        { "text": "What is the Point of Infinity? What curve operation produces the point of Infinity? Is it useful in real life crypto implementation?" }
+        { "text": "What is the Point at Infinity? What curve operation produces the point at Infinity? Is it useful in real life crypto implementation?" }
       ],
       "bonusQuestions": [
         { "text": "What is (0,0) + (0,0) ?" },
-        { "text": "What are groups? How do they differ from fields?" }
+        { "text": "What are groups? How do they differ from fields." },
+        { "text": "What advantage does ECDSA provide in terms of transmission time over network." },
+        { "text": "How do we negate a number in a mod n finite field?" }
       ]
     },
     {
@@ -66,7 +68,8 @@
         { "text": "Why is it important to have a \"unique K\"? What vulnerabilities can be exploited if K is known to be reused? Can you provide a real-life example of when such an exploit occurred?" }
       ],
       "bonusQuestions": [
-        { "text": "Let P1 be a point on the secp256k1 curve with order N over prime P. State Fermat's formula." }
+        { "text": "Let P1 be a point on the secp256k1 curve with order N over prime P. State Fermat’s Little Theorem, treating P1 as the element in the theorem." },
+        { "text": "Why do we use finite fields instead of real numbers for cryptography?" }
       ]
     },
     {
@@ -102,7 +105,11 @@
       "bonusQuestions": [
         { "text": "What if while creating an address we would do a RIPEMD160 before SHA256?" },
         { "text": "Why can we encode only input count upto 253 in a single byte in a tx?" },
-        { "text": "Why do the inputs not contain information of the scriptpubkey locking the input?" }
+        { "text": "Suppose you were helping out Satoshi for designing Bitcoin and it was concluded that we need to add a field to the block stating the exact place it was mined. Now you have the task of coming up with a serialization. What serialization would you design?" },
+        { "text": "Why are (network based) prefixes also covered by the checksum?" },
+        { "text": "How many transaction versions are there?" },
+        { "text": "Why do we need to add a byte to WIF for uncompressed or compressed public key?" },
+        { "text": "Why did the author mention that in the DER signature encoding we can avoid 6 bytes?" }
       ]
     },
     {
@@ -134,8 +141,7 @@
         { "text": "Why are ScriptSig and ScriptPubKey evaluated separately?" },
         { "text": "State a flaw in encoding computational challenges in Bitcoin script form." },
         { "text": "State any script corresponding to the SHA-1 pinata." },
-        { "text": "What happens to the UTXO set during a reorg?" },
-        { "text": "What could be a short term solution to the quadratic sighash problem?" }
+        { "text": "What happens to the UTXO set during a reorg?" }
       ]
     },
     {
@@ -210,7 +216,8 @@
         { "text": "Does mining an empty block mean no bitcoins were mined?" },
         { "text": "It has been 9 minutes since the last block was mined, when would the next block be mined?" },
         { "text": "What is the security bottleneck in the difficulty adjustment calculation?" },
-        { "text": "Compare level of network latency tolerable in case of block and transaction propogation." }
+        { "text": "Compare level of network latency tolerable in case of block and transaction propogation." },
+        { "text": "How does a node find their first connection?" }
       ]
     },
     {
@@ -245,7 +252,9 @@
       "bonusQuestions": [
         { "text": "What could be an issue with duplicating the last element for calculating the merkle root in case of odd number of items?" },
         { "text": "Why do we prefer a (merkle) tree structure over just hashing an ordered list?" },
-        { "text": "What is one security risk that SPV face even if they have correct merkle roots?" }
+        { "text": "What is one security risk that SPV face even if they have correct merkle roots?" },
+        { "text": "What all information is hashed for the bloom filter?" },
+        { "text": "What if we want to remove some items from the bloom filter?" }
       ]
     }
   ]
