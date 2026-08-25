@@ -41,7 +41,10 @@ describe('CohortsService — registration deadline (end-of-day IST)', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CohortsService,
-                { provide: getRepositoryToken(Cohort), useValue: cohortRepository },
+                {
+                    provide: getRepositoryToken(Cohort),
+                    useValue: cohortRepository,
+                },
                 {
                     provide: getRepositoryToken(CohortMembership),
                     useValue: cohortMembershipRepository,
@@ -54,7 +57,10 @@ describe('CohortsService — registration deadline (end-of-day IST)', () => {
                 { provide: getRepositoryToken(User), useValue: {} },
                 { provide: getRepositoryToken(Certificate), useValue: {} },
                 { provide: getRepositoryToken(APITask), useValue: {} },
-                { provide: DbTransactionService, useValue: dbTransactionService },
+                {
+                    provide: DbTransactionService,
+                    useValue: dbTransactionService,
+                },
                 { provide: DiscordClient, useValue: {} },
                 { provide: ConfigService, useValue: configService },
                 { provide: MailService, useValue: mailService },
@@ -121,7 +127,9 @@ describe('CohortsService — registration deadline (end-of-day IST)', () => {
             new Date('2026-08-20T17:30:00.000Z'),
         );
 
-        await expect(service.joinCohort(user, 'cohort-1')).resolves.toBeUndefined();
+        await expect(
+            service.joinCohort(user, 'cohort-1'),
+        ).resolves.toBeUndefined();
     });
 
     it('rejects joining just after midnight IST the next day', async () => {
