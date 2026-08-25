@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    Index,
+    Unique,
+} from 'typeorm';
 import { User } from '@/entities/user.entity';
 import { Cohort } from '@/entities/cohort.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
@@ -6,6 +13,10 @@ import { BaseEntity } from '@/entities/base.entity';
 import { EXERCISE_MAX, SCALING_FACTOR } from '@/common/constants';
 
 @Entity()
+// One score row per participant per week, matching the constraint `attendance`
+// already carries for the same triple.
+@Unique(['user', 'cohort', 'cohortWeek'])
+@Index(['cohort', 'cohortWeek'])
 export class ExerciseScore extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

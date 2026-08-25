@@ -203,27 +203,27 @@ export class CohortReminderService {
                 `Sending feedback reminder emails for cohort ${cohortId} to ${usersWithEmail.length} eligible users`,
             );
 
+            // Resolve both eligibility checks for the whole cohort up front. Doing them
+            // per user cost two queries per member; these are two queries total.
+            const [attendances, feedbacks] = await Promise.all([
+                this.attendanceRepository.find({
+                    where: { cohort: { id: cohortId }, attended: true },
+                    select: { id: true, user: { id: true } },
+                    relations: { user: true },
+                }),
+                this.feedbackRepository.find({
+                    where: { cohort: { id: cohortId } },
+                    select: { id: true, user: { id: true } },
+                    relations: { user: true },
+                }),
+            ]);
+            const attendedUserIds = new Set(attendances.map((a) => a.user.id));
+            const feedbackUserIds = new Set(feedbacks.map((f) => f.user.id));
+
             for (const user of usersWithEmail) {
                 try {
-                    const hasAttended = await this.attendanceRepository.exists({
-                        where: {
-                            user: { id: user.id },
-                            cohort: { id: cohortId },
-                            attended: true,
-                        },
-                    });
-
-                    if (!hasAttended) continue;
-
-                    const hasSubmittedFeedback =
-                        await this.feedbackRepository.exists({
-                            where: {
-                                user: { id: user.id },
-                                cohort: { id: cohortId },
-                            },
-                        });
-
-                    if (hasSubmittedFeedback) continue;
+                    if (!attendedUserIds.has(user.id)) continue;
+                    if (feedbackUserIds.has(user.id)) continue;
 
                     await this.mailService.sendCohortFeedbackReminderEmail(
                         user.email!,

@@ -478,21 +478,33 @@ export class FellowshipReportsService {
                 relations: { user: true },
             });
 
+            // One query for every fellowship that already reported this period, instead
+            // of an exists() per active fellowship. Skipped entirely when there are no
+            // active fellowships, so In() never receives an empty array.
+            const submittedReports = activeFellowships.length
+                ? await this.reportRepository.find({
+                      where: {
+                          fellowship: {
+                              id: In(activeFellowships.map((f) => f.id)),
+                          },
+                          month,
+                          year,
+                          status: In([
+                              FellowshipReportStatus.SUBMITTED,
+                              FellowshipReportStatus.APPROVED,
+                          ]),
+                      },
+                      select: { id: true, fellowship: { id: true } },
+                      relations: { fellowship: true },
+                  })
+                : [];
+            const submittedFellowshipIds = new Set(
+                submittedReports.map((report) => report.fellowship.id),
+            );
+
             for (const fellowship of activeFellowships) {
                 try {
-                    const hasSubmitted = await this.reportRepository.exists({
-                        where: {
-                            fellowship: { id: fellowship.id },
-                            month,
-                            year,
-                            status: In([
-                                FellowshipReportStatus.SUBMITTED,
-                                FellowshipReportStatus.APPROVED,
-                            ]),
-                        },
-                    });
-
-                    if (hasSubmitted) {
+                    if (submittedFellowshipIds.has(fellowship.id)) {
                         continue;
                     }
 

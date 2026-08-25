@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    Index,
+    OneToMany,
+} from 'typeorm';
 import { GroupDiscussionScore } from '@/entities/group-discussion-score.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { Attendance } from '@/entities/attendance.entity';
@@ -11,6 +17,15 @@ import { Fellowship } from '@/entities/fellowship.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 
 @Entity()
+// Three admin list endpoints search these four columns with ILIKE '%term%'. A
+// leading wildcard rules out B-tree, so in the database these are pg_trgm GIN
+// indexes -- see the follow-up migration that swaps them. TypeORM cannot express
+// an operator class, so they are declared plain here; its schema diff compares
+// name, columns and uniqueness but never the access method, so the swap sticks.
+@Index(['name'])
+@Index(['email'])
+@Index(['discordUserName'])
+@Index(['discordGlobalName'])
 export class User extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

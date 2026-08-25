@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    Index,
+    Unique,
+} from 'typeorm';
 import { User } from '@/entities/user.entity';
 import { Cohort } from '@/entities/cohort.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
@@ -7,6 +14,12 @@ import { BONUS_MAX, GD_MAX, SCALING_FACTOR } from '@/common/constants';
 import { calculateRatio } from '@/utils/math.utils';
 
 @Entity()
+// One score row per participant per week, matching the constraint `attendance`
+// already carries for the same triple.
+@Unique(['user', 'cohort', 'cohortWeek'])
+// Group assignment reads and updates by (week, group); the leaderboard reads by cohort.
+@Index(['cohortWeek', 'groupNumber'])
+@Index(['cohort', 'user'])
 export class GroupDiscussionScore extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
