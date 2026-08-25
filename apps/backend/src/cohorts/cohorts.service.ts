@@ -371,7 +371,8 @@ export class CohortsService {
                 const registrationDeadline = new Date(
                     cohortData.registrationDeadline,
                 );
-                registrationDeadline.setUTCHours(0, 0, 0, 0);
+                // End of the deadline day in IST: 23:59:59.999 IST = 18:29:59.999 UTC
+                registrationDeadline.setUTCHours(18, 29, 59, 999);
 
                 // Calculate endDate: startDate + totalWeeks * 7 days
                 const endDate = new Date(startDate);
@@ -543,7 +544,8 @@ export class CohortsService {
             const registrationDeadline = new Date(
                 cohortData.registrationDeadline,
             );
-            registrationDeadline.setUTCHours(0, 0, 0, 0);
+            // End of the deadline day in IST: 23:59:59.999 IST = 18:29:59.999 UTC
+            registrationDeadline.setUTCHours(18, 29, 59, 999);
             cohort.registrationDeadline = registrationDeadline;
         }
 
