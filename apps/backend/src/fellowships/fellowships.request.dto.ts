@@ -1,14 +1,12 @@
 import {
     IsDateString,
     IsEnum,
-    IsInt,
     IsNumber,
     IsOptional,
     IsPositive,
     IsString,
     Max,
     MaxLength,
-    Min,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginatedQueryDto } from '@/common/dto';
@@ -23,14 +21,8 @@ export class StartFellowshipContractDto {
     @IsDateString({ strict: true })
     startDate!: string;
 
-    /**
-     * Duration of the fellowship in months. The contract end date is
-     * derived from the start date and this period.
-     */
-    @IsInt()
-    @Min(1)
-    @Max(24)
-    periodMonths!: number;
+    @IsDateString({ strict: true })
+    endDate!: string;
 
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()

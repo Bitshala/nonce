@@ -52,6 +52,20 @@ export class FellowshipsService {
         }
 
         const startDate = new Date(dto.startDate);
+        const endDate = new Date(dto.endDate);
+
+        if (endDate <= startDate) {
+            throw new BadRequestException('End date must be after start date');
+        }
+
+        // Cap the contract end date at 24 months from today, the same ceiling
+        // the removed `periodMonths` field enforced via @Max(24).
+        const maxEndDate = addMonths(new Date(), 24);
+        if (endDate > maxEndDate) {
+            throw new BadRequestException(
+                'End date cannot be more than 24 months from today',
+            );
+        }
 
         await this.dbTransactionService.execute(async (manager) => {
             // Re-read under a write lock: the status checked above is a
@@ -73,7 +87,7 @@ export class FellowshipsService {
             }
 
             fellowship.startDate = startDate;
-            fellowship.endDate = addMonths(startDate, dto.periodMonths);
+            fellowship.endDate = endDate;
             fellowship.amountUsd = dto.amountUsd.toString();
             fellowship.status = FellowshipStatus.ACTIVE;
 
