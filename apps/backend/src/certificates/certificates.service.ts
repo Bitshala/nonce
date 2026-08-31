@@ -11,7 +11,7 @@ import { Cohort } from '@/entities/cohort.entity';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { ServiceError } from '@/common/errors';
 import { CertificatesGenerationService } from '@/certificates/certificates-generation.service';
-import { CertificateType } from '@/common/enum';
+import { CertificateType, CohortType } from '@/common/enum';
 import { ScoresService } from '@/scores/scores.service';
 import {
     ABSENCE_THRESHOLD_DAYS,
@@ -194,6 +194,49 @@ export class CertificatesService {
         });
 
         return GetCertificateResponseDto.fromEntities(certificates);
+    }
+
+    /**
+     * The distinct courses each of the given users has completed, keyed by user
+     * id. Backs the admin user list, which needs this for a whole page of users
+     * at once -- one grouped query rather than a getUserCertificates call per row.
+     *
+     * Grouping by cohort type is what makes two seasons of the same course count
+     * once. Each user's types come back in CohortType declaration order so the
+     * chips render in the same sequence on every row.
+     */
+    async getCompletedCohortTypesByUserIds(
+        userIds: string[],
+    ): Promise<Map<string, CohortType[]>> {
+        // TypeORM expands IN (:...ids) to invalid SQL for an empty array.
+        if (userIds.length === 0) return new Map();
+
+        const rows = await this.certificateRepository
+            .createQueryBuilder('certificate')
+            .innerJoin('certificate.user', 'certificateUser')
+            .innerJoin('certificate.cohort', 'certificateCohort')
+            .select('certificateUser.id', 'userId')
+            .addSelect('certificateCohort.type', 'cohortType')
+            .where('certificateUser.id IN (:...userIds)', { userIds })
+            .groupBy('certificateUser.id')
+            .addGroupBy('certificateCohort.type')
+            .getRawMany<{ userId: string; cohortType: CohortType }>();
+
+        const cohortTypeOrder = Object.values(CohortType);
+        const completedByUserId = new Map<string, CohortType[]>();
+        for (const row of rows) {
+            const types = completedByUserId.get(row.userId) ?? [];
+            types.push(row.cohortType);
+            completedByUserId.set(row.userId, types);
+        }
+        for (const types of completedByUserId.values()) {
+            types.sort(
+                (a, b) =>
+                    cohortTypeOrder.indexOf(a) - cohortTypeOrder.indexOf(b),
+            );
+        }
+
+        return completedByUserId;
     }
 
     async getCohortCertificates(

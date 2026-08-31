@@ -1,8 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@/entities/user.entity';
-import { Brackets, Repository } from 'typeorm';
-import { SortOrder, UserRole } from '@/common/enum';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
+import { Certificate } from '@/entities/certificate.entity';
+import {
+    CohortMatchMode,
+    CohortType,
+    SortOrder,
+    UserRole,
+} from '@/common/enum';
 import { randomUUID } from 'crypto';
 import {
     GetUserResponse,
@@ -142,6 +148,39 @@ export class UsersService {
         return GetUserResponse.fromEntity(user);
     }
 
+    /**
+     * SQL for "how many distinct courses has this user completed", correlated to
+     * the outer `user` row and optionally narrowed to a set of courses.
+     *
+     * This is a subquery rather than a join with GROUP BY/HAVING on purpose: the
+     * outer query paginates with skip/take and getManyAndCount, and a
+     * row-multiplying join would corrupt both the page and the total.
+     *
+     * The join to `user` inside the subquery is what lets the correlation be
+     * expressed as `certificateUser.id = user.id`, so the certificate table's
+     * join-column names come from entity metadata instead of string literals.
+     */
+    private completedCourseCountSubQuery(
+        qb: SelectQueryBuilder<User>,
+        restrictToTypes?: CohortType[],
+    ): string {
+        const subQuery = qb
+            .subQuery()
+            .select('COUNT(DISTINCT certificateCohort.type)')
+            .from(Certificate, 'certificate')
+            .innerJoin('certificate.user', 'certificateUser')
+            .innerJoin('certificate.cohort', 'certificateCohort')
+            .where('certificateUser.id = user.id');
+
+        if (restrictToTypes) {
+            subQuery.andWhere(
+                'certificateCohort.type IN (:...completedCohortTypes)',
+            );
+        }
+
+        return subQuery.getQuery();
+    }
+
     async searchUsers(
         query: ListUsersQueryDto,
     ): Promise<PaginatedDataDto<UserSummaryResponseDto>> {
@@ -160,6 +199,34 @@ export class UsersService {
             );
         }
 
+        // A truthy check, not `!== undefined`: a minimum of zero filters nothing
+        // out, and is what the UI sends when the field is cleared.
+        if (query.minCompletedCohorts) {
+            qb.andWhere(
+                `${this.completedCourseCountSubQuery(qb)} >= :minCompletedCohorts`,
+                { minCompletedCohorts: query.minCompletedCohorts },
+            );
+        }
+
+        // Deduplicated because the requested count is derived from the list's
+        // length: ?completedCohortTypes=LBTCL&completedCohortTypes=LBTCL under
+        // ALL asks for one course, not two.
+        const completedCohortTypes = [
+            ...new Set(query.completedCohortTypes ?? []),
+        ];
+        if (completedCohortTypes.length > 0) {
+            // One comparison covers both modes -- ANY needs any single match,
+            // ALL needs as many distinct matches as were requested.
+            const requiredCourseCount =
+                query.completedCohortMatch === CohortMatchMode.ALL
+                    ? completedCohortTypes.length
+                    : 1;
+            qb.andWhere(
+                `${this.completedCourseCountSubQuery(qb, completedCohortTypes)} >= :requiredCourseCount`,
+                { completedCohortTypes, requiredCourseCount },
+            );
+        }
+
         const order = query.sortOrder === SortOrder.ASC ? 'ASC' : 'DESC';
 
         const [records, totalRecords] = await qb
@@ -169,9 +236,19 @@ export class UsersService {
             .take(query.pageSize)
             .getManyAndCount();
 
+        const completedByUserId =
+            await this.certificatesService.getCompletedCohortTypesByUserIds(
+                records.map((user) => user.id),
+            );
+
         return new PaginatedDataDto({
             totalRecords,
-            records: records.map(UserSummaryResponseDto.fromEntity),
+            records: records.map((user) =>
+                UserSummaryResponseDto.fromEntity(
+                    user,
+                    completedByUserId.get(user.id) ?? [],
+                ),
+            ),
         });
     }
 

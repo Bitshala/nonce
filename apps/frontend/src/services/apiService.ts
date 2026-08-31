@@ -51,6 +51,13 @@ class ApiService {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
+      // The API runs on Express 5, whose default 'simple' query parser is Node's
+      // querystring: it does not interpret brackets, so axios's default
+      // `key[]=a&key[]=b` would arrive under a key literally named "key[]" and
+      // then be stripped by the whitelisting ValidationPipe -- an array filter
+      // would silently do nothing. `indexes: null` emits `key=a&key=b`, which
+      // that parser does turn back into an array.
+      paramsSerializer: { indexes: null },
     });
   }
 

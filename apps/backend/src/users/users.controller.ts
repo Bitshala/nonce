@@ -25,7 +25,12 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '@/auth/roles.decorator';
-import { SortOrder, UserRole } from '@/common/enum';
+import {
+    CohortMatchMode,
+    CohortType,
+    SortOrder,
+    UserRole,
+} from '@/common/enum';
 
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 @ApiTags('Users')
@@ -40,6 +45,18 @@ export class UsersController {
     @ApiQuery({ name: 'page', type: 'number', required: false })
     @ApiQuery({ name: 'pageSize', type: 'number', required: false })
     @ApiQuery({ name: 'search', type: 'string', required: false })
+    @ApiQuery({ name: 'minCompletedCohorts', type: 'number', required: false })
+    @ApiQuery({
+        name: 'completedCohortTypes',
+        enum: CohortType,
+        isArray: true,
+        required: false,
+    })
+    @ApiQuery({
+        name: 'completedCohortMatch',
+        enum: CohortMatchMode,
+        required: false,
+    })
     @ApiQuery({ name: 'sortBy', enum: UserSortBy, required: false })
     @ApiQuery({ name: 'sortOrder', enum: SortOrder, required: false })
     searchUsers(@Query() query: ListUsersQueryDto) {

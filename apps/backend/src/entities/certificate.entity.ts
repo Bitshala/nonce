@@ -3,6 +3,7 @@ import {
     Check,
     Column,
     Entity,
+    Index,
     ManyToOne,
     PrimaryGeneratedColumn,
     Unique,
@@ -33,6 +34,10 @@ export class Certificate extends BaseEntity {
     @ManyToOne(() => Cohort, (c) => c.certificates)
     cohort!: Cohort;
 
+    // The unique constraint's index leads with cohortId, so it cannot serve the
+    // admin user list, which looks certificates up by user -- both to filter on
+    // how many courses someone has completed and to label each row.
+    @Index()
     @ManyToOne(() => User, (u) => u.certificates)
     user!: User;
 }
