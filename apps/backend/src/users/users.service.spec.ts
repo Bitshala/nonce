@@ -324,3 +324,111 @@ describe('UsersService.searchUsers — completed courses on each row', () => {
         ).toHaveBeenCalledWith([]);
     });
 });
+
+// The city filter matches the free-form `user.location`. Like the clauses above
+// this is SQL assembly, so these tests inspect what reaches the query builder:
+// the predicate, the escaping that keeps a term literal, and the fact that it
+// intersects with `search` rather than widening it.
+describe('UsersService.searchUsers — location filter', () => {
+    let service: UsersService;
+    let andWhereCalls: {
+        condition: unknown;
+        params?: Record<string, unknown>;
+    }[];
+
+    const queryBuilder: Record<string, jest.Mock> = {
+        andWhere: jest.fn(
+            (condition: unknown, params?: Record<string, unknown>) => {
+                andWhereCalls.push({ condition, params });
+                return queryBuilder;
+            },
+        ),
+        subQuery: jest.fn(() => queryBuilder),
+        orderBy: jest.fn(() => queryBuilder),
+        addOrderBy: jest.fn(() => queryBuilder),
+        skip: jest.fn(() => queryBuilder),
+        take: jest.fn(() => queryBuilder),
+        getManyAndCount: jest.fn(async () => [[], 0]),
+    };
+
+    const userRepository = {
+        createQueryBuilder: jest.fn(() => queryBuilder),
+    };
+    const certificatesService = {
+        getCompletedCohortTypesByUserIds: jest.fn(
+            async () => new Map<string, CohortType[]>(),
+        ),
+    };
+
+    /** The location clause, or undefined when the filter was not applied. */
+    const locationClause = () =>
+        andWhereCalls.find(
+            (call) => call.condition === 'user.location ILIKE :location',
+        );
+
+    const query = (overrides: Partial<ListUsersQueryDto> = {}) =>
+        ({
+            page: 0,
+            pageSize: 25,
+            sortBy: UserSortBy.CREATED_AT,
+            sortOrder: SortOrder.DESC,
+            completedCohortMatch: CohortMatchMode.ANY,
+            ...overrides,
+        }) as ListUsersQueryDto;
+
+    beforeEach(async () => {
+        jest.clearAllMocks();
+        andWhereCalls = [];
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                UsersService,
+                {
+                    provide: getRepositoryToken(User),
+                    useValue: userRepository,
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { getOrThrow: jest.fn(() => 'discord-role-id') },
+                },
+                { provide: ScoresService, useValue: {} },
+                { provide: CertificatesService, useValue: certificatesService },
+                { provide: FellowshipsService, useValue: {} },
+            ],
+        }).compile();
+
+        service = module.get<UsersService>(UsersService);
+    });
+
+    it('filters on location with a case-insensitive substring match', async () => {
+        await service.searchUsers(query({ location: 'bengaluru' }));
+
+        expect(locationClause()?.params).toEqual({ location: '%bengaluru%' });
+    });
+
+    it('escapes LIKE wildcards so the term matches literally', async () => {
+        await service.searchUsers(query({ location: 'bengal%_' }));
+
+        // Unescaped, the % would match every user who has a location at all.
+        expect(locationClause()?.params).toEqual({
+            location: '%bengal\\%\\_%',
+        });
+    });
+
+    it('applies no location predicate when the filter is absent', async () => {
+        await service.searchUsers(query());
+
+        expect(locationClause()).toBeUndefined();
+        expect(andWhereCalls).toHaveLength(0);
+    });
+
+    it('ANDs the location filter with the free-text search', async () => {
+        await service.searchUsers(query({ search: 'alice', location: 'pune' }));
+
+        // Two separate andWhere calls -- the search Brackets and the location
+        // predicate -- so the filters intersect rather than union.
+        expect(andWhereCalls).toHaveLength(2);
+        expect(andWhereCalls[0].condition).toBeInstanceOf(Brackets);
+        expect(locationClause()?.params).toEqual({ location: '%pune%' });
+    });
+});
