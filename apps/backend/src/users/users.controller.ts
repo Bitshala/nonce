@@ -45,6 +45,7 @@ export class UsersController {
     @ApiQuery({ name: 'page', type: 'number', required: false })
     @ApiQuery({ name: 'pageSize', type: 'number', required: false })
     @ApiQuery({ name: 'search', type: 'string', required: false })
+    @ApiQuery({ name: 'location', type: 'string', required: false })
     @ApiQuery({ name: 'minCompletedCohorts', type: 'number', required: false })
     @ApiQuery({
         name: 'completedCohortTypes',

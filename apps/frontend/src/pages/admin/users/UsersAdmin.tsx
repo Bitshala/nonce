@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, MapPin, Search } from 'lucide-react';
 
 import FellowshipPageLayout from '../../../components/fellowship/FellowshipPageLayout';
 import { fontFamilyMono } from '../../../components/fellowship/theme';
@@ -66,6 +66,7 @@ const tintFor = (seed: string) => AVATAR_TINTS[hash(seed) % AVATAR_TINTS.length]
 const UsersAdmin = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [location, setLocation] = useState('');
   const [sortKey, setSortKey] = useState<UsersSortBy>('createdAt');
   const [sortDir, setSortDir] = useState<SortOrder>(SortOrder.DESC);
   const [page, setPage] = useState(0);
@@ -78,19 +79,30 @@ const UsersAdmin = () => {
   const [matchMode, setMatchMode] = useState<CohortMatchMode>(CohortMatchMode.ANY);
 
   const debouncedSearch = useDebounce(search.trim(), 300);
+  const debouncedLocation = useDebounce(location.trim(), 300);
   const debouncedMinCompleted = useDebounce(minCompleted.trim(), 300);
   const minCompletedCohorts = Number(debouncedMinCompleted) || 0;
 
   // Reset to the first page whenever the query, filters or sort change.
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, minCompletedCohorts, cohortTypes, matchMode, sortKey, sortDir, pageSize]);
+  }, [
+    debouncedSearch,
+    debouncedLocation,
+    minCompletedCohorts,
+    cohortTypes,
+    matchMode,
+    sortKey,
+    sortDir,
+    pageSize,
+  ]);
 
   const { data, isLoading, isError, error } = useUsers(
     {
       page,
       pageSize,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(debouncedLocation ? { location: debouncedLocation } : {}),
       ...(minCompletedCohorts > 0 ? { minCompletedCohorts } : {}),
       ...(cohortTypes.length > 0
         ? { completedCohortTypes: cohortTypes, completedCohortMatch: matchMode }
@@ -105,7 +117,10 @@ const UsersAdmin = () => {
   const totalRecords = data?.totalRecords ?? 0;
   const pageCount = Math.max(1, Math.ceil(totalRecords / pageSize));
   const hasFilters =
-    Boolean(debouncedSearch) || minCompletedCohorts > 0 || cohortTypes.length > 0;
+    Boolean(debouncedSearch) ||
+    Boolean(debouncedLocation) ||
+    minCompletedCohorts > 0 ||
+    cohortTypes.length > 0;
 
   const toggleCohortType = (type: CohortType) => {
     setCohortTypes((current) =>
@@ -163,6 +178,25 @@ const UsersAdmin = () => {
               htmlInput: { maxLength: 100 },
             }}
             sx={{ flexGrow: 1, maxWidth: { sm: 420 } }}
+          />
+          {/* Matches the free-form profile location, so a country or region works too.
+              Flexible rather than fixed so this row cannot overflow beside the sidebar. */}
+          <TextField
+            size="small"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Filter by city…"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MapPin size={14} />
+                  </InputAdornment>
+                ),
+              },
+              htmlInput: { maxLength: 100, 'aria-label': 'Filter by city' },
+            }}
+            sx={{ flexGrow: 1, maxWidth: { sm: 260 } }}
           />
           <TextField
             size="small"
@@ -347,13 +381,15 @@ const CohortChips = ({ types }: { types: CohortType[] }) => {
 
 // ---- table header ----
 
-// Order: User, Email, Discord, Role, Courses, Joined. The minimums are kept
-// tight on purpose: six tracks plus gaps have to fit the content area beside the
-// sidebar, and the container clips rather than scrolls, so a generous minimum
-// silently cuts the last column off.
+// Order: User, Email, Discord, Role, Location, Courses, Joined. The minimums are
+// kept tight on purpose: seven tracks plus gaps have to fit the content area
+// beside the sidebar, and the container clips rather than scrolls, so a generous
+// minimum silently cuts the last column off. Adding Location took the row past
+// what six tracks needed, so every minimum came down and the gap narrowed to pay
+// for it -- all of these cells ellipsize, so they degrade rather than break.
 const COLS =
-  'minmax(150px, 1.5fr) minmax(140px, 1.3fr) minmax(110px, 1fr) minmax(100px, 0.8fr) minmax(150px, 1.2fr) minmax(100px, 0.8fr)';
-const COL_GAP = 2;
+  'minmax(140px, 1.5fr) minmax(125px, 1.3fr) minmax(100px, 1fr) minmax(90px, 0.8fr) minmax(100px, 1fr) minmax(140px, 1.2fr) minmax(95px, 0.8fr)';
+const COL_GAP = 1.5;
 
 const SortableHeader = ({
   label,
@@ -422,6 +458,8 @@ const HeaderRow = ({
     />
     <Box>Discord</Box>
     <Box>Role</Box>
+    {/* Not sortable: the backend UserSortBy whitelist only accepts createdAt/name/email. */}
+    <Box>Location</Box>
     {/* Not sortable: the server has no sort key for completed courses. */}
     <Box>Courses</Box>
     <SortableHeader
@@ -608,6 +646,20 @@ const UserRow = ({ user, onOpen }: { user: UserSearchResultDto; onOpen: () => vo
       <Box>
         <RoleBadge role={user.role} />
       </Box>
+
+      {/* Location */}
+      <Typography
+        sx={{
+          fontSize: '0.82rem',
+          color: user.location ? 'text.primary' : 'text.secondary',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          pr: 1,
+        }}
+      >
+        {user.location ?? '—'}
+      </Typography>
 
       {/* Courses completed */}
       <CohortChips types={user.completedCohortTypes} />

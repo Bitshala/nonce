@@ -17,15 +17,18 @@ import { Fellowship } from '@/entities/fellowship.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 
 @Entity()
-// Three admin list endpoints search these four columns with ILIKE '%term%'. A
-// leading wildcard rules out B-tree, so in the database these are pg_trgm GIN
-// indexes -- see the follow-up migration that swaps them. TypeORM cannot express
-// an operator class, so they are declared plain here; its schema diff compares
-// name, columns and uniqueness but never the access method, so the swap sticks.
+// Admin list endpoints search these columns with ILIKE '%term%' -- the first four
+// through the shared free-text search, `location` through the user pool's city
+// filter. A leading wildcard rules out B-tree, so in the database these are
+// pg_trgm GIN indexes -- see the follow-up migrations that swap them. TypeORM
+// cannot express an operator class, so they are declared plain here; its schema
+// diff compares name, columns and uniqueness but never the access method, so the
+// swap sticks.
 @Index(['name'])
 @Index(['email'])
 @Index(['discordUserName'])
 @Index(['discordGlobalName'])
+@Index(['location'])
 export class User extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

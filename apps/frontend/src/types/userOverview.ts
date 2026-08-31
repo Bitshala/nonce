@@ -14,6 +14,9 @@ export type UsersSortBy = 'createdAt' | 'name' | 'email';
 export interface ListUsersQueryDto extends PaginatedQueryDto {
   // Case-insensitive substring over name, email, and Discord usernames (≤100 chars).
   search?: string;
+  // Case-insensitive substring over the free-form profile location, e.g.
+  // "Bengaluru, IN" (≤100 chars). AND-ed with `search`.
+  location?: string;
   // Minimum number of distinct courses completed. A course counts once however
   // many seasons of it the user finished. 0 filters nothing out.
   minCompletedCohorts?: number;
@@ -26,7 +29,7 @@ export interface ListUsersQueryDto extends PaginatedQueryDto {
 }
 
 // One row of the user search results. `displayName` is the server's best label
-// for the user; `name`/`email` may be null.
+// for the user; `name`/`email`/`location` may be null.
 export interface UserSearchResultDto {
   id: string;
   displayName: string;
@@ -35,6 +38,7 @@ export interface UserSearchResultDto {
   discordUsername: string;
   discordGlobalName: string | null;
   role: UserRole;
+  location: string | null;
   createdAt: string;
   // The distinct courses the user has completed, already deduplicated by course
   // and ordered by the server, so the length is the "courses completed" count

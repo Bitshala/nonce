@@ -137,6 +137,18 @@ export class ListUsersQueryDto extends PaginatedQueryDto {
     search?: string;
 
     /**
+     * Case-insensitive substring match on the user's free-form location
+     * (e.g. "Bengaluru, IN"). AND-ed with `search`.
+     */
+    @IsOptional()
+    @Transform(({ value }) =>
+        typeof value === 'string' ? value.trim() : value,
+    )
+    @IsString()
+    @MaxLength(100)
+    location?: string;
+
+    /**
      * Keeps only users who have completed at least this many distinct courses.
      * A course counts once however many seasons of it the user finished, so this
      * is not the same number as the overview page's `cohortSummary.completedCount`

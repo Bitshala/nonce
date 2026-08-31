@@ -199,6 +199,12 @@ export class UsersService {
             );
         }
 
+        if (query.location) {
+            qb.andWhere('user.location ILIKE :location', {
+                location: `%${escapeLikePattern(query.location)}%`,
+            });
+        }
+
         // A truthy check, not `!== undefined`: a minimum of zero filters nothing
         // out, and is what the UI sends when the field is cleared.
         if (query.minCompletedCohorts) {
