@@ -13,9 +13,14 @@ import {
     IsEnum,
     IsEmail,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { PaginatedQueryDto } from '@/common/dto';
-import { SortOrder, UserRole } from '@/common/enum';
+import {
+    CohortMatchMode,
+    CohortType,
+    SortOrder,
+    UserRole,
+} from '@/common/enum';
 
 export class UpdateUserRequest {
     @IsOptional()
@@ -130,6 +135,37 @@ export class ListUsersQueryDto extends PaginatedQueryDto {
     @IsString()
     @MaxLength(100)
     search?: string;
+
+    /**
+     * Keeps only users who have completed at least this many distinct courses.
+     * A course counts once however many seasons of it the user finished, so this
+     * is not the same number as the overview page's `cohortSummary.completedCount`
+     * (which counts one per season). 0 is a no-op.
+     */
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    minCompletedCohorts?: number;
+
+    /**
+     * Keeps only users who have completed these courses, in any season. How the
+     * list combines is governed by `completedCohortMatch`.
+     *
+     * The Transform is what lets a single value through: a one-element array in
+     * the query string arrives as a bare string, which @IsArray would reject.
+     */
+    @IsOptional()
+    @Transform(({ value }) =>
+        value === undefined || Array.isArray(value) ? value : [value],
+    )
+    @IsArray()
+    @IsEnum(CohortType, { each: true })
+    completedCohortTypes?: CohortType[];
+
+    @IsOptional()
+    @IsEnum(CohortMatchMode)
+    completedCohortMatch: CohortMatchMode = CohortMatchMode.ANY;
 
     @IsOptional()
     @IsEnum(UserSortBy)
