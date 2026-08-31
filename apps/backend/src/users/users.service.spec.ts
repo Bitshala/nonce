@@ -82,6 +82,12 @@ describe('UsersService.searchUsers — completed-cohort filters', () => {
     const userRepository = {
         createQueryBuilder: jest.fn(() => queryBuilder),
     };
+    const certificatesService = {
+        getCompletedCohortTypesByUserIds: jest.fn(
+            async () => new Map<string, CohortType[]>(),
+        ),
+    };
+
     /** Only the completed-cohort clauses: the search clause is a Brackets. */
     const filterClauses = () =>
         andWhereCalls.filter((call) => typeof call.condition === 'string') as {
@@ -116,7 +122,7 @@ describe('UsersService.searchUsers — completed-cohort filters', () => {
                     useValue: { getOrThrow: jest.fn(() => 'discord-role-id') },
                 },
                 { provide: ScoresService, useValue: {} },
-                { provide: CertificatesService, useValue: {} },
+                { provide: CertificatesService, useValue: certificatesService },
                 { provide: FellowshipsService, useValue: {} },
             ],
         }).compile();
@@ -217,5 +223,104 @@ describe('UsersService.searchUsers — completed-cohort filters', () => {
             '(COUNT_ALL) >= :minCompletedCohorts',
             '(COUNT_RESTRICTED) >= :requiredCourseCount',
         ]);
+    });
+});
+
+describe('UsersService.searchUsers — completed courses on each row', () => {
+    let service: UsersService;
+    let pageOfUsers: User[];
+
+    const makeUser = (id: string): User =>
+        ({
+            id,
+            name: `user-${id}`,
+            email: null,
+            discordUserName: `discord-${id}`,
+            discordGlobalName: null,
+            role: UserRole.STUDENT,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            displayName: `user-${id}`,
+        }) as User;
+
+    const queryBuilder: Record<string, jest.Mock> = {
+        andWhere: jest.fn(() => queryBuilder),
+        subQuery: jest.fn(() => queryBuilder),
+        orderBy: jest.fn(() => queryBuilder),
+        addOrderBy: jest.fn(() => queryBuilder),
+        skip: jest.fn(() => queryBuilder),
+        take: jest.fn(() => queryBuilder),
+        getManyAndCount: jest.fn(async () => [pageOfUsers, pageOfUsers.length]),
+    };
+    const certificatesService = {
+        getCompletedCohortTypesByUserIds: jest.fn(
+            async () =>
+                new Map<string, CohortType[]>([
+                    ['a', [LBTCL, BPD]],
+                    // 'b' deliberately absent: a user with no certificates.
+                ]),
+        ),
+    };
+
+    beforeEach(async () => {
+        jest.clearAllMocks();
+        pageOfUsers = [makeUser('a'), makeUser('b')];
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                UsersService,
+                {
+                    provide: getRepositoryToken(User),
+                    useValue: { createQueryBuilder: () => queryBuilder },
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { getOrThrow: jest.fn(() => 'discord-role-id') },
+                },
+                { provide: ScoresService, useValue: {} },
+                { provide: CertificatesService, useValue: certificatesService },
+                { provide: FellowshipsService, useValue: {} },
+            ],
+        }).compile();
+
+        service = module.get<UsersService>(UsersService);
+    });
+
+    it('looks the page up in one batch and lands each result on its own row', async () => {
+        const result = await service.searchUsers({
+            page: 0,
+            pageSize: 25,
+            sortBy: UserSortBy.CREATED_AT,
+            sortOrder: SortOrder.DESC,
+            completedCohortMatch: CohortMatchMode.ANY,
+        } as ListUsersQueryDto);
+
+        expect(
+            certificatesService.getCompletedCohortTypesByUserIds,
+        ).toHaveBeenCalledTimes(1);
+        expect(
+            certificatesService.getCompletedCohortTypesByUserIds,
+        ).toHaveBeenCalledWith(['a', 'b']);
+
+        expect(result.records[0].completedCohortTypes).toEqual([LBTCL, BPD]);
+        // A user with no certificates gets an empty list, not undefined.
+        expect(result.records[1].completedCohortTypes).toEqual([]);
+    });
+
+    it('returns an empty page without inventing rows', async () => {
+        pageOfUsers = [];
+
+        const result = await service.searchUsers({
+            page: 0,
+            pageSize: 25,
+            sortBy: UserSortBy.CREATED_AT,
+            sortOrder: SortOrder.DESC,
+            completedCohortMatch: CohortMatchMode.ANY,
+        } as ListUsersQueryDto);
+
+        expect(result.records).toEqual([]);
+        expect(result.totalRecords).toBe(0);
+        expect(
+            certificatesService.getCompletedCohortTypesByUserIds,
+        ).toHaveBeenCalledWith([]);
     });
 });

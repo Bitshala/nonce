@@ -69,12 +69,22 @@ export class UserSummaryResponseDto {
     discordGlobalName: string | null;
     role: UserRole;
     createdAt: string;
+    /**
+     * The distinct courses the user has completed, i.e. holds a certificate for
+     * in at least one season. Deliberately deduplicated by course: two seasons of
+     * the same course appear once, and the array length is the number the
+     * `minCompletedCohorts` filter compares against.
+     */
+    completedCohortTypes: CohortType[];
 
     constructor(partial: Partial<UserSummaryResponseDto>) {
         Object.assign(this, partial);
     }
 
-    static fromEntity(user: User): UserSummaryResponseDto {
+    static fromEntity(
+        user: User,
+        completedCohortTypes: CohortType[] = [],
+    ): UserSummaryResponseDto {
         return new UserSummaryResponseDto({
             id: user.id,
             displayName: user.displayName,
@@ -84,6 +94,7 @@ export class UserSummaryResponseDto {
             discordGlobalName: user.discordGlobalName,
             role: user.role,
             createdAt: user.createdAt.toISOString(),
+            completedCohortTypes,
         });
     }
 }

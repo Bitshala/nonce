@@ -236,9 +236,19 @@ export class UsersService {
             .take(query.pageSize)
             .getManyAndCount();
 
+        const completedByUserId =
+            await this.certificatesService.getCompletedCohortTypesByUserIds(
+                records.map((user) => user.id),
+            );
+
         return new PaginatedDataDto({
             totalRecords,
-            records: records.map(UserSummaryResponseDto.fromEntity),
+            records: records.map((user) =>
+                UserSummaryResponseDto.fromEntity(
+                    user,
+                    completedByUserId.get(user.id) ?? [],
+                ),
+            ),
         });
     }
 
