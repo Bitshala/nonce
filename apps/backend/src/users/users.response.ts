@@ -68,6 +68,7 @@ export class UserSummaryResponseDto {
     discordUsername: string;
     discordGlobalName: string | null;
     role: UserRole;
+    location: string | null;
     createdAt: string;
     /**
      * The distinct courses the user has completed, i.e. holds a certificate for
@@ -93,6 +94,7 @@ export class UserSummaryResponseDto {
             discordUsername: user.discordUserName,
             discordGlobalName: user.discordGlobalName,
             role: user.role,
+            location: user.location,
             createdAt: user.createdAt.toISOString(),
             completedCohortTypes,
         });
