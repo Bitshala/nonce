@@ -11,6 +11,15 @@ export enum CohortType {
   BUILDING_BITCOIN_IN_RUST = 'BUILDING_BITCOIN_IN_RUST',
 }
 
+/**
+ * How a list of cohort types is combined when filtering. ANY keeps anyone who
+ * completed at least one of them; ALL keeps only those who completed every one.
+ */
+export enum CohortMatchMode {
+  ANY = 'ANY',
+  ALL = 'ALL',
+}
+
 export enum UserRole {
   ADMIN = 'ADMIN',
   TEACHING_ASSISTANT = 'TEACHING_ASSISTANT',
