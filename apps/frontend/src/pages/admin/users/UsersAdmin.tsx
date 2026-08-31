@@ -18,13 +18,24 @@ import { fontFamilyMono } from '../../../components/fellowship/theme';
 import RoleBadge from '../../../components/user/RoleBadge';
 import { useUsers } from '../../../hooks/userHooks';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { SortOrder } from '@nonce/shared';
+import { CohortMatchMode, CohortType, SortOrder } from '@nonce/shared';
 import type { UserSearchResultDto, UsersSortBy } from '../../../types/userOverview';
-import { formatCohortDate } from '../../../helpers/cohortHelpers';
+import {
+  cohortTypeToName,
+  cohortTypeToShortName,
+  formatCohortDate,
+} from '../../../helpers/cohortHelpers';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 25;
+
+// Declaration order is the order the server returns completed courses in, so
+// reusing it keeps the filter pills and the table chips reading the same way.
+const COHORT_TYPES = Object.values(CohortType);
+
+// Past this many the chips would wrap and the row heights would go ragged.
+const MAX_VISIBLE_COHORT_CHIPS = 3;
 
 // ---- helpers ----
 
@@ -60,18 +71,30 @@ const UsersAdmin = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  const debouncedSearch = useDebounce(search.trim(), 300);
+  // Held as a string so the field can be empty; 0 and empty both mean "no
+  // minimum", which is why it is only sent when it parses to something positive.
+  const [minCompleted, setMinCompleted] = useState('');
+  const [cohortTypes, setCohortTypes] = useState<CohortType[]>([]);
+  const [matchMode, setMatchMode] = useState<CohortMatchMode>(CohortMatchMode.ANY);
 
-  // Reset to the first page whenever the query or sort changes.
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  const debouncedMinCompleted = useDebounce(minCompleted.trim(), 300);
+  const minCompletedCohorts = Number(debouncedMinCompleted) || 0;
+
+  // Reset to the first page whenever the query, filters or sort change.
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, sortKey, sortDir, pageSize]);
+  }, [debouncedSearch, minCompletedCohorts, cohortTypes, matchMode, sortKey, sortDir, pageSize]);
 
   const { data, isLoading, isError, error } = useUsers(
     {
       page,
       pageSize,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(minCompletedCohorts > 0 ? { minCompletedCohorts } : {}),
+      ...(cohortTypes.length > 0
+        ? { completedCohortTypes: cohortTypes, completedCohortMatch: matchMode }
+        : {}),
       sortBy: sortKey,
       sortOrder: sortDir,
     },
@@ -81,6 +104,18 @@ const UsersAdmin = () => {
   const users = useMemo(() => data?.records ?? [], [data?.records]);
   const totalRecords = data?.totalRecords ?? 0;
   const pageCount = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const hasFilters =
+    Boolean(debouncedSearch) || minCompletedCohorts > 0 || cohortTypes.length > 0;
+
+  const toggleCohortType = (type: CohortType) => {
+    setCohortTypes((current) =>
+      current.includes(type)
+        ? current.filter((selected) => selected !== type)
+        : // Rebuilt in COHORT_TYPES order rather than appended, so picking the
+          // same two courses in either order yields one query cache entry.
+          COHORT_TYPES.filter((candidate) => candidate === type || current.includes(candidate)),
+    );
+  };
 
   const toggleSort = (key: UsersSortBy) => {
     if (sortKey === key) {
@@ -106,24 +141,78 @@ const UsersAdmin = () => {
         </Alert>
       )}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ mt: 1.5, mb: 2 }}>
-        <TextField
-          size="small"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, email, Discord…"
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search size={14} />
-                </InputAdornment>
-              ),
-            },
-            htmlInput: { maxLength: 100 },
-          }}
-          sx={{ flexGrow: 1, maxWidth: { sm: 420 } }}
-        />
+      <Stack spacing={1.5} sx={{ mt: 1.5, mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+        >
+          <TextField
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, Discord…"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={14} />
+                  </InputAdornment>
+                ),
+              },
+              htmlInput: { maxLength: 100 },
+            }}
+            sx={{ flexGrow: 1, maxWidth: { sm: 420 } }}
+          />
+          <TextField
+            size="small"
+            type="number"
+            value={minCompleted}
+            onChange={(e) => setMinCompleted(e.target.value)}
+            label="Min courses"
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: 0, max: COHORT_TYPES.length, 'aria-label': 'Minimum courses completed' },
+            }}
+            sx={{ width: 140 }}
+          />
+        </Stack>
+
+        <Stack direction="row" spacing={0.75} flexWrap="wrap" alignItems="center" sx={{ rowGap: 1 }}>
+          <Typography
+            sx={{ fontSize: '0.72rem', color: 'text.secondary', mr: 0.25, whiteSpace: 'nowrap' }}
+          >
+            Completed
+          </Typography>
+          {COHORT_TYPES.map((type) => (
+            <FilterPill
+              key={type}
+              label={cohortTypeToShortName(type)}
+              title={cohortTypeToName(type)}
+              active={cohortTypes.includes(type)}
+              onClick={() => toggleCohortType(type)}
+            />
+          ))}
+          {/* With one course selected the two modes mean the same thing, so the
+              toggle only earns its space once there are at least two. */}
+          {cohortTypes.length > 1 && (
+            <>
+              <Box sx={{ width: '1px', height: 20, bgcolor: 'divider', mx: 0.5 }} />
+              <FilterPill
+                label="Any"
+                title="Completed at least one of the selected courses"
+                active={matchMode === CohortMatchMode.ANY}
+                onClick={() => setMatchMode(CohortMatchMode.ANY)}
+              />
+              <FilterPill
+                label="All"
+                title="Completed every selected course"
+                active={matchMode === CohortMatchMode.ALL}
+                onClick={() => setMatchMode(CohortMatchMode.ALL)}
+              />
+            </>
+          )}
+        </Stack>
       </Stack>
 
       <Box
@@ -143,7 +232,7 @@ const UsersAdmin = () => {
         ) : users.length === 0 ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {debouncedSearch ? 'No users match your search.' : 'No users found.'}
+              {hasFilters ? 'No users match your filters.' : 'No users found.'}
             </Typography>
           </Box>
         ) : (
@@ -168,11 +257,102 @@ const UsersAdmin = () => {
   );
 };
 
+// ---- filter pill ----
+
+// Same shape as the filter chips on the fellowship applications admin page, so
+// the two admin tables read as one surface.
+const FilterPill = ({
+  label,
+  title,
+  active,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  active: boolean;
+  onClick: () => void;
+}) => (
+  <Box
+    component="button"
+    type="button"
+    title={title}
+    aria-pressed={active}
+    onClick={onClick}
+    sx={{
+      px: 1.25,
+      py: 0.4,
+      borderRadius: 999,
+      border: '1px solid',
+      borderColor: active ? 'primary.main' : 'divider',
+      bgcolor: active ? 'rgba(249,115,22,0.08)' : 'background.paper',
+      color: active ? 'primary.light' : 'text.secondary',
+      fontFamily: 'inherit',
+      fontWeight: 600,
+      fontSize: '0.74rem',
+      cursor: 'pointer',
+      transition: 'all 0.15s',
+      '&:hover': active ? {} : { borderColor: 'primary.light', color: 'text.primary' },
+    }}
+  >
+    {label}
+  </Box>
+);
+
+// ---- cohort chips ----
+
+const CohortChips = ({ types }: { types: CohortType[] }) => {
+  if (types.length === 0) {
+    return <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>—</Typography>;
+  }
+
+  const visible = types.slice(0, MAX_VISIBLE_COHORT_CHIPS);
+  const overflow = types.length - visible.length;
+
+  return (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      alignItems="center"
+      title={types.map(cohortTypeToName).join(', ')}
+      sx={{ minWidth: 0, overflow: 'hidden', pr: 1 }}
+    >
+      {visible.map((type) => (
+        <Box
+          key={type}
+          sx={{
+            px: 0.75,
+            py: 0.15,
+            borderRadius: 0.5,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'rgba(255,255,255,0.03)',
+            fontFamily: fontFamilyMono,
+            fontSize: '0.68rem',
+            fontWeight: 600,
+            color: 'text.secondary',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {cohortTypeToShortName(type)}
+        </Box>
+      ))}
+      {overflow > 0 && (
+        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', flexShrink: 0 }}>
+          +{overflow}
+        </Typography>
+      )}
+    </Stack>
+  );
+};
+
 // ---- table header ----
 
-// Order: User, Email, Discord, Role, Joined.
+// Order: User, Email, Discord, Role, Courses, Joined. The minimums are kept
+// tight on purpose: six tracks plus gaps have to fit the content area beside the
+// sidebar, and the container clips rather than scrolls, so a generous minimum
+// silently cuts the last column off.
 const COLS =
-  'minmax(200px, 1.8fr) minmax(180px, 1.6fr) minmax(140px, 1.1fr) minmax(120px, 0.9fr) minmax(110px, 0.9fr)';
+  'minmax(150px, 1.5fr) minmax(140px, 1.3fr) minmax(110px, 1fr) minmax(100px, 0.8fr) minmax(150px, 1.2fr) minmax(100px, 0.8fr)';
 const COL_GAP = 2;
 
 const SortableHeader = ({
@@ -242,6 +422,8 @@ const HeaderRow = ({
     />
     <Box>Discord</Box>
     <Box>Role</Box>
+    {/* Not sortable: the server has no sort key for completed courses. */}
+    <Box>Courses</Box>
     <SortableHeader
       label="Joined"
       active={sortKey === 'createdAt'}
@@ -426,6 +608,9 @@ const UserRow = ({ user, onOpen }: { user: UserSearchResultDto; onOpen: () => vo
       <Box>
         <RoleBadge role={user.role} />
       </Box>
+
+      {/* Courses completed */}
+      <CohortChips types={user.completedCohortTypes} />
 
       {/* Joined */}
       <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.78rem', color: 'text.secondary' }}>

@@ -1,6 +1,6 @@
 import type { CertificateType, PaginatedQueryDto } from './api.ts';
 import type { SortOrder } from '@nonce/shared';
-import type { CohortType, UserRole } from '@nonce/shared';
+import type { CohortMatchMode, CohortType, UserRole } from '@nonce/shared';
 import type { FellowshipStatus, FellowshipType } from './fellowship.ts';
 
 // =========================
@@ -14,6 +14,13 @@ export type UsersSortBy = 'createdAt' | 'name' | 'email';
 export interface ListUsersQueryDto extends PaginatedQueryDto {
   // Case-insensitive substring over name, email, and Discord usernames (≤100 chars).
   search?: string;
+  // Minimum number of distinct courses completed. A course counts once however
+  // many seasons of it the user finished. 0 filters nothing out.
+  minCompletedCohorts?: number;
+  // Courses the user must have completed, combined per `completedCohortMatch`.
+  completedCohortTypes?: CohortType[];
+  // Defaults to ANY server-side when omitted.
+  completedCohortMatch?: CohortMatchMode;
   sortBy?: UsersSortBy;
   sortOrder?: SortOrder;
 }
@@ -29,6 +36,11 @@ export interface UserSearchResultDto {
   discordGlobalName: string | null;
   role: UserRole;
   createdAt: string;
+  // The distinct courses the user has completed, already deduplicated by course
+  // and ordered by the server, so the length is the "courses completed" count
+  // that `minCompletedCohorts` filters on. Note this is NOT the same number as
+  // the overview page's cohortSummary.completedCount, which counts per season.
+  completedCohortTypes: CohortType[];
 }
 
 // =========================
