@@ -1,4 +1,8 @@
+import { Assignment } from '@/entities/assignment.entity';
+import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Attendance } from '@/entities/attendance.entity';
+import { CIRun } from '@/entities/ci-run.entity';
+import { CIRunLog } from '@/entities/ci-run-log.entity';
 import { Cohort } from '@/entities/cohort.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
@@ -16,7 +20,11 @@ import { FellowshipReportNote } from '@/entities/fellowship-report-note.entity';
 
 export const entities = [
     APITask,
+    Assignment,
+    AssignmentSubmission,
     Attendance,
+    CIRun,
+    CIRunLog,
     Cohort,
     CohortMembership,
     CohortWeek,
