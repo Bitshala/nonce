@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CohortType, UserRole } from '@/common/enum';
+import { AssignmentBackend, CohortType, UserRole } from '@/common/enum';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { validateSync } from 'class-validator';
@@ -70,6 +70,25 @@ export class CohortsConfigService implements OnModuleInit {
                 throw new Error(
                     `Invalid config for ${type}: weeks array length (${config.weeks.length}) must equal gdSessions (${config.gdSessions})`,
                 );
+            }
+
+            // class-validator cannot see the parent's backend from a week, so
+            // the "an in-house exercise week needs grading mechanics" rule is
+            // checked here. Boot fails loudly rather than a student hitting
+            // Accept on an assignment that was never configured.
+            if (
+                (config.assignmentBackend ?? AssignmentBackend.CLASSROOM) ===
+                AssignmentBackend.INHOUSE
+            ) {
+                const missing = config.weeks
+                    .map((week, index) => ({ week, number: index + 1 }))
+                    .filter(({ week }) => week.hasExercise && !week.assignment)
+                    .map(({ number }) => number);
+                if (missing.length > 0) {
+                    throw new Error(
+                        `Invalid config for ${type}: INHOUSE cohort is missing an \`assignment\` block on exercise week(s) ${missing.join(', ')}`,
+                    );
+                }
             }
 
             // Validate that all referenced attachment files exist

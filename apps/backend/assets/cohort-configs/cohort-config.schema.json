@@ -5,7 +5,11 @@
   "description": "Configuration for a single cohort, loaded and validated at startup by CohortsConfigService. The file name must match the CohortType (lower-cased, underscores -> hyphens). Global links shared by every cohort (Wheel of Names, MultiBuzz) are added in code and need not be listed here.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["gdSessions", "weeks", "links"],
+  "required": [
+    "gdSessions",
+    "weeks",
+    "links"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -20,19 +24,31 @@
     "classroomId": {
       "type": "string",
       "pattern": "^[0-9]+$",
-      "description": "GitHub Classroom id used to sync exercise scores. Required when any week has `hasExercise: true`; may be omitted otherwise."
+      "description": "GitHub Classroom id used to sync exercise scores. Required when any week has `hasExercise: true`; may be omitted otherwise. Only used when assignmentBackend is CLASSROOM."
     },
     "links": {
       "type": "array",
       "description": "Course-specific links for this cohort. Use [] when there are none. Global links shared by every cohort are merged in by CohortsConfigService at load time, so do not list them here.",
-      "items": { "$ref": "#/$defs/link" }
+      "items": {
+        "$ref": "#/$defs/link"
+      }
     },
     "weeks": {
       "type": "array",
       "minItems": 1,
       "maxItems": 8,
       "description": "One entry per group-discussion session. Length must equal `gdSessions`.",
-      "items": { "$ref": "#/$defs/week" }
+      "items": {
+        "$ref": "#/$defs/week"
+      }
+    },
+    "assignmentBackend": {
+      "type": "string",
+      "enum": [
+        "CLASSROOM",
+        "INHOUSE"
+      ],
+      "description": "Which system grades this cohort's exercises. Defaults to CLASSROOM. INHOUSE requires an `assignment` block on every exercise week and ignores classroomId."
     }
   },
   "allOf": [
@@ -44,14 +60,74 @@
             "type": "array",
             "contains": {
               "type": "object",
-              "properties": { "hasExercise": { "const": true } },
-              "required": ["hasExercise"]
+              "properties": {
+                "hasExercise": {
+                  "const": true
+                }
+              },
+              "required": [
+                "hasExercise"
+              ]
+            }
+          },
+          "assignmentBackend": {
+            "not": {
+              "const": "INHOUSE"
             }
           }
         },
-        "required": ["weeks"]
+        "required": [
+          "weeks"
+        ]
       },
-      "then": { "required": ["classroomId"] }
+      "then": {
+        "required": [
+          "classroomId"
+        ]
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "assignmentBackend": {
+            "const": "INHOUSE"
+          }
+        },
+        "required": [
+          "assignmentBackend"
+        ]
+      },
+      "then": {
+        "properties": {
+          "weeks": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "if": {
+                    "type": "object",
+                    "properties": {
+                      "hasExercise": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "hasExercise"
+                    ]
+                  },
+                  "then": {
+                    "type": "object",
+                    "required": [
+                      "assignment"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -73,12 +149,16 @@
         "questions": {
           "type": "array",
           "description": "Discussion questions for the week.",
-          "items": { "$ref": "#/$defs/question" }
+          "items": {
+            "$ref": "#/$defs/question"
+          }
         },
         "bonusQuestions": {
           "type": "array",
           "description": "Optional-to-answer bonus discussion questions.",
-          "items": { "$ref": "#/$defs/question" }
+          "items": {
+            "$ref": "#/$defs/question"
+          }
         },
         "title": {
           "type": "string",
@@ -87,7 +167,9 @@
         "readingMaterial": {
           "type": "array",
           "description": "Reading-material links for the week.",
-          "items": { "$ref": "#/$defs/readingMaterial" }
+          "items": {
+            "$ref": "#/$defs/readingMaterial"
+          }
         },
         "activity": {
           "type": "string",
@@ -96,23 +178,38 @@
         "exercise": {
           "$ref": "#/$defs/exercise",
           "description": "Exercise content. Required when `hasExercise` is true; omit otherwise."
+        },
+        "assignment": {
+          "$ref": "#/$defs/assignment"
         }
       },
       "allOf": [
         {
           "if": {
             "type": "object",
-            "properties": { "hasExercise": { "const": true } },
-            "required": ["hasExercise"]
+            "properties": {
+              "hasExercise": {
+                "const": true
+              }
+            },
+            "required": [
+              "hasExercise"
+            ]
           },
-          "then": { "required": ["exercise"] }
+          "then": {
+            "required": [
+              "exercise"
+            ]
+          }
         }
       ]
     },
     "question": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text"],
+      "required": [
+        "text"
+      ],
       "properties": {
         "text": {
           "type": "string",
@@ -121,25 +218,44 @@
         "attachments": {
           "type": "array",
           "description": "Optional file names, relative to the cohort's attachments directory (assets/cohort-configs/attachments/<cohort>/). Each file must exist on disk. Omit when the question has no attachments.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "readingMaterial": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label", "url"],
+      "required": [
+        "label",
+        "url"
+      ],
       "properties": {
-        "label": { "type": "string", "description": "Display label." },
-        "url": { "type": "string", "description": "Link URL." }
+        "label": {
+          "type": "string",
+          "description": "Display label."
+        },
+        "url": {
+          "type": "string",
+          "description": "Link URL."
+        }
       }
     },
     "exercise": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["title", "concepts", "problem", "expectedOutput"],
+      "required": [
+        "title",
+        "concepts",
+        "problem",
+        "expectedOutput"
+      ],
       "properties": {
-        "title": { "type": "string", "description": "Exercise title." },
+        "title": {
+          "type": "string",
+          "description": "Exercise title."
+        },
         "concepts": {
           "type": "string",
           "description": "Concepts the exercise covers."
@@ -151,21 +267,97 @@
         "expectedOutput": {
           "type": "array",
           "description": "Expected output lines.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "link": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["label", "url"],
+      "required": [
+        "label",
+        "url"
+      ],
       "properties": {
-        "label": { "type": "string", "description": "Display label." },
-        "url": { "type": "string", "description": "Link URL." },
+        "label": {
+          "type": "string",
+          "description": "Display label."
+        },
+        "url": {
+          "type": "string",
+          "description": "Link URL."
+        },
         "minRole": {
           "type": "string",
-          "enum": ["ADMIN", "TEACHING_ASSISTANT", "STUDENT"],
+          "enum": [
+            "ADMIN",
+            "TEACHING_ASSISTANT",
+            "STUDENT"
+          ],
           "description": "Minimum role required to see this link. Absent => visible to everyone."
+        }
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Grading mechanics for an in-house exercise week. The problem statement stays in `exercise`.",
+      "required": [
+        "slug",
+        "templateOwner",
+        "templateRepo",
+        "graderTestPath"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Becomes part of the repo name. The cohort season is appended automatically."
+        },
+        "templateOwner": {
+          "type": "string"
+        },
+        "templateRepo": {
+          "type": "string"
+        },
+        "templateRef": {
+          "type": "string",
+          "description": "Branch or tag of the template; omit for its default branch."
+        },
+        "graderTestPath": {
+          "type": "string",
+          "description": "Path to the test suite inside the grader repo, e.g. tests/pb-week-3."
+        },
+        "graderWorkflowPath": {
+          "type": "string",
+          "description": "Defaults to .github/workflows/grade.yml."
+        },
+        "protectedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths the editor refuses to write. Exact paths and prefix/** patterns only. Defaults to [\".github/**\"]."
+        },
+        "deadlineDaysAfterWeek": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Deadline offset from the week's scheduled date. Omit for no deadline, in which case every run counts for score."
+        },
+        "allowLateSubmission": {
+          "type": "boolean",
+          "description": "Whether editing and running stay permitted after the deadline. They never affect the score once it passes. Defaults to true."
+        },
+        "maxRunsPerDay": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
         }
       }
     }
