@@ -14,7 +14,10 @@ import {
     StartFellowshipContractDto,
 } from '@/fellowships/fellowships.request.dto';
 import { FellowshipStatus, SortOrder } from '@/common/enum';
-import { FellowshipResponseDto } from '@/fellowships/fellowships.response.dto';
+import {
+    FellowshipResponseDto,
+    PublicFellowResponseDto,
+} from '@/fellowships/fellowships.response.dto';
 import { PaginatedDataDto, PaginatedQueryDto } from '@/common/dto';
 import { UserRole } from '@/common/enum';
 import { addMonths, escapeLikePattern } from '@/common/common';
@@ -210,6 +213,24 @@ export class FellowshipsService {
         return new PaginatedDataDto({
             totalRecords,
             records: records.map(FellowshipResponseDto.fromEntity),
+        });
+    }
+
+    async listPublicFellows(
+        query: PaginatedQueryDto,
+    ): Promise<PaginatedDataDto<PublicFellowResponseDto>> {
+        const [records, totalRecords] =
+            await this.fellowshipRepository.findAndCount({
+                where: { status: FellowshipStatus.ACTIVE },
+                relations: { user: true, application: true },
+                order: { createdAt: 'DESC', id: 'ASC' },
+                skip: query.page * query.pageSize,
+                take: query.pageSize,
+            });
+
+        return new PaginatedDataDto({
+            totalRecords,
+            records: records.map(PublicFellowResponseDto.fromEntity),
         });
     }
 }

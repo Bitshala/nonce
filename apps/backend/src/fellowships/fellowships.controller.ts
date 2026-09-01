@@ -29,9 +29,13 @@ import {
     ListFellowshipsQueryDto,
     StartFellowshipContractDto,
 } from '@/fellowships/fellowships.request.dto';
-import { FellowshipResponseDto } from '@/fellowships/fellowships.response.dto';
+import {
+    FellowshipResponseDto,
+    PublicFellowResponseDto,
+} from '@/fellowships/fellowships.response.dto';
 import { PaginatedDataDto, PaginatedQueryDto } from '@/common/dto';
 import { Roles } from '@/auth/roles.decorator';
+import { Public } from '@/auth/public-route.decorator';
 import {
     FellowshipStatus,
     FellowshipType,
@@ -141,6 +145,21 @@ export class FellowshipsController {
         @Query() query: PaginatedQueryDto,
     ): Promise<PaginatedDataDto<FellowshipResponseDto>> {
         return this.service.getMyFellowships(user, query);
+    }
+
+    @Public()
+    @Get('public')
+    @ApiOperation({
+        summary: 'List public fellows (no auth required)',
+        description:
+            'Active fellows only -- pending applicants and past fellows are not exposed.',
+    })
+    @ApiQuery({ name: 'page', type: 'number', required: false })
+    @ApiQuery({ name: 'pageSize', type: 'number', required: false })
+    async listPublicFellows(
+        @Query() query: PaginatedQueryDto,
+    ): Promise<PaginatedDataDto<PublicFellowResponseDto>> {
+        return this.service.listPublicFellows(query);
     }
 
     @Get(':id')
