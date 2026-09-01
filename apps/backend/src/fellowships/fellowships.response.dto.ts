@@ -120,3 +120,44 @@ export class FellowshipResponseDto {
         });
     }
 }
+
+/**
+ * A fellow as shown on the public showcase, with member identity and
+ * application detail reduced to what a visitor without a login should see.
+ *
+ * Hand-written projection: Fellowship and FellowshipApplication carry email,
+ * location, mentor contact, and application essay fields, so an Object.assign
+ * or a spread would copy those straight through. Naming every field is what
+ * keeps them out.
+ */
+export class PublicFellowResponseDto {
+    id!: string;
+    displayName!: string;
+    githubProfileUrl!: string | null;
+    projectName!: string | null;
+    projectGithubLink!: string | null;
+    type!: FellowshipType;
+    kind!: FellowshipKind;
+
+    constructor(obj: PublicFellowResponseDto) {
+        this.id = obj.id;
+        this.displayName = obj.displayName;
+        this.githubProfileUrl = obj.githubProfileUrl;
+        this.projectName = obj.projectName;
+        this.projectGithubLink = obj.projectGithubLink;
+        this.type = obj.type;
+        this.kind = obj.kind;
+    }
+
+    static fromEntity(fellowship: Fellowship): PublicFellowResponseDto {
+        return new PublicFellowResponseDto({
+            id: fellowship.id,
+            displayName: fellowship.user.displayName,
+            githubProfileUrl: fellowship.user.githubProfileUrl,
+            projectName: fellowship.application.projectName,
+            projectGithubLink: fellowship.application.projectGithubLink,
+            type: fellowship.type,
+            kind: fellowship.kind,
+        });
+    }
+}

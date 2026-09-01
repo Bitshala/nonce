@@ -5,7 +5,11 @@ import { EntityManager } from 'typeorm';
 import { FellowshipsService } from '@/fellowships/fellowships.service';
 import { Fellowship } from '@/entities/fellowship.entity';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
-import { FellowshipStatus } from '@/common/enum';
+import {
+    FellowshipStatus,
+    FellowshipType,
+    FellowshipKind,
+} from '@/common/enum';
 
 // Covers startContract's endDate handling: the submitted endDate must be
 // after startDate, cannot be more than 24 months from today, and (now that
@@ -111,5 +115,94 @@ describe('FellowshipsService — startContract', () => {
                 status: FellowshipStatus.ACTIVE,
             }),
         );
+    });
+});
+
+describe('FellowshipsService — listPublicFellows', () => {
+    let service: FellowshipsService;
+
+    // type is deliberately different on the fellowship root vs. the joined
+    // application row, so the serialization test below can catch a regression
+    // back to reading type from the wrong side of the join.
+    const fellowship = {
+        id: 'fellowship-1',
+        type: FellowshipType.DEVELOPER,
+        kind: FellowshipKind.STARTER_GRANT,
+        status: FellowshipStatus.ACTIVE,
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+        user: {
+            id: 'user-1',
+            displayName: 'Alice',
+            githubProfileUrl: 'https://github.com/alice',
+            location: 'Remote',
+            email: 'alice@example.com',
+        },
+        application: {
+            id: 'app-1',
+            type: FellowshipType.DESIGNER,
+            projectName: 'Project',
+            projectGithubLink: 'https://github.com/alice/project',
+            mentorContact: 'mentor@example.com',
+            academicBackground: 'CS degree',
+            bitcoinMotivation: 'Because Bitcoin',
+        },
+    };
+
+    const fellowshipRepository = {
+        findAndCount: jest.fn(),
+    };
+
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                FellowshipsService,
+                {
+                    provide: getRepositoryToken(Fellowship),
+                    useValue: fellowshipRepository,
+                },
+                {
+                    provide: DbTransactionService,
+                    useValue: { execute: jest.fn() },
+                },
+            ],
+        }).compile();
+
+        service = module.get(FellowshipsService);
+    });
+
+    afterEach(() => jest.resetAllMocks());
+
+    it('queries ACTIVE fellowships with user/application relations and pagination', async () => {
+        fellowshipRepository.findAndCount.mockResolvedValue([[], 0]);
+
+        await service.listPublicFellows({ page: 2, pageSize: 20 });
+
+        expect(fellowshipRepository.findAndCount).toHaveBeenCalledWith({
+            where: { status: FellowshipStatus.ACTIVE },
+            relations: { user: true, application: true },
+            order: { createdAt: 'DESC', id: 'ASC' },
+            skip: 40,
+            take: 20,
+        });
+    });
+
+    it('serializes a fellow down to exactly the public fields, sourced from the fellowship root', async () => {
+        fellowshipRepository.findAndCount.mockResolvedValue([[fellowship], 1]);
+
+        const result = await service.listPublicFellows({
+            page: 0,
+            pageSize: 20,
+        });
+
+        expect({ ...result.records[0] }).toStrictEqual({
+            id: fellowship.id,
+            displayName: fellowship.user.displayName,
+            githubProfileUrl: fellowship.user.githubProfileUrl,
+            projectName: fellowship.application.projectName,
+            projectGithubLink: fellowship.application.projectGithubLink,
+            type: fellowship.type,
+            kind: fellowship.kind,
+        });
     });
 });
