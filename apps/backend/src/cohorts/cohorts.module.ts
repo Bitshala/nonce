@@ -38,6 +38,6 @@ import { CohortCalendarModule } from '@/cohort-calendar/cohort-calendar.module';
     ],
     providers: [CohortsConfigService, CohortsService, CohortReminderService],
     controllers: [CohortsController],
-    exports: [CohortsService, CohortReminderService],
+    exports: [CohortsService, CohortReminderService, CohortsConfigService],
 })
 export class CohortsModule {}
