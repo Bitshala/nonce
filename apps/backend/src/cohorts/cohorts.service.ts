@@ -30,7 +30,9 @@ import { Attendance } from '@/entities/attendance.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { DiscordClient } from '@/discord-client/discord.client';
 import { ConfigService } from '@nestjs/config';
-import { CohortType, CohortWeekType } from '@/common/enum';
+import { AssignmentBackend, CohortType, CohortWeekType } from '@/common/enum';
+import { Assignment } from '@/entities/assignment.entity';
+import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { CohortWaitlist } from '@/entities/cohort-waitlist.entity';
 import { Certificate } from '@/entities/certificate.entity';
@@ -406,7 +408,16 @@ export class CohortsService {
                     minRole: l.minRole,
                 }));
 
-                if (hasExercises) cohort.classroomId = config.classroomId;
+                const assignmentBackend =
+                    config.assignmentBackend ?? AssignmentBackend.CLASSROOM;
+                cohort.assignmentBackend = assignmentBackend;
+
+                if (
+                    hasExercises &&
+                    assignmentBackend === AssignmentBackend.CLASSROOM
+                ) {
+                    cohort.classroomId = config.classroomId;
+                }
 
                 await manager.save(cohort);
 
@@ -479,11 +490,37 @@ export class CohortsService {
 
                 await manager.save(cohort.weeks);
 
-                // Create an initial sync task when cohort is created
-                const apiTask = new APITask<TaskType.SYNC_CLASSROOM_SCORES>();
-                apiTask.type = TaskType.SYNC_CLASSROOM_SCORES;
-                apiTask.data = { cohortId: cohort.id };
-                await manager.save(apiTask);
+                // In-house cohorts get an Assignment per exercise week, seeded
+                // straight from config. Config is the source of truth for the
+                // mechanics; nothing authors these through the API.
+                if (assignmentBackend === AssignmentBackend.INHOUSE) {
+                    const assignments = cohort.weeks
+                        .filter((week) => week.hasExercise)
+                        .map((week) => {
+                            const weekConfig = config.weeks[week.week - 1];
+                            // Guaranteed by the boot-time config validation in
+                            // CohortsConfigService.
+                            return applyAssignmentConfig(
+                                new Assignment(),
+                                weekConfig.assignment!,
+                                week,
+                                season,
+                            );
+                        });
+                    if (assignments.length > 0) {
+                        await manager.save(assignments);
+                    }
+                }
+
+                // Classroom sync only applies to cohorts still on that backend.
+                if (assignmentBackend === AssignmentBackend.CLASSROOM) {
+                    // Create an initial sync task when cohort is created
+                    const apiTask =
+                        new APITask<TaskType.SYNC_CLASSROOM_SCORES>();
+                    apiTask.type = TaskType.SYNC_CLASSROOM_SCORES;
+                    apiTask.data = { cohortId: cohort.id };
+                    await manager.save(apiTask);
+                }
 
                 // Start the daily Discord role reconciliation recurrence.
                 // The handler self-reschedules at +24h after each run.
