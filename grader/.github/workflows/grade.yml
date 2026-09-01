@@ -1,0 +1,183 @@
+name: grade
+
+# The backend dispatches this workflow and gets a 204 with no body back, so it
+# has no run id to record. This run name is the only handle that ties a GitHub
+# run to the CIRun row that started it — the backend finds the run by matching
+# `display_title`. Do not change the `grade-` prefix without changing
+# RunsService.findRunByToken.
+run-name: grade-${{ inputs.correlation_token }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      student_repo:
+        description: 'owner/name of the student repository'
+        required: true
+        type: string
+      commit_sha:
+        description: 'Exact commit to grade. Never a branch.'
+        required: true
+        type: string
+      assignment_slug:
+        required: true
+        type: string
+      test_path:
+        description: 'Path to this assignment''s tests inside this repo'
+        required: true
+        type: string
+      correlation_token:
+        required: true
+        type: string
+      timeout_minutes:
+        required: false
+        type: string
+        default: '10'
+
+# One in-flight run per dispatch. A student mashing Run cancels only their own
+# previous attempt, because the token is unique per press.
+concurrency:
+  group: grade-${{ inputs.correlation_token }}
+  cancel-in-progress: true
+
+# Deny by default, then grant per job. `grade` inherits this empty set, which is
+# the point of the whole split.
+permissions: {}
+
+jobs:
+  # Trusted. Checks out student code and the test suite, and executes neither.
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Just enough for this job to clone *this* repo (the test suite), which is
+    # private. Reading the student's repo uses the scoped App token below, not
+    # this. Nothing student-authored runs in this job.
+    permissions:
+      contents: read
+    steps:
+      # `repositories` wants a bare repo name, but the dispatch input is
+      # owner-qualified. Passed through env rather than interpolated into the
+      # script body, so the value can never be read as shell.
+      - name: Resolve the student repository name
+        id: student
+        env:
+          STUDENT_REPO: ${{ inputs.student_repo }}
+        run: echo "name=${STUDENT_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Mint a scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          # client-id, not app-id: the action marks app-id deprecated, and
+          # GitHub recommends the Client ID as the JWT issuer.
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          # Narrow the token to exactly what this job does: read one student
+          # repository. Without these it would carry every permission the App
+          # holds, including repo administration, for no reason.
+          repositories: ${{ steps.student.outputs.name }}
+          permission-contents: read
+
+      - name: Check out the student repository at the graded commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.student_repo }}
+          ref: ${{ inputs.commit_sha }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: student
+          persist-credentials: false
+
+      # Belt and braces: the commit endpoint already refuses to write
+      # .github/**, so nothing should be here. Removing it anyway means a
+      # protected-path bug cannot become CI execution.
+      - name: Drop anything that could influence CI
+        run: rm -rf student/.github student/.git
+
+      - name: Check out the test suite
+        uses: actions/checkout@v4
+        with:
+          path: grader
+          persist-credentials: false
+
+      - name: Isolate this assignment's tests
+        run: |
+          set -euo pipefail
+          test -d "grader/${{ inputs.test_path }}" \
+            || { echo "::error::No tests at ${{ inputs.test_path }}"; exit 1; }
+          mkdir -p tests
+          cp -R "grader/${{ inputs.test_path }}/." tests/
+          cp grader/run-tests.sh tests/run-tests.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: student-code
+          path: student
+          include-hidden-files: true
+          retention-days: 1
+
+      # Only this assignment's tests travel to the graded job, so a bug there
+      # cannot leak the whole suite.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assignment-tests
+          path: tests
+          include-hidden-files: true
+          retention-days: 1
+
+  # Untrusted: this is where student code runs.
+  grade:
+    needs: fetch
+    runs-on: ubuntu-latest
+    # Zero-scope GITHUB_TOKEN. Combined with referencing no `secrets.*`, there
+    # is nothing in this job's environment worth stealing.
+    permissions: {}
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: student-code
+          path: student
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: assignment-tests
+          path: tests
+
+      - name: Run the tests
+        # Never fail the step: the report is the result, and it still has to be
+        # uploaded when the tests fail.
+        continue-on-error: true
+        env:
+          STUDENT_DIR: ${{ github.workspace }}/student
+          TEST_DIR: ${{ github.workspace }}/tests
+          REPORT_PATH: ${{ github.workspace }}/report.json
+          ASSIGNMENT_SLUG: ${{ inputs.assignment_slug }}
+          # Student code runs with no network. Dependencies must be restored in
+          # `fetch` or vendored into the template.
+          GRADE_DISABLE_NETWORK: '1'
+        run: bash tests/run-tests.sh
+
+      - name: Guarantee a report
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -s report.json ]; then
+            printf '%s' '{"schemaVersion":1,"passed":false,"tests":[{"name":"grader","status":"failed","message":"The grader produced no report."}]}' > report.json
+          fi
+
+      # The backend reads this with its own App token. That is why the graded
+      # job needs no outbound credential of its own.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grade-report
+          path: report.json
+          retention-days: 7
+
+      # Mirrors the report into the run conclusion, so a missing artifact still
+      # leaves the backend something to fall back on.
+      - name: Reflect the result in the run conclusion
+        if: always()
+        run: |
+          set -euo pipefail
+          node -e 'const r=JSON.parse(require("fs").readFileSync("report.json","utf8"));console.log(r.passed?"passed":"failed");process.exit(r.passed?0:1)'
