@@ -3,3 +3,4 @@
 // a compile error rather than a runtime surprise the frontend discovers later.
 export * from './common';
 export * from './cohorts';
+export * from './assignments';
