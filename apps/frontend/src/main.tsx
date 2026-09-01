@@ -28,6 +28,9 @@ const LNInstructions = lazy(() => import('./pages/Students/LNInstructions.tsx'))
 const BPDInstructions = lazy(() => import('./pages/Students/BPDInstructions.tsx'));
 const PBInstructions = lazy(() => import('./pages/Students/PBInstructions.tsx'));
 const BBRInstructions = lazy(() => import('./pages/Students/BBRInstructions.tsx'));
+const AssignmentPage = lazy(() => import('./pages/assignment/AssignmentPage.tsx'));
+// Lazy on purpose: this pulls in Monaco, which is its own vendor chunk.
+const AssignmentEditorPage = lazy(() => import('./pages/assignment/AssignmentEditorPage.tsx'));
 const GeneralInstructions = lazy(() => import('./pages/Students/GeneralInstructions.tsx'));
 const StudentProfileData = lazy(() => import('./components/student/StudentProfileData.tsx'));
 const MyError = lazy(() => import('./pages/404error.tsx'));
@@ -160,6 +163,30 @@ const routes = [
     {
       path: '/cohortfeedback',
       element: <Layout><ProtectedRoute><CohortFeedback /></ProtectedRoute></Layout>,
+    },
+    {
+      path: '/assignments/:assignmentId',
+      element: (
+        <Layout>
+          <ProtectedRoute>
+            <AssignmentPage />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      // Full-screen editor — rendered outside Layout (no sidebar) so the file
+      // tree, editor and run panel get the whole viewport.
+      path: '/assignments/:assignmentId/editor',
+      element: (
+        <ProtectedRoute>
+          <Suspense
+            fallback={<div style={{ minHeight: '100vh', background: '#0e0e10' }} />}
+          >
+            <AssignmentEditorPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
     },
     {
       // Full-screen GD presentation — rendered outside Layout (no sidebar), staff only.
