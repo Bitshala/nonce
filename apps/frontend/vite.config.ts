@@ -24,6 +24,11 @@ export default defineConfig({
       ],
     }),
   ],
+  // Monaco ships its workers as separate ESM entry points; excluding it from
+  // dep pre-bundling is what lets Vite's ?worker transform resolve them.
+  optimizeDeps: {
+    exclude: ['monaco-editor'],
+  },
   build: {
     rollupOptions: {
       output: {
@@ -33,6 +38,11 @@ export default defineConfig({
           react: ['react', 'react-dom', 'react-router-dom'],
           mui: ['@mui/material', '@emotion/react', '@emotion/styled'],
           charts: ['recharts'],
+          // Deliberately not listing 'monaco-editor' here: naming the barrel
+          // forces Rollup to include all of it, language services and all.
+          // The editor page is lazy-loaded, so Rollup already splits Monaco
+          // into its own chunk from the imports that page actually makes.
+          editor: ['@monaco-editor/react'],
         },
       },
     },
