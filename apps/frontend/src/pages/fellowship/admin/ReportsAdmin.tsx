@@ -17,8 +17,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ArrowDownUp, Check, ChevronLeft, ChevronRight, Download, Search } from 'lucide-react';
+import { ArrowDownUp, Check, ChevronLeft, ChevronRight, Download, Mail, Search } from 'lucide-react';
 import FellowshipPageLayout from '../../../components/fellowship/FellowshipPageLayout';
+import LinkChip from '../../../components/fellowship/LinkChip';
 import MarkdownView from '../../../components/fellowship/MarkdownView';
 import ReportNotes from '../../../components/fellowship/ReportNotes';
 import ReportReflections from '../../../components/fellowship/ReportReflections';
@@ -205,12 +206,13 @@ const ReportsAdmin = () => {
         sortOrder: sort.sortOrder,
       });
 
-      const header = ['fellow', 'track', 'project', 'month', 'submitted', 'status'];
+      const header = ['fellow', 'email', 'track', 'project', 'month', 'submitted', 'status'];
       const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
       const rows = allReports.map((r) => {
         const f = r.fellowship;
         return [
           csvCell(r.fellowName ?? ''),
+          csvCell(f?.userEmail ?? ''),
           f?.type ?? '',
           csvCell(f?.projectName ?? ''),
           formatMonthYear(r.month, r.year),
@@ -280,7 +282,7 @@ const ReportsAdmin = () => {
             size="small"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search fellow, project…"
+            placeholder="Search fellow, email, project…"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -315,7 +317,7 @@ const ReportsAdmin = () => {
           borderColor: 'divider',
           borderRadius: 0.75,
           bgcolor: 'background.paper',
-          overflow: 'hidden',
+          overflowX: 'auto',
         }}
       >
         <HeaderRow />
@@ -600,7 +602,7 @@ const RowsPerPageSelect = ({
 // ---- table ----
 
 const COLS =
-  'minmax(200px, 1.8fr) minmax(150px, 1.4fr) minmax(100px, 0.9fr) minmax(100px, 0.9fr) minmax(120px, 1fr)';
+  'minmax(160px, 1.3fr) minmax(180px, 1.3fr) minmax(150px, 1.3fr) minmax(100px, 0.8fr) minmax(100px, 0.8fr) minmax(120px, 0.9fr)';
 const COL_GAP = 3;
 
 const HeaderRow = () => (
@@ -609,6 +611,7 @@ const HeaderRow = () => (
       display: 'grid',
       gridTemplateColumns: COLS,
       columnGap: COL_GAP,
+      minWidth: 'max-content',
       px: 3,
       py: 1.25,
       borderBottom: '1px solid',
@@ -621,11 +624,42 @@ const HeaderRow = () => (
     }}
   >
     <Box>Fellow</Box>
+    <Box>Email</Box>
     <Box>Project</Box>
     <Box>Month</Box>
     <Box>Submitted</Box>
     <Box>Status</Box>
   </Box>
+);
+
+const FellowEmailLink = ({ email }: { email: string }) => (
+  <Link
+    href={`mailto:${email}`}
+    title={email}
+    underline="none"
+    onClick={(e) => e.stopPropagation()}
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      minWidth: 0,
+      maxWidth: '100%',
+      color: 'text.secondary',
+      fontFamily: fontFamilyMono,
+      fontSize: '0.78rem',
+      '&:hover': { color: 'primary.light' },
+    }}
+  >
+    <Box
+      component="span"
+      sx={{
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {email}
+    </Box>
+  </Link>
 );
 
 const ReportRow = ({
@@ -641,6 +675,7 @@ const ReportRow = ({
   const track = fellowship?.type ?? null;
   const trackColor = track ? TRACK_COLORS[track] : '#a1a1aa';
   const project = useFellowshipProjectTitle(fellowship) || null;
+  const email = fellowship?.userEmail ?? null;
 
   return (
     <Box
@@ -649,6 +684,7 @@ const ReportRow = ({
         display: 'grid',
         gridTemplateColumns: COLS,
         columnGap: COL_GAP,
+        minWidth: 'max-content',
         alignItems: 'center',
         px: 3,
         py: 1.75,
@@ -680,6 +716,7 @@ const ReportRow = ({
         </Box>
         <Box sx={{ minWidth: 0 }}>
           <Typography
+            title={report.fellowName ?? undefined}
             sx={{
               fontWeight: 600,
               fontSize: '0.86rem',
@@ -705,6 +742,14 @@ const ReportRow = ({
           )}
         </Box>
       </Stack>
+
+      <Box sx={{ minWidth: 0 }}>
+        {email ? (
+          <FellowEmailLink email={email} />
+        ) : (
+          <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>—</Typography>
+        )}
+      </Box>
 
       <Typography
         sx={{
@@ -754,6 +799,7 @@ const ReportDetail = ({
   const contentQuery = useReportContent(report.id);
   const project = useFellowshipProjectTitle(fellowship) || null;
   const content = contentQuery.data;
+  const email = fellowship?.userEmail ?? null;
   const realLinks = useMemo(
     () => (content?.links ?? []).filter((l) => l.trim()),
     [content?.links],
@@ -777,6 +823,11 @@ const ReportDetail = ({
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             {report.fellowName ?? '—'} · {formatMonthYear(report.month, report.year)}
           </Typography>
+          {email && (
+            <Box sx={{ mt: 0.75 }}>
+              <LinkChip href={`mailto:${email}`} icon={<Mail size={13} />} label={email} />
+            </Box>
+          )}
           {project && (
             <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
               {project}

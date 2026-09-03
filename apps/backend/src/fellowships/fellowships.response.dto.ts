@@ -38,6 +38,7 @@ export class FellowshipResponseDto {
     amountUsd!: string | null;
     userId!: string;
     userName!: string | null;
+    userEmail!: string | null;
     applicationId!: string;
     createdAt!: string;
     updatedAt!: string;
@@ -73,6 +74,7 @@ export class FellowshipResponseDto {
         this.amountUsd = obj.amountUsd;
         this.userId = obj.userId;
         this.userName = obj.userName;
+        this.userEmail = obj.userEmail;
         this.applicationId = obj.applicationId;
         this.createdAt = obj.createdAt;
         this.updatedAt = obj.updatedAt;
@@ -114,6 +116,7 @@ export class FellowshipResponseDto {
             amountUsd: fellowship.amountUsd,
             userId: fellowship.user.id,
             userName: fellowship.user.displayName,
+            userEmail: fellowship.user.email,
             applicationId: application.id,
             createdAt: fellowship.createdAt.toISOString(),
             updatedAt: fellowship.updatedAt.toISOString(),
