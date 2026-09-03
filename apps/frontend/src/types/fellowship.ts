@@ -88,6 +88,9 @@ export interface GetFellowshipApplicationResponseDto {
   applicantLinkedinProfileUrl: string | null;
   reviewedById: string | null;
   reviewedByName: string | null;
+  // When the applicant last submitted for review; null while never submitted.
+  // Distinct from createdAt (when the draft was first created).
+  submittedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
