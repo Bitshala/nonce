@@ -31,8 +31,22 @@ const PrintTextSection = ({ title, text }: { title: string; text: string | null 
     </PrintSection>
   ) : null;
 
-const PrintSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <Box sx={{ mt: 3, breakInside: 'avoid-page' }}>
+// `keepTogether` forces the whole section onto one page — only safe for
+// short, bounded sections. Long free-text sections must stay breakable:
+// `break-inside: avoid` on a section taller than the space left on the
+// current page shoves the entire section to the next page, leaving the
+// current one blank. `break-after: avoid` on the title just keeps the
+// heading from being stranded alone at the bottom of a page.
+const PrintSection = ({
+  title,
+  children,
+  keepTogether = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  keepTogether?: boolean;
+}) => (
+  <Box sx={{ mt: 3, breakInside: keepTogether ? 'avoid-page' : undefined }}>
     <Typography
       variant="caption"
       sx={{
@@ -43,6 +57,7 @@ const PrintSection = ({ title, children }: { title: string; children: React.Reac
         textTransform: 'uppercase',
         display: 'block',
         mb: 1,
+        breakAfter: 'avoid',
       }}
     >
       {title}
@@ -85,7 +100,9 @@ const ProposalPrint = () => {
   return (
     <ThemeProvider theme={fellowshipLightTheme}>
       <CssBaseline />
-      <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff' }}>
+      {/* 100vh fills the black page background on screen; drop it for print,
+          where a viewport-tall box can spill past the sheet into a blank page. */}
+      <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff', '@media print': { minHeight: 0 } }}>
         {/* Toolbar — never printed */}
         <Stack
           direction="row"
@@ -132,7 +149,7 @@ const ProposalPrint = () => {
               <Divider sx={{ mt: 2.5 }} />
 
               {isEducation && educationCategory && (
-                <PrintSection title="Category">
+                <PrintSection title="Category" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {EDUCATION_CATEGORY_LABELS[educationCategory]}
                   </Typography>
@@ -208,7 +225,7 @@ const ProposalPrint = () => {
               )}
 
               {(fields?.projectName || fields?.projectGithubLink) && (
-                <PrintSection title="Project">
+                <PrintSection title="Project" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {fields?.projectName || '—'}
                   </Typography>
@@ -225,7 +242,7 @@ const ProposalPrint = () => {
               <PrintTextSection title="Academic background" text={fields?.academicBackground} />
 
               {fields?.graduationYear != null && (
-                <PrintSection title="Graduation year">
+                <PrintSection title="Graduation year" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {fields.graduationYear}
                   </Typography>
@@ -238,7 +255,7 @@ const ProposalPrint = () => {
               />
 
               {domains.length > 0 && (
-                <PrintSection title="Domains">
+                <PrintSection title="Domains" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {domains.join(', ')}
                   </Typography>
@@ -246,7 +263,7 @@ const ProposalPrint = () => {
               )}
 
               {codingLanguages.length > 0 && (
-                <PrintSection title="Coding languages">
+                <PrintSection title="Coding languages" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {codingLanguages.join(', ')}
                   </Typography>
@@ -254,7 +271,7 @@ const ProposalPrint = () => {
               )}
 
               {educationInterests.length > 0 && (
-                <PrintSection title="Education interests">
+                <PrintSection title="Education interests" keepTogether>
                   <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
                     {educationInterests.join(', ')}
                   </Typography>
