@@ -181,7 +181,7 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
             sx={{ color: '#a1a1aa', visibility: isAttended ? 'hidden' : 'visible' }}
             aria-hidden={isAttended}
           >
-            Mark attendance to enter scores.
+            Mark attendance to enter discussion & bonus scores. Assignments can be marked anytime.
           </Typography>
         </Box>
 
@@ -294,29 +294,27 @@ export const ScoreEditModal: React.FC<ScoreEditModalProps> = ({
         {/* Exercise Scores — only for GROUP_DISCUSSION weeks with exercises */}
         {showExerciseScores && (
           <Box>
-            <Typography sx={{ color: isAttended ? '#d4d4d8' : '#71717a', fontWeight: 600, mb: 2 }}>Exercise Scores</Typography>
+            <Typography sx={{ color: '#d4d4d8', fontWeight: 600, mb: 2 }}>Exercise Scores</Typography>
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={editedStudent.exerciseScore.Submitted}
                     onChange={(_, checked) => handleExerciseChange('Submitted', checked)}
-                    disabled={!isAttended}
                     sx={disabledCheckboxSx}
                   />
                 }
-                label={<Typography sx={{ color: isAttended ? '#fafafa' : '#71717a', fontWeight: 500 }}>Submitted</Typography>}
+                label={<Typography sx={{ color: '#fafafa', fontWeight: 500 }}>Submitted</Typography>}
               />
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={editedStudent.exerciseScore.privateTest}
                     onChange={(_, checked) => handleExerciseChange('privateTest', checked)}
-                    disabled={!isAttended}
                     sx={disabledCheckboxSx}
                   />
                 }
-                label={<Typography sx={{ color: isAttended ? '#fafafa' : '#71717a', fontWeight: 500 }}>Tests Passing</Typography>}
+                label={<Typography sx={{ color: '#fafafa', fontWeight: 500 }}>Tests Passing</Typography>}
               />
             </Box>
           </Box>
