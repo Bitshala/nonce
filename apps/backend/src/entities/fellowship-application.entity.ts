@@ -114,6 +114,14 @@ export class FellowshipApplication extends BaseEntity {
     })
     status!: FellowshipApplicationStatus;
 
+    // When the applicant last submitted this application for review. Distinct
+    // from createdAt, which is when the draft was first created. Set on each
+    // DRAFT/CHANGES_REQUESTED -> SUBMITTED transition, so it reflects the most
+    // recent time the application entered the review queue. Null while a draft
+    // has never been submitted.
+    @Column({ type: 'timestamptz', nullable: true })
+    submittedAt!: Date | null;
+
     @Column('text', { nullable: true })
     reviewerRemarks!: string | null;
 

@@ -91,6 +91,9 @@ export class FellowshipApplicationResponseDto {
     applicantLinkedinProfileUrl!: string | null;
     reviewedById!: string | null;
     reviewedByName!: string | null;
+    // When the applicant last submitted for review; null while never submitted.
+    // Distinct from createdAt, which is when the draft was first created.
+    submittedAt!: string | null;
     createdAt!: string;
     updatedAt!: string;
 
@@ -107,6 +110,7 @@ export class FellowshipApplicationResponseDto {
         this.applicantLinkedinProfileUrl = obj.applicantLinkedinProfileUrl;
         this.reviewedById = obj.reviewedById;
         this.reviewedByName = obj.reviewedByName;
+        this.submittedAt = obj.submittedAt;
         this.createdAt = obj.createdAt;
         this.updatedAt = obj.updatedAt;
     }
@@ -129,6 +133,9 @@ export class FellowshipApplicationResponseDto {
             reviewedById: application.reviewedBy?.id ?? null,
             reviewedByName: application.reviewedBy
                 ? application.reviewedBy.displayName
+                : null,
+            submittedAt: application.submittedAt
+                ? application.submittedAt.toISOString()
                 : null,
             createdAt: application.createdAt.toISOString(),
             updatedAt: application.updatedAt.toISOString(),

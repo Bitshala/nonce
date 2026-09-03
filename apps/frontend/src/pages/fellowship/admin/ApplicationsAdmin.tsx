@@ -686,7 +686,8 @@ const ApplicantList = ({
                     overflow: 'hidden',
                   }}
                 >
-                  {formatFellowshipType(r.type)} fellowship · {relativeDays(r.createdAt)}
+                  {formatFellowshipType(r.type)} fellowship ·{' '}
+                  {relativeDays(r.submittedAt ?? r.createdAt)}
                 </Typography>
                 <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
                   <StatusChip status={r.status} />
@@ -863,7 +864,7 @@ const DetailPane = ({
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {formatFellowshipType(app.type)}
               {handle && <> · {handle}</>}
-              <> · submitted {relativeDays(app.createdAt)}</>
+              <> · submitted {relativeDays(app.submittedAt ?? app.createdAt)}</>
             </Typography>
           </Box>
 
@@ -909,7 +910,7 @@ const DetailPane = ({
               <Box component="span" sx={{ color: 'text.secondary' }}>
                 {' '}
                 · submitted{' '}
-                {new Date(app.createdAt).toLocaleDateString(undefined, {
+                {new Date(app.submittedAt ?? app.createdAt).toLocaleDateString(undefined, {
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',

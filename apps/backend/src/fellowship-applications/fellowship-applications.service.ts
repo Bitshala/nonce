@@ -326,6 +326,7 @@ export class FellowshipApplicationsService {
         this.validateProposalForSubmit(application);
 
         application.status = FellowshipApplicationStatus.SUBMITTED;
+        application.submittedAt = new Date();
         application.reviewedBy = null;
         application.reviewerRemarks = null;
         await this.applicationRepository.save(application);

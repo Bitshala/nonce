@@ -140,7 +140,7 @@ const ProposalPrint = () => {
               <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75 }}>
                 {app.applicantName ?? 'Unknown applicant'} ·{' '}
                 {formatFellowshipType(app.type)} fellowship · submitted{' '}
-                {new Date(app.createdAt).toLocaleDateString('en-US', {
+                {new Date(app.submittedAt ?? app.createdAt).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',

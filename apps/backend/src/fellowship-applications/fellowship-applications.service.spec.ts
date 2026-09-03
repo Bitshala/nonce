@@ -190,6 +190,18 @@ describe('FellowshipApplicationsService — submit validation', () => {
             expect(applicationRepository.save).toHaveBeenCalled();
         });
 
+        it('stamps submittedAt on submit (distinct from createdAt)', async () => {
+            const app = buildApplication({
+                educationCategory: EducationCategory.MEETUP,
+                city: 'Pune',
+                title: null,
+            });
+            expect(app.submittedAt).toBeFalsy();
+            await submit(app);
+            expect(app.status).toBe(FellowshipApplicationStatus.SUBMITTED);
+            expect(app.submittedAt).toBeInstanceOf(Date);
+        });
+
         it('accepts a COHORT_TA application with a course', async () => {
             const app = buildApplication({
                 educationCategory: EducationCategory.COHORT_TA,
