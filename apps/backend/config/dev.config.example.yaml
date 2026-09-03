@@ -57,6 +57,25 @@ app:
     sessionTtlSeconds: 604800 # 7 days
 github:
   token: '<github_personal_access_token>'
+# GitHub App backing the in-house classroom (assignment repos, commits, grading
+# runs). Every key must stay present even when unused: env overrides are applied
+# by walking this file, so a key absent here can never be set via env.
+# The placeholders below are shape-valid so the app boots without a real App;
+# the client factory fails loudly the first time it is actually used.
+githubApp:
+  # JWT issuer. GitHub recommends the App's Client ID here; the numeric App ID
+  # also works. Env: GITHUB_APP_CLIENT_ID.
+  clientId: '<github_app_client_id>'
+  # Which installation to act as. Still required — installation tokens are
+  # minted per installation and the Client ID does not replace this.
+  installationId: '0'
+  # Base64-encoded PEM. Supply via env GITHUB_APP_PRIVATE_KEY in real environments.
+  privateKey: '<base64_encoded_pem_private_key>'
+  org: 'bitshala'
+  # Random 32 bytes, matching the App's webhook secret. Env: GITHUB_APP_WEBHOOK_SECRET.
+  webhookSecret: '<github_app_webhook_secret>'
+  graderRepo: 'bitshala/assignment-grader'
+  graderWorkflowFile: 'grade.yml'
 googleDrive:
   # Base64-encoded service-account JSON for a service account that is a member of
   # the Workspace Shared Drive. Supply via env GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY in

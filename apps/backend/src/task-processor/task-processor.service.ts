@@ -12,6 +12,9 @@ import { CohortReminderService } from '@/cohorts/cohort-reminder.service';
 import { CertificatesService } from '@/certificates/certificates.service';
 import { CohortCalendarService } from '@/cohort-calendar/cohort-calendar.service';
 import { FellowshipReportsService } from '@/fellowship-reports/fellowship-reports.service';
+import { AssignmentProvisioningService } from '@/assignments/assignment-provisioning.service';
+import { RunsService } from '@/assignments/runs.service';
+import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 
 @Injectable()
 export class APITaskProcessorService {
@@ -30,6 +33,9 @@ export class APITaskProcessorService {
         private readonly certificatesService: CertificatesService,
         private readonly cohortCalendarService: CohortCalendarService,
         private readonly fellowshipReportsService: FellowshipReportsService,
+        private readonly assignmentProvisioningService: AssignmentProvisioningService,
+        private readonly runsService: RunsService,
+        private readonly adminAssignmentsService: AdminAssignmentsService,
         private readonly discordAlert: DiscordAlertService,
     ) {}
 
@@ -131,6 +137,19 @@ export class APITaskProcessorService {
                     break;
                 case TaskType.SEND_FELLOWSHIP_REPORT_REMINDER_EMAILS:
                     await this.fellowshipReportsService.handleSendReportReminderEmails(
+                        task,
+                    );
+                    break;
+                case TaskType.PROVISION_ASSIGNMENT_REPO:
+                    await this.assignmentProvisioningService.handleProvisionAssignmentRepo(
+                        task,
+                    );
+                    break;
+                case TaskType.RECONCILE_CI_RUN:
+                    await this.runsService.handleReconcileCIRun(task);
+                    break;
+                case TaskType.ARCHIVE_ASSIGNMENT_REPOS:
+                    await this.adminAssignmentsService.handleArchiveAssignmentRepos(
                         task,
                     );
                     break;

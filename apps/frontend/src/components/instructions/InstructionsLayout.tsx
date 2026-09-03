@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { RenderWeek } from '../../types/instructions';
 import Attachment from './Attachment';
+import { useMyAssignments } from '../../hooks/assignmentHooks';
 
 interface InstructionsLayoutProps {
   displayName: string;
@@ -45,6 +46,17 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   const currentWeekData = weeks.find(w => w.week === activeWeek);
   const exerciseWeeks = useMemo(() => weeks.filter(w => w.exercise), [weeks]);
   const hasExercisesTab = exerciseWeeks.length > 0;
+
+  // In-house cohorts have an Assignment per exercise week; Classroom cohorts do
+  // not. Matching on cohort week id lets one instructions page serve both
+  // during the rollout, without threading assignment ids through the cohort DTO.
+  // Scoped to the viewer's own cohorts, so a non-member simply sees no link.
+  const { data: myAssignments } = useMyAssignments();
+  const assignmentByWeekId = useMemo(
+    () =>
+      new Map((myAssignments ?? []).map(a => [a.cohortWeekId, a.id] as const)),
+    [myAssignments]
+  );
 
   const handlePresent = (weekId: string, newTab = false) => {
     const url = `/${cohortId}/present/${weekId}`;
@@ -152,16 +164,28 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
               {exerciseWeeks.map((week, i) => {
                 const ex = week.exercise!;
                 const num = i + 1;
+                const assignmentId = assignmentByWeekId.get(week.id);
                 const link = week.classroomAssignmentUrl;
                 return (
                   <Paper key={week.week} elevation={0} sx={{ bgcolor: 'rgba(39,39,42,0.5)', border: '1px solid #3f3f46', borderRadius: 2, p: { xs: 3, md: 4 } }}>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#fb923c', mb: 2, fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
                       Exercise {num}: {ex.title}
                     </Typography>
-                    {link && (
-                      <Link href={link} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: '1rem' }}>
-                        Exercise {num} Assignment <ExternalLink size={14} />
-                      </Link>
+                    {assignmentId ? (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => navigate(`/assignments/${assignmentId}`)}
+                        sx={{ mb: 2, bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' } }}
+                      >
+                        Open Exercise {num}
+                      </Button>
+                    ) : (
+                      link && (
+                        <Link href={link} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: '1rem' }}>
+                          Exercise {num} Assignment <ExternalLink size={14} />
+                        </Link>
+                      )
                     )}
                     <Typography variant="body2" sx={{ color: '#d4d4d8', mb: 2 }}>
                       <strong style={{ color: '#fafafa' }}>Concepts:</strong> {ex.concepts}

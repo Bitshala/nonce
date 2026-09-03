@@ -162,3 +162,42 @@ export enum SortOrder {
   ASC = 'ASC',
   DESC = 'DESC',
 }
+
+// Which system backs a cohort's exercises. Cohorts created before the in-house
+// classroom stay on CLASSROOM; rollout is per-cohort.
+export enum AssignmentBackend {
+  CLASSROOM = 'CLASSROOM',
+  INHOUSE = 'INHOUSE',
+}
+
+export enum AssignmentStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  CLOSED = 'CLOSED',
+}
+
+// Lifecycle of the per-student repository created from the assignment template.
+export enum ProvisionStatus {
+  PENDING = 'PENDING',
+  PROVISIONING = 'PROVISIONING',
+  READY = 'READY',
+  FAILED = 'FAILED',
+}
+
+// ORPHANED means the workflow dispatch was accepted but no matching GitHub run
+// could be correlated back to it; the student is asked to retry.
+export enum CIRunStatus {
+  DISPATCHING = 'DISPATCHING',
+  QUEUED = 'QUEUED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  ORPHANED = 'ORPHANED',
+}
+
+export enum CIRunConclusion {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+  CANCELLED = 'CANCELLED',
+  TIMED_OUT = 'TIMED_OUT',
+  STARTUP_FAILURE = 'STARTUP_FAILURE',
+}
