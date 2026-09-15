@@ -139,7 +139,7 @@ const handleFor = (f: GetFellowshipResponseDto): string | null => {
 const monthShort = (m: number) =>
   new Date(2024, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 
-const formatEndDate = (iso: string | null): string => {
+const formatDate = (iso: string | null): string => {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
@@ -921,7 +921,7 @@ const FellowshipRow = ({
           color: fellowship.startDate ? 'text.primary' : 'text.secondary',
         }}
       >
-        {formatEndDate(fellowship.startDate)}
+        {formatDate(fellowship.startDate)}
       </Typography>
 
       {/* End date */}
@@ -932,7 +932,7 @@ const FellowshipRow = ({
           color: fellowship.endDate ? 'text.primary' : 'text.secondary',
         }}
       >
-        {formatEndDate(fellowship.endDate)}
+        {formatDate(fellowship.endDate)}
       </Typography>
 
       {/* Payout */}
