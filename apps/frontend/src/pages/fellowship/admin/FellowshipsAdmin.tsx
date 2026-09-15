@@ -392,20 +392,20 @@ const FellowshipsAdmin = () => {
           overflow: 'hidden',
         }}
       >
-        <HeaderRow sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress size={22} />
-          </Box>
-        ) : fellowships.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              No fellowships match these filters.
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            {fellowships.map((f) => (
+        <Box sx={{ overflowX: 'auto' }}>
+          <HeaderRow sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : fellowships.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                No fellowships match these filters.
+              </Typography>
+            </Box>
+          ) : (
+            fellowships.map((f) => (
               <FellowshipRow
                 key={f.id}
                 fellowship={f}
@@ -413,18 +413,18 @@ const FellowshipsAdmin = () => {
                 onViewProposal={() => setProposalFellowship(f)}
                 onReviewDocuments={() => setDocumentsFellowship(f)}
               />
-            ))}
-            {totalRecords > 0 && (
-              <PaginationFooter
-                page={page}
-                pageCount={pageCount}
-                total={totalRecords}
-                pageSize={pageSize}
-                onChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            )}
-          </>
+            ))
+          )}
+        </Box>
+        {totalRecords > 0 && fellowships.length > 0 && (
+          <PaginationFooter
+            page={page}
+            pageCount={pageCount}
+            total={totalRecords}
+            pageSize={pageSize}
+            onChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </Box>
 
