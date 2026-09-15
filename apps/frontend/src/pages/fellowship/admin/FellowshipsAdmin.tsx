@@ -559,9 +559,9 @@ const FilterPill = ({
 // ---- table header ----
 
 // Proportional columns so the row fills the width evenly instead of dumping all
-// slack into Project. Order: Fellow, Track, Kind, Project, End date, Payout, Status, Actions.
+// slack into Project. Order: Fellow, Track, Kind, Project, Start date, End date, Payout, Status, Actions.
 const COLS =
-  'minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(96px, 0.8fr) minmax(160px, 2fr) minmax(110px, 1fr) minmax(90px, 0.9fr) minmax(100px, 0.9fr) 200px';
+  'minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(96px, 0.8fr) minmax(160px, 2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.9fr) minmax(100px, 0.9fr) 200px';
 const COL_GAP = 2;
 
 const SortableHeader = ({
@@ -619,11 +619,17 @@ const HeaderRow = ({
     }}
   >
     {/* Fellow and Project aren't in the server sort whitelist, so they're plain
-        headers now — sorting lives on the End date and Payout columns. */}
+        headers now — sorting lives on the Start date, End date, and Payout columns. */}
     <Box>Fellow</Box>
     <Box>Track</Box>
     <Box>Kind</Box>
     <Box>Project</Box>
+    <SortableHeader
+      label="Start date"
+      active={sortKey === 'startDate'}
+      dir={sortDir}
+      onClick={() => onSort('startDate')}
+    />
     <SortableHeader
       label="End date"
       active={sortKey === 'endDate'}
@@ -905,6 +911,17 @@ const FellowshipRow = ({
             Project title not provided
           </Box>
         )}
+      </Typography>
+
+      {/* Start date */}
+      <Typography
+        sx={{
+          fontFamily: fontFamilyMono,
+          fontSize: '0.78rem',
+          color: fellowship.startDate ? 'text.primary' : 'text.secondary',
+        }}
+      >
+        {formatEndDate(fellowship.startDate)}
       </Typography>
 
       {/* End date */}
