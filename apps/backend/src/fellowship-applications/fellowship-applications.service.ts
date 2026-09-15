@@ -52,10 +52,16 @@ const emptyToNull = (value: string | undefined): string | null => {
     return trimmed ? trimmed : null;
 };
 
-const APPLICATION_SORT_COLUMNS: Record<FellowshipApplicationSortBy, string> = {
+const APPLICATION_SORT_COLUMNS: Record<
+    Exclude<FellowshipApplicationSortBy, FellowshipApplicationSortBy.SUBMITTED_AT>,
+    string
+> = {
     [FellowshipApplicationSortBy.CREATED_AT]: 'application.createdAt',
     [FellowshipApplicationSortBy.UPDATED_AT]: 'application.updatedAt',
 };
+
+// Alias for the computed "submitted" sort column, added below via addSelect.
+const SUBMITTED_SORT_ALIAS = 'submitted_sort';
 
 // Multipart file parts accepted on the review (accept) endpoint. `file` is the
 // unsigned contract for the standard flow; `signedContract` + `w8ben` are the
@@ -644,8 +650,17 @@ export class FellowshipApplicationsService {
 
         const order = query.sortOrder === SortOrder.ASC ? 'ASC' : 'DESC';
 
+        // Sorts by submittedAt ?? createdAt, same fallback the admin list displays; must go through an aliased addSelect since orderBy() with the raw COALESCE(...) string throws at runtime (verified by executing it, not just getSql()).
+        if (query.sortBy === FellowshipApplicationSortBy.SUBMITTED_AT) {
+            qb.addSelect(
+                'COALESCE(application.submittedAt, application.createdAt)',
+                SUBMITTED_SORT_ALIAS,
+            ).orderBy(SUBMITTED_SORT_ALIAS, order);
+        } else {
+            qb.orderBy(APPLICATION_SORT_COLUMNS[query.sortBy], order);
+        }
+
         const [records, totalRecords] = await qb
-            .orderBy(APPLICATION_SORT_COLUMNS[query.sortBy], order)
             .addOrderBy('application.id', 'ASC')
             .skip(query.page * query.pageSize)
             .take(query.pageSize)
