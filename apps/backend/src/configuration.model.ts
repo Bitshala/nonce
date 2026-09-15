@@ -287,6 +287,48 @@ class GitHubConfig {
     token: string;
 }
 
+class GitHubAppConfig {
+    // Issuer of the JWT we authenticate as the App with. GitHub accepts either
+    // the Client ID or the numeric App ID here and recommends the Client ID, so
+    // that is what this holds — but the numeric App ID still works if needed,
+    // which is why it is validated only as a non-empty string.
+    @IsString()
+    @IsNotEmpty()
+    clientId: string;
+
+    // Which installation of the App to act as. Unrelated to `clientId`, and not
+    // replaceable by it: installation tokens are still minted from
+    // POST /app/installations/{installationId}/access_tokens.
+    @IsNumberString({ no_symbols: true })
+    installationId: string;
+
+    // Base64-encoded PEM private key, decoded by the GitHub App client factory.
+    // In real environments this is supplied via env GITHUB_APP_PRIVATE_KEY.
+    @IsString()
+    @IsNotEmpty()
+    privateKey: string;
+
+    // Org that owns the student repos, the templates, and the grader.
+    @IsString()
+    @IsNotEmpty()
+    org: string;
+
+    // Shared secret for verifying X-Hub-Signature-256 on inbound webhooks.
+    @IsString()
+    @IsNotEmpty()
+    webhookSecret: string;
+
+    // `owner/repo` holding the test suites and the grading workflow.
+    @IsString()
+    @IsNotEmpty()
+    graderRepo: string;
+
+    // Workflow file name within the grader repo, e.g. `grade.yml`.
+    @IsString()
+    @IsNotEmpty()
+    graderWorkflowFile: string;
+}
+
 class GoogleDriveConfig {
     // Base64-encoded service-account JSON. Decoded by the Drive client factory.
     // In real environments this is supplied via env (GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY).
@@ -355,6 +397,14 @@ export class Config {
     @ValidateNested()
     @Type(() => GitHubConfig)
     github: GitHubConfig;
+
+    // Optional so a developer with no GitHub App registered can still boot. The
+    // in-house classroom feature is the only consumer, and its client factory
+    // fails loudly the first time it is used without this block.
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => GitHubAppConfig)
+    githubApp?: GitHubAppConfig;
 
     @IsDefined()
     @ValidateNested()
