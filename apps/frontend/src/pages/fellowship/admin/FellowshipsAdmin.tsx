@@ -30,6 +30,7 @@ import ProposalDialog from '../../../components/fellowship/ProposalDialog';
 import StartContractDialog from '../../../components/fellowship/StartContractDialog';
 import StatusChip from '../../../components/fellowship/StatusChip';
 import { fontFamilyMono } from '../../../components/fellowship/theme';
+import { formatCohortDate } from '../../../helpers/cohortHelpers';
 import { useFellowshipDocuments, useFellowships } from '../../../hooks/fellowshipHooks';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useFellowshipProjectTitle } from '../../../hooks/useFellowshipProjectTitle';
@@ -139,14 +140,8 @@ const handleFor = (f: GetFellowshipResponseDto): string | null => {
 const monthShort = (m: number) =>
   new Date(2024, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 
-const formatDate = (iso: string | null): string => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
+const formatDate = (iso: string | null): string =>
+  iso ? formatCohortDate(iso) : '—';
 
 const formatPayoutPerMonth = (amountUsd: string | null): string => {
   if (!amountUsd) return '—';
@@ -245,6 +240,7 @@ const FellowshipsAdmin = () => {
         'kind',
         'project',
         'maintainer',
+        'start_date',
         'end_date',
         'payout',
         'last_report',
@@ -259,6 +255,7 @@ const FellowshipsAdmin = () => {
           f.kind,
           csvCell(f.projectName ?? ''),
           csvCell(f.projectMaintainerName ?? ''),
+          f.startDate ?? '',
           f.endDate ?? '',
           formatPayoutPerMonth(f.amountUsd),
           last ? `${monthShort(last.month)} ${last.year}` : '',
