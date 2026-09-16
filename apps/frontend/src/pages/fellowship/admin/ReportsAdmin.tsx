@@ -763,7 +763,17 @@ const ReportRow = ({
         {formatMonthYear(report.month, report.year)}
       </Typography>
 
-      <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.82rem', color: 'text.secondary' }}>
+      <Typography
+        sx={{
+          fontFamily: fontFamilyMono,
+          fontSize: '0.82rem',
+          color: 'text.secondary',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+        title={formatDateTime(report.updatedAt)}
+      >
         {formatDateTime(report.updatedAt)}
       </Typography>
 
