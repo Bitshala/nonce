@@ -41,6 +41,7 @@ import {
   type GetFellowshipResponseDto,
 } from '../../../types/fellowship';
 import { SortOrder } from '@nonce/shared';
+import { formatDateTime } from '../../../utils/dateUtils';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';
 import { formatFellowshipType } from '../../../utils/fellowshipFormat';
 
@@ -114,11 +115,6 @@ const monthShort = (m: number) =>
   new Date(2024, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 
 const formatMonthYear = (month: number, year: number) => `${monthShort(month)} ${year}`;
-const formatShortDate = (iso: string | null): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-};
 
 // ---- page ----
 
@@ -768,7 +764,7 @@ const ReportRow = ({
       </Typography>
 
       <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.82rem', color: 'text.secondary' }}>
-        {formatShortDate(report.updatedAt)}
+        {formatDateTime(report.updatedAt)}
       </Typography>
 
       <Box>
@@ -833,7 +829,7 @@ const ReportDetail = ({
             </Typography>
           )}
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Submitted {formatShortDate(report.updatedAt)}
+            Submitted {formatDateTime(report.updatedAt)}
           </Typography>
         </Box>
         <StatusChip status={report.status} size="medium" />
