@@ -29,6 +29,7 @@ on:
         required: true
         type: string
       timeout_minutes:
+        description: 'Upper bound from the assignment config. The suite''s own manifest may ask for less.'
         required: false
         type: string
         default: '10'
@@ -53,6 +54,13 @@ jobs:
     # this. Nothing student-authored runs in this job.
     permissions:
       contents: read
+    outputs:
+      network: ${{ steps.manifest.outputs.network }}
+      node: ${{ steps.manifest.outputs.node }}
+      python: ${{ steps.manifest.outputs.python }}
+      rust: ${{ steps.manifest.outputs.rust }}
+      services: ${{ steps.manifest.outputs.services }}
+      timeout: ${{ steps.manifest.outputs.timeout }}
     steps:
       # `repositories` wants a bare repo name, but the dispatch input is
       # owner-qualified. Passed through env rather than interpolated into the
@@ -100,13 +108,57 @@ jobs:
           persist-credentials: false
 
       - name: Isolate this assignment's tests
+        env:
+          TEST_PATH: ${{ inputs.test_path }}
         run: |
           set -euo pipefail
-          test -d "grader/${{ inputs.test_path }}" \
-            || { echo "::error::No tests at ${{ inputs.test_path }}"; exit 1; }
+          test -d "grader/${TEST_PATH}" \
+            || { echo "::error::No tests at ${TEST_PATH}"; exit 1; }
           mkdir -p tests
-          cp -R "grader/${{ inputs.test_path }}/." tests/
+          cp -R "grader/${TEST_PATH}/." tests/
           cp grader/run-tests.sh tests/run-tests.sh
+          # The shared helpers travel with every suite; they are this
+          # repository's code, not one assignment's, so they overwrite rather
+          # than nest if a suite happens to carry a lib/ of its own.
+          rm -rf tests/lib
+          cp -R grader/lib tests/lib
+
+      # Read once here so the grade job can act on it without checking out the
+      # suite itself — which it must not do, since that needs a credential.
+      - name: Read the assignment manifest
+        id: manifest
+        env:
+          # An upper bound from the dispatch, so a manifest cannot grant itself
+          # more runner time than the assignment was configured for.
+          MAX_TIMEOUT: ${{ inputs.timeout_minutes }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, pathlib
+
+          path = pathlib.Path('tests/manifest.json')
+          manifest = json.loads(path.read_text()) if path.exists() else {}
+
+          network = manifest.get('network', 'full')
+          services = bool(manifest.get('services', False))
+          if services and network == 'none':
+              raise SystemExit(
+                  '::error::manifest sets services with network "none"; '
+                  'containers are unreachable from inside the namespace'
+              )
+
+          toolchains = manifest.get('toolchains', {})
+
+          # The manifest may only ask for less time than the assignment allows.
+          ceiling = int(os.environ['MAX_TIMEOUT'])
+          timeout = min(int(manifest.get('timeoutMinutes', ceiling)), ceiling)
+
+          print(f'network={network}')
+          print(f'services={"true" if services else "false"}')
+          print(f'timeout={timeout}')
+          for key in ('node', 'python', 'rust'):
+              print(f'{key}={toolchains.get(key, "")}')
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
@@ -131,7 +183,7 @@ jobs:
     # Zero-scope GITHUB_TOKEN. Combined with referencing no `secrets.*`, there
     # is nothing in this job's environment worth stealing.
     permissions: {}
-    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+    timeout-minutes: ${{ fromJSON(needs.fetch.outputs.timeout) }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -143,6 +195,25 @@ jobs:
           name: assignment-tests
           path: tests
 
+      # The templates install nvm and rustup themselves inside test.sh, which
+      # costs a minute per run, needs a network, and picks whatever version is
+      # current that day. Declaring them in the manifest instead makes the
+      # toolchain part of the assignment definition and lets the runner cache it.
+      - uses: actions/setup-node@v4
+        if: needs.fetch.outputs.node != ''
+        with:
+          node-version: ${{ needs.fetch.outputs.node }}
+
+      - uses: actions/setup-python@v5
+        if: needs.fetch.outputs.python != ''
+        with:
+          python-version: ${{ needs.fetch.outputs.python }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.fetch.outputs.rust != ''
+        with:
+          toolchain: ${{ needs.fetch.outputs.rust }}
+
       - name: Run the tests
         # Never fail the step: the report is the result, and it still has to be
         # uploaded when the tests fail.
@@ -150,12 +221,25 @@ jobs:
         env:
           STUDENT_DIR: ${{ github.workspace }}/student
           TEST_DIR: ${{ github.workspace }}/tests
+          LIB_DIR: ${{ github.workspace }}/tests/lib
           REPORT_PATH: ${{ github.workspace }}/report.json
           ASSIGNMENT_SLUG: ${{ inputs.assignment_slug }}
-          # Student code runs with no network. Dependencies must be restored in
-          # `fetch` or vendored into the template.
-          GRADE_DISABLE_NETWORK: '1'
+          GRADE_NETWORK: ${{ needs.fetch.outputs.network }}
         run: bash tests/run-tests.sh
+
+      # grade.sh traps EXIT to tear its own stack down, but a cancelled or
+      # timed-out job never runs the trap. services_up records the compose file
+      # it used so this can finish the job without guessing — and without
+      # reaching for `docker rm -f $(docker ps -aq)`, which would be fine on a
+      # throwaway runner and ruinous on a self-hosted one.
+      - name: Stop any leftover services
+        if: always() && needs.fetch.outputs.services == 'true'
+        run: |
+          set -euo pipefail
+          marker=student/.compose-file
+          if [ -s "$marker" ]; then
+            docker compose -f "$(cat "$marker")" down -v --remove-orphans || true
+          fi
 
       - name: Guarantee a report
         if: always()
@@ -173,6 +257,16 @@ jobs:
           name: grade-report
           path: report.json
           retention-days: 7
+
+      # Container logs, when the assignment had any. Not part of the contract —
+      # this is for a TA diagnosing "the node never came up".
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.fetch.outputs.services == 'true'
+        with:
+          name: service-logs
+          path: student/logs
+          retention-days: 7
+          if-no-files-found: ignore
 
       # Mirrors the report into the run conclusion, so a missing artifact still
       # leaves the backend something to fall back on.
