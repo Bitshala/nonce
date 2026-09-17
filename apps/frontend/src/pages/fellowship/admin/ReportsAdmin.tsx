@@ -601,8 +601,9 @@ const RowsPerPageSelect = ({
 
 // ---- table ----
 
+// Project's max is a fixed length, not fr, so a long title can't stretch the row.
 const COLS =
-  'minmax(160px, 1.3fr) minmax(180px, 1.3fr) minmax(150px, 1.3fr) minmax(100px, 0.8fr) minmax(100px, 0.8fr) minmax(120px, 0.9fr)';
+  'minmax(160px, 1.3fr) minmax(180px, 1.3fr) minmax(150px, 260px) minmax(100px, 0.8fr) minmax(100px, 0.8fr) minmax(120px, 0.9fr)';
 const COL_GAP = 3;
 
 const HeaderRow = () => (
@@ -611,7 +612,6 @@ const HeaderRow = () => (
       display: 'grid',
       gridTemplateColumns: COLS,
       columnGap: COL_GAP,
-      minWidth: 'max-content',
       px: 3,
       py: 1.25,
       borderBottom: '1px solid',
@@ -684,7 +684,6 @@ const ReportRow = ({
         display: 'grid',
         gridTemplateColumns: COLS,
         columnGap: COL_GAP,
-        minWidth: 'max-content',
         alignItems: 'center',
         px: 3,
         py: 1.75,

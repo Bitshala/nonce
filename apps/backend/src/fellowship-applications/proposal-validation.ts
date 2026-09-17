@@ -8,7 +8,7 @@ import {
 // Per-field caps — single source of truth shared by the request DTOs and the
 // submit-time validation. Mirrors the frontend's limits (proposalFormat.ts).
 export const TITLE_LIMIT = 120; // title, mentorName, mentorContact, projectName
-export const LONG_TEXT_LIMIT = 3000; // problemStatement, plan, mentorTestimonial, etc.
+export const LONG_TEXT_LIMIT = 3500; // problemStatement, plan, mentorTestimonial, etc.
 export const LINK_LIMIT = 500; // per-link char cap, projectGithubLink
 export const MAX_LINKS = 20; // max links array length
 export const TAG_LIMIT = 100; // per-entry cap for domains/codingLanguages/educationInterests

@@ -1,7 +1,7 @@
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import { ExternalLink, Github } from 'lucide-react';
-import ExpandableText from './ExpandableText';
 import LinkChip from './LinkChip';
+import ProposalLongText from './ProposalLongText';
 import type { FellowshipApplicationProposalDto } from '../../types/fellowship';
 import {
   EDUCATION_CATEGORY_LABELS,
@@ -37,17 +37,10 @@ export const ProposalSection = ({
   </Box>
 );
 
-const LongText = ({ text, expandable }: { text: string; expandable: boolean }) =>
-  expandable && text ? (
-    <ExpandableText text={text} maxLines={10} />
-  ) : (
-    <Typography
-      variant="body2"
-      sx={{ color: 'text.primary', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}
-    >
-      {text || '—'}
-    </Typography>
-  );
+// Renders markdown when the author wrote markdown; see ProposalLongText.
+const LongText = ({ text, expandable }: { text: string; expandable: boolean }) => (
+  <ProposalLongText text={text} expandable={expandable} maxLines={10} />
+);
 
 /**
  * Shared read view of a proposal's sections (problem statement, plan, links).
