@@ -3,9 +3,11 @@
 You've joined the <%~ it.cohortName %> Waitlist
 
 Thanks for raising your hand! 🙌
-You're now officially on the <%~ it.cohortName %> waitlist.
+You're now on the <%~ it.cohortName %> waitlist.
 
-Seats for this cohort are limited, and you'll be notified as soon as the next batch or season opens. Keep an eye on your inbox — you won't miss it!
+This isn't an automatic seat: being on the waitlist doesn't enroll you in the next season. When <%~ it.cohortName %> is announced again, you'll need to register for it yourself at <%~ it.cohortsUrl %>.
+
+We'll announce the next season on Discord and by email, so keep an eye on both — but the registration step is on you.
 
 Meanwhile, join our Bitshala Discord and get familiar with the community of builders:
 

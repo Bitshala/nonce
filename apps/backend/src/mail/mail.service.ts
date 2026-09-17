@@ -8,7 +8,7 @@ import { Eta } from 'eta';
 import { MailTemplate } from '@/mail/mail.enum';
 import { accessSync, constants } from 'fs';
 import { TemplateContextMap } from '@/mail/mail.interface';
-import { DISCORD_GENERAL_INVITE_URL } from '@/common/constants';
+import { COHORTS_URL, DISCORD_GENERAL_INVITE_URL } from '@/common/constants';
 import { ConfigService } from '@nestjs/config';
 import { Attachment } from 'nodemailer/lib/mailer';
 
@@ -161,7 +161,10 @@ export class MailService implements OnModuleInit {
         cohortType: CohortType,
     ): Promise<void> {
         const cohortDisplayName = this.getCohortDisplayName(cohortType);
-        const subject = `Welcome to the ${cohortDisplayName} waitlist, ${userName}!`;
+        // "waitlist" is the entry itself (matches CohortWaitlist/the rest of the
+        // product) — the subject just drops "Welcome to", which read like a
+        // confirmed spot rather than a note that you asked to hear about it.
+        const subject = `You're on the ${cohortDisplayName} waitlist, ${userName}`;
 
         return this.sendTemplatedEmail({
             to: userEmail,
@@ -171,6 +174,7 @@ export class MailService implements OnModuleInit {
                 userName: userName,
                 cohortName: cohortDisplayName,
                 discordLink: DISCORD_GENERAL_INVITE_URL,
+                cohortsUrl: COHORTS_URL,
             },
         });
     }
