@@ -35,12 +35,20 @@
 
               <p style="margin:0 0 16px 0;">
                 Thanks for raising your hand! 🙌
-                You're now officially on the <strong><%~ it.cohortName %></strong> waitlist.
+                You're now on the <strong><%~ it.cohortName %></strong> waitlist.
+              </p>
+
+              <p style="margin:0 0 20px 0; padding:14px 16px; background-color:#2a2200; border-left:3px solid #f9b233; border-radius:4px;">
+                <strong style="color:#ffd580;">This isn't an automatic seat.</strong>
+                Being on the waitlist doesn't enroll you in the next season — when
+                <strong><%~ it.cohortName %></strong> is announced again, you'll need to
+                register for it yourself at
+                <a href="<%~ it.cohortsUrl %>" style="color:#f9b233; font-weight:600;"><%~ it.cohortsUrl %></a>.
               </p>
 
               <p style="margin:0 0 20px 0;">
-                Seats for this cohort are limited, and you'll be notified as soon as
-                the next batch or season opens. Keep an eye on your inbox — you won't miss it!
+                We'll announce the next season on Discord and by email, so keep an eye
+                on both — but the registration step is on you.
               </p>
 
               <p style="margin:0 0 14px 0; color:#ffd580; font-weight:600;">
