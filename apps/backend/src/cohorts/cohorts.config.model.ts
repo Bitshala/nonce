@@ -84,7 +84,8 @@ export class AssignmentConfig {
     @IsString()
     graderWorkflowPath?: string;
 
-    // Editor writes to these are refused. Defaults to `.github/**`.
+    // Editor writes to these are refused. Defaults to DEFAULT_PROTECTED_PATHS:
+    // `.github/**` plus the test harness the templates ship.
     // Supports exact paths and `prefix/**` patterns only.
     @IsOptional()
     @IsArray()
