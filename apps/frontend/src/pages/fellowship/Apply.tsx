@@ -40,9 +40,11 @@ import {
   X,
 } from 'lucide-react';
 import { IconButton } from '@mui/material';
-import ExpandableText from '../../components/fellowship/ExpandableText';
 import FellowshipPageLayout from '../../components/fellowship/FellowshipPageLayout';
+import FieldLabel from '../../components/fellowship/FieldLabel';
 import LinkChip from '../../components/fellowship/LinkChip';
+import MarkdownField from '../../components/fellowship/MarkdownField';
+import ProposalLongText from '../../components/fellowship/ProposalLongText';
 import {
   useApplication,
   useApplicationProposal,
@@ -76,8 +78,10 @@ import {
   type ProposalFields,
 } from '../../utils/proposalFormat';
 
-// X/Twitter-style long-form limit per section — mirrored server-side.
-const LONG_TEXT_LIMIT = 3000;
+// Long-form limit per section — mirrored server-side. Matches the report
+// fields' limit: these sections accept markdown, and its syntax eats into
+// the same budget as the prose.
+const LONG_TEXT_LIMIT = 3500;
 // Titles surface in list rows, dialog headers and the print view —
 // long enough to be descriptive, short enough to stay scannable.
 const TITLE_LIMIT = 120;
@@ -1635,8 +1639,13 @@ const ApplicationStep = ({
                 </>
               )}
               {educationCategory === EducationCategory.OTHER && (
-                <>
-                  <FieldLabel>Describe what you want to do</FieldLabel>
+                <MarkdownField
+                  control={control}
+                  name="educationCategoryOther"
+                  label="Describe what you want to do"
+                  minRows={4}
+                  disabled={disabled}
+                >
                   <ControlledTextField
                     control={control}
                     name="educationCategoryOther"
@@ -1649,7 +1658,7 @@ const ApplicationStep = ({
                     slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
                     sx={{ mb: 2.5 }}
                   />
-                </>
+                </MarkdownField>
               )}
 
               <FieldLabel>Title</FieldLabel>
@@ -1669,33 +1678,47 @@ const ApplicationStep = ({
                 sx={{ mb: 2.5 }}
               />
 
-              <FieldLabel>Describe your plan</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="plan"
-                counter
-                fullWidth
-                multiline
+                label="Describe your plan"
                 minRows={6}
                 disabled={disabled}
-                placeholder="What will you run, how often, and what will learners walk away with?"
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="plan"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  disabled={disabled}
+                  placeholder="What will you run, how often, and what will learners walk away with?"
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
 
-              <FieldLabel>Scope of work</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="scopeOfWork"
-                counter
-                fullWidth
-                multiline
+                label="Scope of work"
                 minRows={4}
                 disabled={disabled}
-                placeholder={`Month-by-month breakdown — how many meetups/clubs per month; for clubs: curriculum, exercises, hands-on sessions.`}
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="scopeOfWork"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  disabled={disabled}
+                  placeholder={`Month-by-month breakdown — how many meetups/clubs per month; for clubs: curriculum, exercises, hands-on sessions.`}
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
             </>
           ) : (
             <>
@@ -1712,33 +1735,47 @@ const ApplicationStep = ({
                 sx={{ mb: 2.5 }}
               />
 
-              <FieldLabel>Problem statement</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="problemStatement"
-                counter
-                fullWidth
-                multiline
+                label="Problem statement"
                 minRows={4}
                 disabled={disabled}
-                placeholder="What gap are you closing, and why does it matter for the ecosystem? Link to the relevant issues, RFCs, or discussions."
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="problemStatement"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  disabled={disabled}
+                  placeholder="What gap are you closing, and why does it matter for the ecosystem? Link to the relevant issues, RFCs, or discussions."
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
 
-              <FieldLabel>6-month plan & milestones</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="plan"
-                counter
-                fullWidth
-                multiline
+                label="6-month plan & milestones"
                 minRows={6}
                 disabled={disabled}
-                placeholder={`Month 1–2: scope, prior-art review, first PR\nMonth 3–4: core implementation, tests\nMonth 5–6: integration, docs, handoff`}
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="plan"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  disabled={disabled}
+                  placeholder={`Month 1–2: scope, prior-art review, first PR\nMonth 3–4: core implementation, tests\nMonth 5–6: integration, docs, handoff`}
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
             </>
           )}
 
@@ -1825,18 +1862,25 @@ const ApplicationStep = ({
             </Box>
           </Stack>
 
-          <FieldLabel>Mentor testimonial{mentorOptionalSuffix}</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="mentorTestimonial"
-            counter
-            fullWidth
-            multiline
+            label={<>Mentor testimonial{mentorOptionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder="A short note from your mentor on your work and why they back this proposal."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="mentorTestimonial"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="A short note from your mentor on your work and why they back this proposal."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
@@ -1964,33 +2008,47 @@ const ApplicationStep = ({
             </Box>
           </Stack>
 
-          <FieldLabel>Academic background</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="academicBackground"
-            counter
-            fullWidth
-            multiline
+            label="Academic background"
             minRows={3}
             disabled={disabled}
-            placeholder="Degrees, institutions, relevant coursework."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="academicBackground"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Degrees, institutions, relevant coursework."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Professional experience</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="professionalExperience"
-            counter
-            fullWidth
-            multiline
+            label="Professional experience"
             minRows={3}
             disabled={disabled}
-            placeholder="Roles, companies, open-source work, notable projects."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="professionalExperience"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Roles, companies, open-source work, notable projects."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
           <FieldLabel>Domains</FieldLabel>
           <ControlledChips
@@ -2028,85 +2086,117 @@ const ApplicationStep = ({
         {/* ---- Bitcoin ---- */}
         {sections.includes('bitcoin') && (
         <SectionCard title="Bitcoin">
-          <FieldLabel>Bitcoin contributions</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinContributions"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin contributions"
             minRows={3}
             disabled={disabled}
-            placeholder="PRs, reviews, writing, events — what you've done in the Bitcoin space."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinContributions"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="PRs, reviews, writing, events — what you've done in the Bitcoin space."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Bitcoin motivation</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinMotivation"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin motivation"
             minRows={3}
             disabled={disabled}
-            placeholder="Why Bitcoin, and why now?"
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinMotivation"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Why Bitcoin, and why now?"
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Bitcoin OSS goal</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinOssGoal"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin OSS goal"
             minRows={3}
             disabled={disabled}
-            placeholder="What do you want to achieve in Bitcoin open-source over the fellowship and beyond?"
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinOssGoal"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="What do you want to achieve in Bitcoin open-source over the fellowship and beyond?"
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
         {/* ---- Anything else ---- */}
         {sections.includes('anythingElse') && (
         <SectionCard title="Anything else">
-          <FieldLabel>Additional info{optionalSuffix}</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="additionalInfo"
-            counter
-            fullWidth
-            multiline
+            label={<>Additional info{optionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder="Anything else you'd like the reviewers to know."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="additionalInfo"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Anything else you'd like the reviewers to know."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>
-            {isEducator ? 'Ask from Bitshala' : 'Questions for Bitshala'}
-            {optionalSuffix}
-          </FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="questionsForBitshala"
-            counter
-            fullWidth
-            multiline
+            label={<>{isEducator ? 'Ask from Bitshala' : 'Questions for Bitshala'}{optionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder={
-              isEducator
-                ? 'Any special support or logistics you need from us.'
-                : "Anything you'd like to ask us."
-            }
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="questionsForBitshala"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder={
+                isEducator
+                  ? 'Any special support or logistics you need from us.'
+                  : "Anything you'd like to ask us."
+              }
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
@@ -2271,22 +2361,6 @@ const GithubCheckHint = ({ status }: { status: GithubCheckStatus | null }) => {
   );
 };
 
-const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <Typography
-    variant="caption"
-    sx={{
-      color: 'text.secondary',
-      letterSpacing: 1.2,
-      fontWeight: 600,
-      display: 'block',
-      mb: 0.75,
-      textTransform: 'uppercase',
-    }}
-  >
-    {children}
-  </Typography>
-);
-
 // ---- Step 3: Review ----
 
 const Dash = () => (
@@ -2320,10 +2394,12 @@ const ReviewText = ({ label, value }: { label: string; value: string }) => (
   </Box>
 );
 
+// Shares the reviewer's detect-and-render path, so this step is an exact
+// preview of what reviewers will read.
 const ReviewLong = ({ label, text }: { label: string; text: string }) => (
   <Box>
     <FieldLabel>{label}</FieldLabel>
-    {text.trim() ? <ExpandableText text={text} /> : <Dash />}
+    <ProposalLongText text={text} expandable maxLines={6} />
   </Box>
 );
 
@@ -2475,7 +2551,7 @@ const ReviewStep = ({
                   </Typography>
                   {fields.mentorTestimonial && (
                     <Box sx={{ mt: 1 }}>
-                      <ExpandableText text={fields.mentorTestimonial} />
+                      <ProposalLongText text={fields.mentorTestimonial} expandable maxLines={6} />
                     </Box>
                   )}
                 </>

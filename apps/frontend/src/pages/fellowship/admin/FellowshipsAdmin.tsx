@@ -30,6 +30,7 @@ import ProposalDialog from '../../../components/fellowship/ProposalDialog';
 import StartContractDialog from '../../../components/fellowship/StartContractDialog';
 import StatusChip from '../../../components/fellowship/StatusChip';
 import { fontFamilyMono } from '../../../components/fellowship/theme';
+import { formatCohortDate } from '../../../helpers/cohortHelpers';
 import { useFellowshipDocuments, useFellowships } from '../../../hooks/fellowshipHooks';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useFellowshipProjectTitle } from '../../../hooks/useFellowshipProjectTitle';
@@ -139,14 +140,8 @@ const handleFor = (f: GetFellowshipResponseDto): string | null => {
 const monthShort = (m: number) =>
   new Date(2024, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 
-const formatEndDate = (iso: string | null): string => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
+const formatDate = (iso: string | null): string =>
+  iso ? formatCohortDate(iso) : '—';
 
 const formatPayoutPerMonth = (amountUsd: string | null): string => {
   if (!amountUsd) return '—';
@@ -245,6 +240,7 @@ const FellowshipsAdmin = () => {
         'kind',
         'project',
         'maintainer',
+        'start_date',
         'end_date',
         'payout',
         'last_report',
@@ -259,6 +255,7 @@ const FellowshipsAdmin = () => {
           f.kind,
           csvCell(f.projectName ?? ''),
           csvCell(f.projectMaintainerName ?? ''),
+          f.startDate ?? '',
           f.endDate ?? '',
           formatPayoutPerMonth(f.amountUsd),
           last ? `${monthShort(last.month)} ${last.year}` : '',
@@ -392,20 +389,20 @@ const FellowshipsAdmin = () => {
           overflow: 'hidden',
         }}
       >
-        <HeaderRow sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress size={22} />
-          </Box>
-        ) : fellowships.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              No fellowships match these filters.
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            {fellowships.map((f) => (
+        <Box sx={{ overflowX: 'auto' }}>
+          <HeaderRow sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : fellowships.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                No fellowships match these filters.
+              </Typography>
+            </Box>
+          ) : (
+            fellowships.map((f) => (
               <FellowshipRow
                 key={f.id}
                 fellowship={f}
@@ -413,18 +410,18 @@ const FellowshipsAdmin = () => {
                 onViewProposal={() => setProposalFellowship(f)}
                 onReviewDocuments={() => setDocumentsFellowship(f)}
               />
-            ))}
-            {totalRecords > 0 && (
-              <PaginationFooter
-                page={page}
-                pageCount={pageCount}
-                total={totalRecords}
-                pageSize={pageSize}
-                onChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            )}
-          </>
+            ))
+          )}
+        </Box>
+        {totalRecords > 0 && fellowships.length > 0 && (
+          <PaginationFooter
+            page={page}
+            pageCount={pageCount}
+            total={totalRecords}
+            pageSize={pageSize}
+            onChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </Box>
 
@@ -559,9 +556,9 @@ const FilterPill = ({
 // ---- table header ----
 
 // Proportional columns so the row fills the width evenly instead of dumping all
-// slack into Project. Order: Fellow, Track, Kind, Project, End date, Payout, Status, Actions.
+// slack into Project. Order: Fellow, Track, Kind, Project, Start date, End date, Payout, Status, Actions.
 const COLS =
-  'minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(96px, 0.8fr) minmax(160px, 2fr) minmax(110px, 1fr) minmax(90px, 0.9fr) minmax(100px, 0.9fr) 200px';
+  'minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(96px, 0.8fr) minmax(160px, 2fr) minmax(110px, 1fr) minmax(110px, 1fr) minmax(90px, 0.9fr) minmax(100px, 0.9fr) 200px';
 const COL_GAP = 2;
 
 const SortableHeader = ({
@@ -619,11 +616,17 @@ const HeaderRow = ({
     }}
   >
     {/* Fellow and Project aren't in the server sort whitelist, so they're plain
-        headers now — sorting lives on the End date and Payout columns. */}
+        headers now — sorting lives on the Start date, End date, and Payout columns. */}
     <Box>Fellow</Box>
     <Box>Track</Box>
     <Box>Kind</Box>
     <Box>Project</Box>
+    <SortableHeader
+      label="Start date"
+      active={sortKey === 'startDate'}
+      dir={sortDir}
+      onClick={() => onSort('startDate')}
+    />
     <SortableHeader
       label="End date"
       active={sortKey === 'endDate'}
@@ -907,6 +910,17 @@ const FellowshipRow = ({
         )}
       </Typography>
 
+      {/* Start date */}
+      <Typography
+        sx={{
+          fontFamily: fontFamilyMono,
+          fontSize: '0.78rem',
+          color: fellowship.startDate ? 'text.primary' : 'text.secondary',
+        }}
+      >
+        {formatDate(fellowship.startDate)}
+      </Typography>
+
       {/* End date */}
       <Typography
         sx={{
@@ -915,7 +929,7 @@ const FellowshipRow = ({
           color: fellowship.endDate ? 'text.primary' : 'text.secondary',
         }}
       >
-        {formatEndDate(fellowship.endDate)}
+        {formatDate(fellowship.endDate)}
       </Typography>
 
       {/* Payout */}
