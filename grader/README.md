@@ -10,8 +10,15 @@ assignment-grader/
 ├── .github/workflows/grade.yml   the only workflow that ever runs
 ├── run-tests.sh                  language-agnostic entrypoint
 ├── report.schema.json            the grading contract
+├── manifest.schema.json          what each assignment declares to the workflow
+├── lib/                          helpers shared by every grade.sh
+│   ├── grade-lib.sh              fixtures, services, readiness, reporting
+│   ├── report.py                 runner output -> report.json
+│   └── unittest_json.py          a unittest runner that reports failures
 └── tests/<assignment-slug>/
-    └── grade.sh                  per-assignment grader
+    ├── manifest.json             toolchains, network policy, timeout
+    ├── grade.sh                  per-assignment grader
+    └── fixtures/                 files that overwrite the student's copies
 ```
 
 ## Setup
@@ -32,14 +39,47 @@ carries no cost implication.
 
 ## Adding an assignment
 
-Create `tests/<slug>/grade.sh`, then set `graderTestPath` to `tests/<slug>` in the
-assignment block of the cohort config
-(`apps/backend/assets/cohort-configs/<cohort>.json`). Copy `tests/example-week-1` as a
-starting point.
+Create `tests/<slug>/`, then set `graderTestPath` to `tests/<slug>` in the assignment
+block of the cohort config (`apps/backend/assets/cohort-configs/<cohort>.json`). Copy
+`tests/example-week-1` as a starting point.
 
-`grade.sh` receives `STUDENT_DIR`, `TEST_DIR`, and `REPORT_PATH`, and must write a
-`report.json` matching `report.schema.json`. Language, test runner, and build steps are
-entirely the assignment's business.
+`grade.sh` receives `STUDENT_DIR`, `TEST_DIR`, `LIB_DIR` and `REPORT_PATH`, and must
+write a `report.json` matching `report.schema.json`. Language, test runner, and build
+steps are entirely the assignment's business.
+
+Four worked examples, covering the shapes the real courses take:
+
+| Suite | Shape |
+| --- | --- |
+| `tests/lbtcl-week-1` | jest; the student's own `setup.sh` installs and starts bitcoind |
+| `tests/bpd-week-1` | jest; bitcoind from a compose file |
+| `tests/ln-week-1` | jest; bitcoind + Core Lightning, and a rune minted at run time |
+| `tests/pb-week-5` | python; Jupyter notebook plus a unittest suite |
+
+### fixtures/
+
+Anything under `fixtures/` is copied over the student's checkout before the suite runs,
+mirroring the repository layout. **Put the test files there.**
+
+The templates ship their own `test/`, `jest.config.ts` and `package.json` so students
+can run the suite locally, which is worth keeping — but it means the files that decide
+the grade start out inside the tree the student edits. `protectedPaths` refuses the
+write in the editor, and restoring here makes it moot if that check is ever wrong: the
+student's copy is replaced before it can matter. The same goes for `docker-compose.yml`,
+which fixes the credentials and ports the assertions assume.
+
+For `pb-*`, where the book puts each `TestCase` in the same file as the function it
+tests, `fixtures/` carries a separate module of authoritative assertions instead.
+
+### manifest.json
+
+Declares only what the workflow must know before `grade.sh` runs — toolchains to
+install, whether student code gets a network, how long to allow. Everything else stays
+in `grade.sh`, which is bash and needs no schema. See `manifest.schema.json`; an absent
+manifest means "node/python/rust off, network full, no services".
+
+`timeoutMinutes` may only ask for *less* than the assignment's configured
+`runTimeoutMinutes`. A suite cannot vote itself more runner time.
 
 ## Why the workflow is split in two
 
@@ -62,16 +102,37 @@ leak the whole suite.
 Results come back by the backend reading the `grade-report` artifact with its own App
 token, so the workflow needs no outbound credential either.
 
+## Network policy
+
+`manifest.json` sets `network` to `full` or `none`.
+
+Every assignment in these courses needs `full`, and that is the default. They install
+jest, pull container images, `pip install`, or — in the case of
+learning-bitcoin-from-command-line week 1 — have the student's own `setup.sh` download
+Bitcoin Core, which is the exercise itself. There is nothing to vendor.
+
+`none` runs student code via `unshare --net`, and is available for a future assignment
+that is genuinely self-contained. Two things make it sharper than it looks:
+
+- A fresh network namespace has `lo` present but **DOWN**. `run-tests.sh` brings it up,
+  without which every test that talks to `127.0.0.1` fails to connect — which is most of
+  them, since bitcoind is reached over loopback.
+- Containers are unreachable under it regardless. The daemon lives outside the
+  namespace, so published ports are not visible inside. `services` with `network: none`
+  is rejected at manifest-read time rather than failing obscurely an hour later.
+
 ## What this does and does not protect
 
 **It does** guarantee students cannot *modify* the tests. The suite lives here, students
-have no access to this repository, and the commit endpoint refuses to write
-`.github/**` — which is what makes a passing score mean something.
+have no access to this repository, the commit endpoint refuses to write the harness
+paths, and `restore_fixtures` overwrites them anyway — which is what makes a passing
+score mean something.
 
 **It does not** make the tests unreadable to code that is already running. Student code
 executes in the same job as the test files, so a determined student could print them.
-Network isolation (`GRADE_DISABLE_NETWORK`) stops them shipping the contents anywhere,
-but stdout still reaches the run log, which their own API access can read.
+Network isolation stops them shipping the contents anywhere, but stdout still reaches the
+run log, which their own API access can read — and no current assignment can use that
+isolation.
 
 Treat hidden tests as a deterrent, not a boundary. If a specific assignment needs more,
 the options in rough order of effort are: run the suite as a separate unix user with the
