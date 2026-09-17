@@ -1,5 +1,8 @@
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
-import { Assignment } from '@/entities/assignment.entity';
+import {
+    Assignment,
+    DEFAULT_PROTECTED_PATHS,
+} from '@/entities/assignment.entity';
 import { AssignmentConfig } from '@/cohorts/cohorts.config.model';
 import { CohortWeek } from '@/entities/cohort-week.entity';
 import { AssignmentStatus } from '@/common/enum';
@@ -71,7 +74,7 @@ describe('assignment-seed.util — applyAssignmentConfig', () => {
 
         expect(assignment.status).toBe(AssignmentStatus.PUBLISHED);
         expect(assignment.allowLateSubmission).toBe(true);
-        expect(assignment.protectedPaths).toEqual(['.github/**']);
+        expect(assignment.protectedPaths).toEqual(DEFAULT_PROTECTED_PATHS);
         expect(assignment.maxRunsPerDay).toBe(50);
         expect(assignment.runTimeoutMinutes).toBe(10);
         expect(assignment.graderWorkflowPath).toBe(
@@ -114,7 +117,7 @@ describe('assignment-seed.util — applyAssignmentConfig', () => {
 
         first.protectedPaths.push('extra/**');
 
-        expect(second.protectedPaths).toEqual(['.github/**']);
+        expect(second.protectedPaths).toEqual(DEFAULT_PROTECTED_PATHS);
     });
 
     it('updates an existing assignment in place, for the admin re-sync path', () => {

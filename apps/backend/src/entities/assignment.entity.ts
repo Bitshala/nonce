@@ -12,8 +12,29 @@ import { CohortWeek } from '@/entities/cohort-week.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { AssignmentStatus } from '@/common/enum';
 
-/** Editor writes to these paths are refused. Grading config must stay ours. */
-export const DEFAULT_PROTECTED_PATHS = ['.github/**'];
+/**
+ * Editor writes to these paths are refused. Grading config must stay ours.
+ *
+ * `.github/**` keeps student code out of CI. The rest is the test harness every
+ * template ships so students can run the suite locally — the specs themselves,
+ * the jest config that decides which files are specs, and the root manifest
+ * that pins the runner. Per-language dependencies live in `<language>/package.json`,
+ * which stays writable; the root one is ours.
+ *
+ * Refusing the write is the courteous half of this. The grader also restores
+ * all of it from the suite's own `fixtures/` before running, so a student who
+ * finds a way around this list gains nothing — see grader/lib/grade-lib.sh.
+ * An assignment that needs a different set overrides `protectedPaths` in its
+ * cohort config.
+ */
+export const DEFAULT_PROTECTED_PATHS = [
+    '.github/**',
+    'test/**',
+    'jest.config.ts',
+    'tsconfig.json',
+    'package.json',
+    'package-lock.json',
+];
 
 /**
  * The mechanics of one week's exercise: where the starter code comes from,
