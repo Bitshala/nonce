@@ -53,7 +53,10 @@ const emptyToNull = (value: string | undefined): string | null => {
 };
 
 const APPLICATION_SORT_COLUMNS: Record<
-    Exclude<FellowshipApplicationSortBy, FellowshipApplicationSortBy.SUBMITTED_AT>,
+    Exclude<
+        FellowshipApplicationSortBy,
+        FellowshipApplicationSortBy.SUBMITTED_AT
+    >,
     string
 > = {
     [FellowshipApplicationSortBy.CREATED_AT]: 'application.createdAt',
