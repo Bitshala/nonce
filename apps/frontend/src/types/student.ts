@@ -26,7 +26,9 @@ export interface TableRowData {
   id: number;
   name: string;
   discordGlobalName: string;
+  discordUsername: string;
   email: string;
+  location: string;
   group: string;
   ta: string;
   attendance: boolean;

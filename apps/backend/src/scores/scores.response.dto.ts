@@ -148,6 +148,7 @@ export class UsersWeekScoreResponseDto extends WeeklyScore {
     // User details
     userId!: string;
     email!: string | null;
+    location!: string | null;
     discordUsername!: string;
     discordGlobalName!: string | null;
     name!: string | null;
@@ -190,6 +191,7 @@ export class UsersWeekScoreResponseDto extends WeeklyScore {
         return new UsersWeekScoreResponseDto({
             userId: user.id,
             email: user.email,
+            location: user.location,
             discordUsername: user.discordUserName,
             discordGlobalName: user.discordGlobalName,
             name: user.name,
