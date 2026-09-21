@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Lock, Pencil, Trash2 } from 'lucide-react';
+import { formatDateTime } from '../../utils/dateUtils';
 import { extractErrorMessage } from '../../utils/errorUtils';
 
 // Body rules mirror the server: a trimmed note of 1..5000 chars.
@@ -46,30 +47,6 @@ const initialsOf = (name: string): string => {
   if (!parts.length) return '?';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-
-// Minute-granular relative time — notes in a thread are often minutes apart, so
-// the day-granular helper on the admin list screens would be too coarse here.
-const relativeTime = (iso: string): string => {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '';
-  const sec = Math.max(0, Math.floor((Date.now() - then) / 1000));
-  if (sec < 45) return 'just now';
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day}d ago`;
-  const mo = Math.floor(day / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  return `${Math.floor(mo / 12)}y ago`;
-};
-
-const absoluteTime = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 /**
@@ -340,12 +317,8 @@ const NoteCard = ({
             <Typography sx={{ fontWeight: 600, fontSize: '0.83rem', color: 'text.primary' }}>
               {note.authorName}
             </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: 'text.secondary', fontSize: '0.72rem' }}
-              title={absoluteTime(note.createdAt)}
-            >
-              {relativeTime(note.createdAt)}
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.72rem' }}>
+              {formatDateTime(note.createdAt)}
               {edited && ' · (edited)'}
             </Typography>
           </Box>
