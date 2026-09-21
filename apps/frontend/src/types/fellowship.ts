@@ -189,7 +189,7 @@ export interface ReviewFellowshipApplicationRequestDto {
 // Sort fields are per-endpoint whitelists — sending anything outside the set
 // returns a 400. Search is a single free-text term matched server-side across
 // several columns (see the handoff doc), trimmed and capped at 100 chars.
-export type FellowshipApplicationsSortBy = 'createdAt' | 'updatedAt';
+export type FellowshipApplicationsSortBy = 'createdAt' | 'updatedAt' | 'submittedAt';
 
 export interface ListFellowshipApplicationsQueryDto extends PaginatedQueryDto {
   status?: FellowshipApplicationStatus;

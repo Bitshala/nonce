@@ -131,6 +131,7 @@ export interface GetUsersScoresResponseDto {
 }
 
 export interface UpdateUserRequest {
+  email?: string;
   name?: string;
   description?: string;
   background?: string;

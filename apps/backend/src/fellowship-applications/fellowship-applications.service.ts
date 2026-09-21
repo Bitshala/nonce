@@ -55,6 +55,7 @@ const emptyToNull = (value: string | undefined): string | null => {
 const APPLICATION_SORT_COLUMNS: Record<FellowshipApplicationSortBy, string> = {
     [FellowshipApplicationSortBy.CREATED_AT]: 'application.createdAt',
     [FellowshipApplicationSortBy.UPDATED_AT]: 'application.updatedAt',
+    [FellowshipApplicationSortBy.SUBMITTED_AT]: 'application.submittedAt',
 };
 
 // Multipart file parts accepted on the review (accept) endpoint. `file` is the
@@ -644,8 +645,9 @@ export class FellowshipApplicationsService {
 
         const order = query.sortOrder === SortOrder.ASC ? 'ASC' : 'DESC';
 
+        qb.orderBy(APPLICATION_SORT_COLUMNS[query.sortBy], order);
+
         const [records, totalRecords] = await qb
-            .orderBy(APPLICATION_SORT_COLUMNS[query.sortBy], order)
             .addOrderBy('application.id', 'ASC')
             .skip(query.page * query.pageSize)
             .take(query.pageSize)

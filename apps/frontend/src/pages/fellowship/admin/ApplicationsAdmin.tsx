@@ -84,8 +84,10 @@ const FILTERS: { label: string; value: FilterValue }[] = [
   { label: 'All', value: 'ALL' },
 ];
 
-// The server only sorts applications by createdAt/updatedAt, so the old
-// "by name" sort is gone — these map onto the supported fields.
+// "Newest"/"Oldest" sort by submittedAt, not createdAt — that's the date the
+// list actually displays (submittedAt ?? createdAt), so the sort matches
+// what's on screen instead of when the (possibly long-drafted) row was
+// created.
 type SortKey = 'newest' | 'oldest' | 'updated';
 
 const SORT_OPTIONS: {
@@ -94,8 +96,8 @@ const SORT_OPTIONS: {
   sortBy: FellowshipApplicationsSortBy;
   sortOrder: SortOrder;
 }[] = [
-  { label: 'Newest', value: 'newest', sortBy: 'createdAt', sortOrder: SortOrder.DESC },
-  { label: 'Oldest', value: 'oldest', sortBy: 'createdAt', sortOrder: SortOrder.ASC },
+  { label: 'Newest', value: 'newest', sortBy: 'submittedAt', sortOrder: SortOrder.DESC },
+  { label: 'Oldest', value: 'oldest', sortBy: 'submittedAt', sortOrder: SortOrder.ASC },
   { label: 'Recently updated', value: 'updated', sortBy: 'updatedAt', sortOrder: SortOrder.DESC },
 ];
 

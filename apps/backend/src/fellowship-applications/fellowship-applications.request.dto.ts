@@ -290,6 +290,7 @@ export class ReviewFellowshipApplicationRequestDto {
 export enum FellowshipApplicationSortBy {
     CREATED_AT = 'createdAt',
     UPDATED_AT = 'updatedAt',
+    SUBMITTED_AT = 'submittedAt',
 }
 
 export class ListFellowshipApplicationsQueryDto extends PaginatedQueryDto {

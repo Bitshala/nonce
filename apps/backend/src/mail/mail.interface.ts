@@ -4,6 +4,7 @@ export interface WelcomeToWaitlistContext {
     userName: string;
     cohortName: string;
     discordLink: string;
+    cohortsUrl: string;
 }
 
 export interface CohortJoiningConfirmationContext {
