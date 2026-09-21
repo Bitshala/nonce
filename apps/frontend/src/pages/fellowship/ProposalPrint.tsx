@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { fellowshipLightTheme } from '../../components/fellowship/theme';
+import ProposalLongText from '../../components/fellowship/ProposalLongText';
 import { useApplication, useApplicationProposal } from '../../hooks/fellowshipHooks';
 import { formatFellowshipType } from '../../utils/fellowshipFormat';
 import {
@@ -25,9 +26,7 @@ import { EducationCategory } from '@nonce/shared';
 const PrintTextSection = ({ title, text }: { title: string; text: string | null | undefined }) =>
   text && text.trim() ? (
     <PrintSection title={title}>
-      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.65 }}>
-        {text}
-      </Typography>
+      <ProposalLongText text={text} print />
     </PrintSection>
   ) : null;
 
@@ -157,24 +156,24 @@ const ProposalPrint = () => {
               )}
               {isEducation && educationDetail && educationDetail.text && (
                 <PrintSection title={educationDetail.label}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.65 }}>
-                    {educationDetail.text}
-                  </Typography>
+                  {educationDetail.label === 'Description' ? (
+                    <ProposalLongText text={educationDetail.text} print />
+                  ) : (
+                    <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                      {educationDetail.text}
+                    </Typography>
+                  )}
                 </PrintSection>
               )}
 
               {!isEducation && (
                 <PrintSection title="Problem statement">
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.65 }}>
-                    {fields?.problemStatement || '—'}
-                  </Typography>
+                  <ProposalLongText text={fields?.problemStatement} print />
                 </PrintSection>
               )}
 
               <PrintSection title={isEducation ? 'Plan' : '6-month plan & milestones'}>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.65 }}>
-                  {fields?.plan || '—'}
-                </Typography>
+                <ProposalLongText text={fields?.plan} print />
               </PrintSection>
 
               {isEducation && (
@@ -188,12 +187,9 @@ const ProposalPrint = () => {
                     {fields?.mentorContact ? ` · ${fields.mentorContact}` : ''}
                   </Typography>
                   {fields?.mentorTestimonial && (
-                    <Typography
-                      variant="body2"
-                      sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.65, mt: 1 }}
-                    >
-                      {fields.mentorTestimonial}
-                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <ProposalLongText text={fields.mentorTestimonial} print />
+                    </Box>
                   )}
                 </PrintSection>
               )}

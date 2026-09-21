@@ -40,9 +40,11 @@ import {
   X,
 } from 'lucide-react';
 import { IconButton } from '@mui/material';
-import ExpandableText from '../../components/fellowship/ExpandableText';
 import FellowshipPageLayout from '../../components/fellowship/FellowshipPageLayout';
+import FieldLabel from '../../components/fellowship/FieldLabel';
 import LinkChip from '../../components/fellowship/LinkChip';
+import MarkdownField from '../../components/fellowship/MarkdownField';
+import ProposalLongText from '../../components/fellowship/ProposalLongText';
 import {
   useApplication,
   useApplicationProposal,
@@ -52,7 +54,7 @@ import {
   useSubmitApplication,
   useUpdateApplication,
 } from '../../hooks/fellowshipHooks';
-import { useUser } from '../../hooks/userHooks';
+import { useUpdateUser, useUser } from '../../hooks/userHooks';
 import {
   FellowshipApplicationStatus,
   FellowshipType,
@@ -76,8 +78,10 @@ import {
   type ProposalFields,
 } from '../../utils/proposalFormat';
 
-// X/Twitter-style long-form limit per section — mirrored server-side.
-const LONG_TEXT_LIMIT = 3000;
+// Long-form limit per section — mirrored server-side. Matches the report
+// fields' limit: these sections accept markdown, and its syntax eats into
+// the same budget as the prose.
+const LONG_TEXT_LIMIT = 3500;
 // Titles surface in list rows, dialog headers and the print view —
 // long enough to be descriptive, short enough to stay scannable.
 const TITLE_LIMIT = 120;
@@ -89,6 +93,8 @@ const MAX_LINKS = 20;
 // Free-text location (profile field), per-entry cap and count cap for the
 // multi-value chip fields (domains, coding languages, education interests).
 const LOCATION_LIMIT = 255;
+// Client-side sanity check only — the backend's @IsEmail() is the real gate.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TAG_LIMIT = 100;
 const MAX_TAGS = 50;
 // Graduation year bounds — mirrored server-side.
@@ -565,6 +571,44 @@ const Apply = () => {
   const submitMut = useSubmitApplication();
   const deleteMut = useDeleteApplication();
 
+  // Email lives on the user profile, not the application — unlike location/
+  // certificateName it's saved straight through `/users/me` on blur rather than
+  // riding along with the proposal body (the application DTO has no email field).
+  const updateUserMut = useUpdateUser();
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const emailSeeded = useRef(false);
+  useEffect(() => {
+    if (!profileQuery.data || emailSeeded.current) return;
+    emailSeeded.current = true;
+    // Only seed a blank field — don't clobber an email the applicant already typed
+    // while this query was still loading (same guard as location/certificateName below).
+    setEmail((current) => current || profileQuery.data.email || '');
+  }, [profileQuery.data]);
+  const handleEmailBlur = () => {
+    const trimmed = email.trim();
+    setEmail(trimmed);
+    if (!trimmed) {
+      setEmailError('Email is required.');
+      return;
+    }
+    if (trimmed === profileQuery.data?.email) {
+      setEmailError(null);
+      return;
+    }
+    if (!EMAIL_RE.test(trimmed)) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    updateUserMut.mutate(
+      { email: trimmed },
+      {
+        onError: () => setEmailError('Could not save. Try again.'),
+        onSuccess: () => setEmailError(null),
+      },
+    );
+  };
+
   useEffect(() => {
     if (!submitted) return;
     // Land back on My Applications — the fellowship pages only appear once an
@@ -909,15 +953,42 @@ const Apply = () => {
     setToast({ kind: 'error', msg: 'Please fix the highlighted fields before continuing.' });
   };
 
+  // Email isn't part of `ProposalFields`, so RHF validation never sees it —
+  // gate it here the same way `handleInvalid` gates the rest of the form. Also
+  // confirms the save actually reached the backend (not just the looser local
+  // regex) before letting the applicant continue, since `handleEmailBlur`'s save
+  // is fire-and-forget.
+  const validateEmail = async (): Promise<boolean> => {
+    const trimmed = email.trim();
+    const fail = (msg: string) => {
+      setEmailError(msg);
+      const idx = EDIT_STEPS.findIndex((s) => s.sections.includes('about'));
+      setStep(idx >= 0 ? idx + 1 : 1);
+      setToast({ kind: 'error', msg: 'Please add a valid email before continuing.' });
+      return false;
+    };
+    if (!trimmed) return fail('Email is required.');
+    if (!EMAIL_RE.test(trimmed)) return fail('Enter a valid email address.');
+    if (trimmed === profileQuery.data?.email) return true;
+    try {
+      await updateUserMut.mutateAsync({ email: trimmed });
+      setEmailError(null);
+      return true;
+    } catch {
+      return fail('Could not save. Try again.');
+    }
+  };
+
   // Leaving the last editing step (or jumping to Review) runs full validation.
-  const handleGoToReview = form.handleSubmit(
-    () => persistThenGoTo(REVIEW_STEP),
-    handleInvalid,
-  );
+  const handleGoToReview = async () => {
+    if (!(await validateEmail())) return;
+    await form.handleSubmit(() => persistThenGoTo(REVIEW_STEP), handleInvalid)();
+  };
 
   // Final submit goes through the same full validation, then submits for review.
   const handleSubmit = form.handleSubmit(async () => {
     if (!selectedType) return;
+    if (!(await validateEmail())) return;
     try {
       const id = await persistDraft(buildProposalBody(getValues()));
       if (!id) return;
@@ -1010,6 +1081,11 @@ const Apply = () => {
           isDeveloper={isDeveloper}
           requiresMentorAndProject={requiresMentorAndProject}
           isEducator={isEducator}
+          email={email}
+          onEmailChange={setEmail}
+          onEmailBlur={handleEmailBlur}
+          emailError={emailError}
+          emailSaving={updateUserMut.isPending}
         />
       )}
 
@@ -1522,6 +1598,11 @@ const ApplicationStep = ({
   isDeveloper,
   requiresMentorAndProject,
   isEducator,
+  email,
+  onEmailChange,
+  onEmailBlur,
+  emailError,
+  emailSaving,
 }: {
   form: UseFormReturn<ProposalFields>;
   disabled: boolean;
@@ -1543,6 +1624,12 @@ const ApplicationStep = ({
   isDeveloper: boolean;
   requiresMentorAndProject: boolean;
   isEducator: boolean;
+  /** Profile field, not part of the application — saved straight through `/users/me`. */
+  email: string;
+  onEmailChange: (value: string) => void;
+  onEmailBlur: () => void;
+  emailError: string | null;
+  emailSaving: boolean;
 }) => {
   const { control, getValues, setValue, formState } = form;
   const links = (useWatch({ control, name: 'links' }) as string[] | undefined) ?? [''];
@@ -1635,8 +1722,13 @@ const ApplicationStep = ({
                 </>
               )}
               {educationCategory === EducationCategory.OTHER && (
-                <>
-                  <FieldLabel>Describe what you want to do</FieldLabel>
+                <MarkdownField
+                  control={control}
+                  name="educationCategoryOther"
+                  label="Describe what you want to do"
+                  minRows={4}
+                  disabled={disabled}
+                >
                   <ControlledTextField
                     control={control}
                     name="educationCategoryOther"
@@ -1649,7 +1741,7 @@ const ApplicationStep = ({
                     slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
                     sx={{ mb: 2.5 }}
                   />
-                </>
+                </MarkdownField>
               )}
 
               <FieldLabel>Title</FieldLabel>
@@ -1669,33 +1761,47 @@ const ApplicationStep = ({
                 sx={{ mb: 2.5 }}
               />
 
-              <FieldLabel>Describe your plan</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="plan"
-                counter
-                fullWidth
-                multiline
+                label="Describe your plan"
                 minRows={6}
                 disabled={disabled}
-                placeholder="What will you run, how often, and what will learners walk away with?"
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="plan"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  disabled={disabled}
+                  placeholder="What will you run, how often, and what will learners walk away with?"
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
 
-              <FieldLabel>Scope of work</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="scopeOfWork"
-                counter
-                fullWidth
-                multiline
+                label="Scope of work"
                 minRows={4}
                 disabled={disabled}
-                placeholder={`Month-by-month breakdown — how many meetups/clubs per month; for clubs: curriculum, exercises, hands-on sessions.`}
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="scopeOfWork"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  disabled={disabled}
+                  placeholder={`Month-by-month breakdown — how many meetups/clubs per month; for clubs: curriculum, exercises, hands-on sessions.`}
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
             </>
           ) : (
             <>
@@ -1712,33 +1818,47 @@ const ApplicationStep = ({
                 sx={{ mb: 2.5 }}
               />
 
-              <FieldLabel>Problem statement</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="problemStatement"
-                counter
-                fullWidth
-                multiline
+                label="Problem statement"
                 minRows={4}
                 disabled={disabled}
-                placeholder="What gap are you closing, and why does it matter for the ecosystem? Link to the relevant issues, RFCs, or discussions."
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="problemStatement"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  disabled={disabled}
+                  placeholder="What gap are you closing, and why does it matter for the ecosystem? Link to the relevant issues, RFCs, or discussions."
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
 
-              <FieldLabel>6-month plan & milestones</FieldLabel>
-              <ControlledTextField
+              <MarkdownField
                 control={control}
                 name="plan"
-                counter
-                fullWidth
-                multiline
+                label="6-month plan & milestones"
                 minRows={6}
                 disabled={disabled}
-                placeholder={`Month 1–2: scope, prior-art review, first PR\nMonth 3–4: core implementation, tests\nMonth 5–6: integration, docs, handoff`}
-                slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-                sx={{ mb: 2.5 }}
-              />
+              >
+                <ControlledTextField
+                  control={control}
+                  name="plan"
+                  counter
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  disabled={disabled}
+                  placeholder={`Month 1–2: scope, prior-art review, first PR\nMonth 3–4: core implementation, tests\nMonth 5–6: integration, docs, handoff`}
+                  slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+                  sx={{ mb: 2.5 }}
+                />
+              </MarkdownField>
             </>
           )}
 
@@ -1825,18 +1945,25 @@ const ApplicationStep = ({
             </Box>
           </Stack>
 
-          <FieldLabel>Mentor testimonial{mentorOptionalSuffix}</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="mentorTestimonial"
-            counter
-            fullWidth
-            multiline
+            label={<>Mentor testimonial{mentorOptionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder="A short note from your mentor on your work and why they back this proposal."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="mentorTestimonial"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="A short note from your mentor on your work and why they back this proposal."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
@@ -1939,6 +2066,20 @@ const ApplicationStep = ({
                 slotProps={{ htmlInput: { maxLength: LOCATION_LIMIT } }}
               />
             </Box>
+            <Box sx={{ flex: 2, mb: 2.5 }}>
+              <FieldLabel>Email</FieldLabel>
+              <TextField
+                fullWidth
+                type="email"
+                value={email}
+                onChange={(e) => onEmailChange(e.target.value)}
+                onBlur={onEmailBlur}
+                disabled={disabled}
+                placeholder="you@example.com"
+                error={!!emailError}
+                helperText={emailError ?? (emailSaving ? 'Saving…' : "This is the address we'll use to contact you.")}
+              />
+            </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0, sm: 2 }}>
             <Box sx={{ flex: 2 }}>
               <FieldLabel>Location</FieldLabel>
@@ -1964,33 +2105,47 @@ const ApplicationStep = ({
             </Box>
           </Stack>
 
-          <FieldLabel>Academic background</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="academicBackground"
-            counter
-            fullWidth
-            multiline
+            label="Academic background"
             minRows={3}
             disabled={disabled}
-            placeholder="Degrees, institutions, relevant coursework."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="academicBackground"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Degrees, institutions, relevant coursework."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Professional experience</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="professionalExperience"
-            counter
-            fullWidth
-            multiline
+            label="Professional experience"
             minRows={3}
             disabled={disabled}
-            placeholder="Roles, companies, open-source work, notable projects."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="professionalExperience"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Roles, companies, open-source work, notable projects."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
           <FieldLabel>Domains</FieldLabel>
           <ControlledChips
@@ -2028,85 +2183,117 @@ const ApplicationStep = ({
         {/* ---- Bitcoin ---- */}
         {sections.includes('bitcoin') && (
         <SectionCard title="Bitcoin">
-          <FieldLabel>Bitcoin contributions</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinContributions"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin contributions"
             minRows={3}
             disabled={disabled}
-            placeholder="PRs, reviews, writing, events — what you've done in the Bitcoin space."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinContributions"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="PRs, reviews, writing, events — what you've done in the Bitcoin space."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Bitcoin motivation</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinMotivation"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin motivation"
             minRows={3}
             disabled={disabled}
-            placeholder="Why Bitcoin, and why now?"
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinMotivation"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Why Bitcoin, and why now?"
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>Bitcoin OSS goal</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="bitcoinOssGoal"
-            counter
-            fullWidth
-            multiline
+            label="Bitcoin OSS goal"
             minRows={3}
             disabled={disabled}
-            placeholder="What do you want to achieve in Bitcoin open-source over the fellowship and beyond?"
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="bitcoinOssGoal"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="What do you want to achieve in Bitcoin open-source over the fellowship and beyond?"
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
         {/* ---- Anything else ---- */}
         {sections.includes('anythingElse') && (
         <SectionCard title="Anything else">
-          <FieldLabel>Additional info{optionalSuffix}</FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="additionalInfo"
-            counter
-            fullWidth
-            multiline
+            label={<>Additional info{optionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder="Anything else you'd like the reviewers to know."
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-            sx={{ mb: 2.5 }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="additionalInfo"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder="Anything else you'd like the reviewers to know."
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+              sx={{ mb: 2.5 }}
+            />
+          </MarkdownField>
 
-          <FieldLabel>
-            {isEducator ? 'Ask from Bitshala' : 'Questions for Bitshala'}
-            {optionalSuffix}
-          </FieldLabel>
-          <ControlledTextField
+          <MarkdownField
             control={control}
             name="questionsForBitshala"
-            counter
-            fullWidth
-            multiline
+            label={<>{isEducator ? 'Ask from Bitshala' : 'Questions for Bitshala'}{optionalSuffix}</>}
             minRows={3}
             disabled={disabled}
-            placeholder={
-              isEducator
-                ? 'Any special support or logistics you need from us.'
-                : "Anything you'd like to ask us."
-            }
-            slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
-          />
+          >
+            <ControlledTextField
+              control={control}
+              name="questionsForBitshala"
+              counter
+              fullWidth
+              multiline
+              minRows={3}
+              disabled={disabled}
+              placeholder={
+                isEducator
+                  ? 'Any special support or logistics you need from us.'
+                  : "Anything you'd like to ask us."
+              }
+              slotProps={{ htmlInput: { maxLength: LONG_TEXT_LIMIT } }}
+            />
+          </MarkdownField>
         </SectionCard>
         )}
 
@@ -2271,22 +2458,6 @@ const GithubCheckHint = ({ status }: { status: GithubCheckStatus | null }) => {
   );
 };
 
-const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <Typography
-    variant="caption"
-    sx={{
-      color: 'text.secondary',
-      letterSpacing: 1.2,
-      fontWeight: 600,
-      display: 'block',
-      mb: 0.75,
-      textTransform: 'uppercase',
-    }}
-  >
-    {children}
-  </Typography>
-);
-
 // ---- Step 3: Review ----
 
 const Dash = () => (
@@ -2320,10 +2491,12 @@ const ReviewText = ({ label, value }: { label: string; value: string }) => (
   </Box>
 );
 
+// Shares the reviewer's detect-and-render path, so this step is an exact
+// preview of what reviewers will read.
 const ReviewLong = ({ label, text }: { label: string; text: string }) => (
   <Box>
     <FieldLabel>{label}</FieldLabel>
-    {text.trim() ? <ExpandableText text={text} /> : <Dash />}
+    <ProposalLongText text={text} expandable maxLines={6} />
   </Box>
 );
 
@@ -2475,7 +2648,7 @@ const ReviewStep = ({
                   </Typography>
                   {fields.mentorTestimonial && (
                     <Box sx={{ mt: 1 }}>
-                      <ExpandableText text={fields.mentorTestimonial} />
+                      <ProposalLongText text={fields.mentorTestimonial} expandable maxLines={6} />
                     </Box>
                   )}
                 </>
