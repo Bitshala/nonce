@@ -13,3 +13,4 @@ export {
 
 // Backend-only. Nothing app-specific belongs in the shared package.
 export const DISCORD_GENERAL_INVITE_URL = 'https://discord.gg/benPDVcurg';
+export const COHORTS_URL = 'https://bitshala.org/cohorts';
