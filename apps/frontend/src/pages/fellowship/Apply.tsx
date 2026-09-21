@@ -581,7 +581,9 @@ const Apply = () => {
   useEffect(() => {
     if (!profileQuery.data || emailSeeded.current) return;
     emailSeeded.current = true;
-    setEmail(profileQuery.data.email ?? '');
+    // Only seed a blank field — don't clobber an email the applicant already typed
+    // while this query was still loading (same guard as location/certificateName below).
+    setEmail((current) => current || profileQuery.data.email || '');
   }, [profileQuery.data]);
   const handleEmailBlur = () => {
     const trimmed = email.trim();
@@ -952,27 +954,41 @@ const Apply = () => {
   };
 
   // Email isn't part of `ProposalFields`, so RHF validation never sees it —
-  // gate it here the same way `handleInvalid` gates the rest of the form.
-  const validateEmail = (): boolean => {
+  // gate it here the same way `handleInvalid` gates the rest of the form. Also
+  // confirms the save actually reached the backend (not just the looser local
+  // regex) before letting the applicant continue, since `handleEmailBlur`'s save
+  // is fire-and-forget.
+  const validateEmail = async (): Promise<boolean> => {
     const trimmed = email.trim();
-    if (trimmed && EMAIL_RE.test(trimmed)) return true;
-    setEmailError(trimmed ? 'Enter a valid email address.' : 'Email is required.');
-    const idx = EDIT_STEPS.findIndex((s) => s.sections.includes('about'));
-    setStep(idx >= 0 ? idx + 1 : 1);
-    setToast({ kind: 'error', msg: 'Please add a valid email before continuing.' });
-    return false;
+    const fail = (msg: string) => {
+      setEmailError(msg);
+      const idx = EDIT_STEPS.findIndex((s) => s.sections.includes('about'));
+      setStep(idx >= 0 ? idx + 1 : 1);
+      setToast({ kind: 'error', msg: 'Please add a valid email before continuing.' });
+      return false;
+    };
+    if (!trimmed) return fail('Email is required.');
+    if (!EMAIL_RE.test(trimmed)) return fail('Enter a valid email address.');
+    if (trimmed === profileQuery.data?.email) return true;
+    try {
+      await updateUserMut.mutateAsync({ email: trimmed });
+      setEmailError(null);
+      return true;
+    } catch {
+      return fail('Could not save. Try again.');
+    }
   };
 
   // Leaving the last editing step (or jumping to Review) runs full validation.
   const handleGoToReview = async () => {
-    if (!validateEmail()) return;
+    if (!(await validateEmail())) return;
     await form.handleSubmit(() => persistThenGoTo(REVIEW_STEP), handleInvalid)();
   };
 
   // Final submit goes through the same full validation, then submits for review.
   const handleSubmit = form.handleSubmit(async () => {
     if (!selectedType) return;
-    if (!validateEmail()) return;
+    if (!(await validateEmail())) return;
     try {
       const id = await persistDraft(buildProposalBody(getValues()));
       if (!id) return;
