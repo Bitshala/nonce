@@ -54,7 +54,7 @@ import {
   useSubmitApplication,
   useUpdateApplication,
 } from '../../hooks/fellowshipHooks';
-import { useUser } from '../../hooks/userHooks';
+import { useUpdateUser, useUser } from '../../hooks/userHooks';
 import {
   FellowshipApplicationStatus,
   FellowshipType,
@@ -93,6 +93,8 @@ const MAX_LINKS = 20;
 // Free-text location (profile field), per-entry cap and count cap for the
 // multi-value chip fields (domains, coding languages, education interests).
 const LOCATION_LIMIT = 255;
+// Client-side sanity check only — the backend's @IsEmail() is the real gate.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TAG_LIMIT = 100;
 const MAX_TAGS = 50;
 // Graduation year bounds — mirrored server-side.
@@ -569,6 +571,44 @@ const Apply = () => {
   const submitMut = useSubmitApplication();
   const deleteMut = useDeleteApplication();
 
+  // Email lives on the user profile, not the application — unlike location/
+  // certificateName it's saved straight through `/users/me` on blur rather than
+  // riding along with the proposal body (the application DTO has no email field).
+  const updateUserMut = useUpdateUser();
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const emailSeeded = useRef(false);
+  useEffect(() => {
+    if (!profileQuery.data || emailSeeded.current) return;
+    emailSeeded.current = true;
+    // Only seed a blank field — don't clobber an email the applicant already typed
+    // while this query was still loading (same guard as location/certificateName below).
+    setEmail((current) => current || profileQuery.data.email || '');
+  }, [profileQuery.data]);
+  const handleEmailBlur = () => {
+    const trimmed = email.trim();
+    setEmail(trimmed);
+    if (!trimmed) {
+      setEmailError('Email is required.');
+      return;
+    }
+    if (trimmed === profileQuery.data?.email) {
+      setEmailError(null);
+      return;
+    }
+    if (!EMAIL_RE.test(trimmed)) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    updateUserMut.mutate(
+      { email: trimmed },
+      {
+        onError: () => setEmailError('Could not save. Try again.'),
+        onSuccess: () => setEmailError(null),
+      },
+    );
+  };
+
   useEffect(() => {
     if (!submitted) return;
     // Land back on My Applications — the fellowship pages only appear once an
@@ -913,15 +953,42 @@ const Apply = () => {
     setToast({ kind: 'error', msg: 'Please fix the highlighted fields before continuing.' });
   };
 
+  // Email isn't part of `ProposalFields`, so RHF validation never sees it —
+  // gate it here the same way `handleInvalid` gates the rest of the form. Also
+  // confirms the save actually reached the backend (not just the looser local
+  // regex) before letting the applicant continue, since `handleEmailBlur`'s save
+  // is fire-and-forget.
+  const validateEmail = async (): Promise<boolean> => {
+    const trimmed = email.trim();
+    const fail = (msg: string) => {
+      setEmailError(msg);
+      const idx = EDIT_STEPS.findIndex((s) => s.sections.includes('about'));
+      setStep(idx >= 0 ? idx + 1 : 1);
+      setToast({ kind: 'error', msg: 'Please add a valid email before continuing.' });
+      return false;
+    };
+    if (!trimmed) return fail('Email is required.');
+    if (!EMAIL_RE.test(trimmed)) return fail('Enter a valid email address.');
+    if (trimmed === profileQuery.data?.email) return true;
+    try {
+      await updateUserMut.mutateAsync({ email: trimmed });
+      setEmailError(null);
+      return true;
+    } catch {
+      return fail('Could not save. Try again.');
+    }
+  };
+
   // Leaving the last editing step (or jumping to Review) runs full validation.
-  const handleGoToReview = form.handleSubmit(
-    () => persistThenGoTo(REVIEW_STEP),
-    handleInvalid,
-  );
+  const handleGoToReview = async () => {
+    if (!(await validateEmail())) return;
+    await form.handleSubmit(() => persistThenGoTo(REVIEW_STEP), handleInvalid)();
+  };
 
   // Final submit goes through the same full validation, then submits for review.
   const handleSubmit = form.handleSubmit(async () => {
     if (!selectedType) return;
+    if (!(await validateEmail())) return;
     try {
       const id = await persistDraft(buildProposalBody(getValues()));
       if (!id) return;
@@ -1014,6 +1081,11 @@ const Apply = () => {
           isDeveloper={isDeveloper}
           requiresMentorAndProject={requiresMentorAndProject}
           isEducator={isEducator}
+          email={email}
+          onEmailChange={setEmail}
+          onEmailBlur={handleEmailBlur}
+          emailError={emailError}
+          emailSaving={updateUserMut.isPending}
         />
       )}
 
@@ -1526,6 +1598,11 @@ const ApplicationStep = ({
   isDeveloper,
   requiresMentorAndProject,
   isEducator,
+  email,
+  onEmailChange,
+  onEmailBlur,
+  emailError,
+  emailSaving,
 }: {
   form: UseFormReturn<ProposalFields>;
   disabled: boolean;
@@ -1547,6 +1624,12 @@ const ApplicationStep = ({
   isDeveloper: boolean;
   requiresMentorAndProject: boolean;
   isEducator: boolean;
+  /** Profile field, not part of the application — saved straight through `/users/me`. */
+  email: string;
+  onEmailChange: (value: string) => void;
+  onEmailBlur: () => void;
+  emailError: string | null;
+  emailSaving: boolean;
 }) => {
   const { control, getValues, setValue, formState } = form;
   const links = (useWatch({ control, name: 'links' }) as string[] | undefined) ?? [''];
@@ -1981,6 +2064,20 @@ const ApplicationStep = ({
                 disabled={disabled}
                 placeholder="John Doe"
                 slotProps={{ htmlInput: { maxLength: LOCATION_LIMIT } }}
+              />
+            </Box>
+            <Box sx={{ flex: 2, mb: 2.5 }}>
+              <FieldLabel>Email</FieldLabel>
+              <TextField
+                fullWidth
+                type="email"
+                value={email}
+                onChange={(e) => onEmailChange(e.target.value)}
+                onBlur={onEmailBlur}
+                disabled={disabled}
+                placeholder="you@example.com"
+                error={!!emailError}
+                helperText={emailError ?? (emailSaving ? 'Saving…' : "This is the address we'll use to contact you.")}
               />
             </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0, sm: 2 }}>
