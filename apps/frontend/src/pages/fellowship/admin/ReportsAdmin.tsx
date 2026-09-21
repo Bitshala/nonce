@@ -672,6 +672,7 @@ const ReportRow = ({
   const trackColor = track ? TRACK_COLORS[track] : '#a1a1aa';
   const project = useFellowshipProjectTitle(fellowship) || null;
   const email = fellowship?.userEmail ?? null;
+  const updatedAtLabel = formatDateTime(report.updatedAt);
 
   return (
     <Box
@@ -772,9 +773,9 @@ const ReportRow = ({
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         }}
-        title={formatDateTime(report.updatedAt)}
+        title={updatedAtLabel}
       >
-        {formatDateTime(report.updatedAt)}
+        {updatedAtLabel}
       </Typography>
 
       <Box>

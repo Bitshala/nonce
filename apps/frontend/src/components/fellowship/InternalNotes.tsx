@@ -49,7 +49,6 @@ const initialsOf = (name: string): string => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-
 /**
  * Internal, admin-only notes on a fellowship entity — a shared thread admins use
  * while reviewing. This is a presentational panel: it holds the composer / edit /
