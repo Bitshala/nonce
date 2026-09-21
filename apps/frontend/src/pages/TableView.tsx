@@ -26,6 +26,7 @@ import { TableContextMenu } from '../components/table/TableContextMenu';
 import { computeTotal, cohortHasExercises } from '../utils/calculations';
 import { downloadCSV } from '../utils/csvUtils';
 import type { TableRowData } from '../types/student';
+import { STUDENT_COLUMNS } from '../types/student';
 import type { UpdateScoresRequestDto } from '../types/api';
 
 import {
@@ -398,7 +399,7 @@ const TableView: React.FC = () => {
     const hasExercises = cohortHasExercises(cohortData?.type || '');
 
     const headers = [
-      'Name', 'Discord Name', 'Location', 'Email', 'Group', 'TA', 'Attendance',
+      ...STUDENT_COLUMNS.map((c) => c.label), 'Attendance',
       'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
       'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
       ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
@@ -406,7 +407,7 @@ const TableView: React.FC = () => {
     ];
 
     const csvRows = rows.map((r) => [
-      r.discordGlobalName, r.discordUsername, r.location, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      ...STUDENT_COLUMNS.map((c) => r[c.key]), r.attendance ? 'Present' : 'Absent',
       r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
       r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
       ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),

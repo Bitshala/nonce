@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { StudentRow } from './StudentRow';
 import type { TableRowData } from '../../types/student';
+import { STUDENT_COLUMN_LABEL } from '../../types/student';
 
 interface StudentTableGridProps {
   data: TableRowData[];
@@ -111,7 +112,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
                     '& .MuiTableSortLabel-icon': { color: '#3f3f46 !important' },
                   }}
                 >
-                  Name
+                  {STUDENT_COLUMN_LABEL.discordGlobalName}
                 </TableSortLabel>
               </TableCell>
 
@@ -122,7 +123,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
                   display: { xs: 'none', sm: 'table-cell' },
                 }}
               >
-                Discord Name
+                {STUDENT_COLUMN_LABEL.discordUsername}
               </TableCell>
 
               {week > 0 && (
@@ -144,7 +145,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
                       '& .MuiTableSortLabel-icon': { color: '#3f3f46 !important' },
                     }}
                   >
-                    Group
+                    {STUDENT_COLUMN_LABEL.group}
                   </TableSortLabel>
                 </TableCell>
               )}
@@ -156,7 +157,7 @@ export const StudentTableGrid: React.FC<StudentTableGridProps> = ({
                   display: { xs: 'none', md: 'table-cell' },
                 }}
               >
-                TA
+                {STUDENT_COLUMN_LABEL.ta}
               </TableCell>
 
               {showAttendance && (
