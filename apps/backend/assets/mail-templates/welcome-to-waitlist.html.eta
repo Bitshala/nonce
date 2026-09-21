@@ -21,7 +21,7 @@
           <tr>
             <td align="center" style="background-color:#000000; padding:28px 20px 24px 20px;">
               <h1 style="margin:0; font-size:22px; color:#ffffff; font-weight:700;">
-                👋 Welcome <%~ it.userName %>!
+                👋 Welcome <%= it.userName %>!
               </h1>
               <p style="margin:10px 0 0 0; font-size:14px; color:#f9b233; font-weight:500;">
                 You've joined the <%~ it.cohortName %> Waitlist
@@ -38,13 +38,17 @@
                 You're now on the <strong><%~ it.cohortName %></strong> waitlist.
               </p>
 
-              <p style="margin:0 0 20px 0; padding:14px 16px; background-color:#2a2200; border-left:3px solid #f9b233; border-radius:4px;">
-                <strong style="color:#ffd580;">This isn't an automatic seat.</strong>
-                Being on the waitlist doesn't enroll you in the next season — when
-                <strong><%~ it.cohortName %></strong> is announced again, you'll need to
-                register for it yourself at
-                <a href="<%~ it.cohortsUrl %>" style="color:#f9b233; font-weight:600;"><%~ it.cohortsUrl %></a>.
-              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;">
+                <tr>
+                  <td bgcolor="#2a2200" style="padding:14px 16px; border-left:3px solid #f9b233;">
+                    <strong style="color:#ffd580;">This isn't an automatic seat.</strong>
+                    Being on the waitlist doesn't enroll you in the next season — when
+                    <strong><%~ it.cohortName %></strong> is announced again, you'll need to
+                    register for it yourself at
+                    <a href="<%~ it.cohortsUrl %>" style="color:#f9b233; font-weight:600;"><%~ it.cohortsUrl %></a>.
+                  </td>
+                </tr>
+              </table>
 
               <p style="margin:0 0 20px 0;">
                 We'll announce the next season on Discord and by email, so keep an eye

@@ -1,11 +1,11 @@
-👋 Welcome <%~ it.userName %>!
+👋 Welcome <%= it.userName %>!
 
 You've joined the <%~ it.cohortName %> Waitlist
 
 Thanks for raising your hand! 🙌
 You're now on the <%~ it.cohortName %> waitlist.
 
-This isn't an automatic seat: being on the waitlist doesn't enroll you in the next season. When <%~ it.cohortName %> is announced again, you'll need to register for it yourself at <%~ it.cohortsUrl %>.
+This isn't an automatic seat. Being on the waitlist doesn't enroll you in the next season — when <%~ it.cohortName %> is announced again, visit <%~ it.cohortsUrl %> to register.
 
 We'll announce the next season on Discord and by email, so keep an eye on both — but the registration step is on you.
 
