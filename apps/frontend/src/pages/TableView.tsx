@@ -241,9 +241,9 @@ const TableView: React.FC = () => {
       const term = searchTerm.toLowerCase();
       rows = rows.filter((p) =>
         p.name.toLowerCase().includes(term) ||
-        p.discordGlobalName?.toLowerCase().includes(term) ||
+        p.discordGlobalName.toLowerCase().includes(term) ||
         p.discordUsername.toLowerCase().includes(term) ||
-        p.email?.toLowerCase().includes(term)
+        p.email.toLowerCase().includes(term)
       );
     }
 
