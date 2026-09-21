@@ -242,7 +242,7 @@ const TableView: React.FC = () => {
       rows = rows.filter((p) =>
         p.name.toLowerCase().includes(term) ||
         p.discordGlobalName?.toLowerCase().includes(term) ||
-        p.discordUsername?.toLowerCase().includes(term) ||
+        p.discordUsername.toLowerCase().includes(term) ||
         p.email?.toLowerCase().includes(term)
       );
     }
@@ -406,15 +406,14 @@ const TableView: React.FC = () => {
     ];
 
     const csvRows = rows.map((r) => [
-      r.name, r.discordGlobalName, r.location, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.discordGlobalName, r.discordUsername, r.location, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
       r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
       r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
       ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),
       r.total,
     ]);
 
-    const weekLabel = weekIndex !== undefined ? `week${weekIndex}` : 'all';
-    downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
+    downloadCSV(headers, csvRows, `students-week${weekIndex}.csv`);
   }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
   const handleOpenScheduleDate = useCallback(() => {
