@@ -217,7 +217,7 @@ export const StudentRow: React.FC<StudentRowProps> = ({
       {/* Discord Username */}
       <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
         <Typography variant="body2" color="text.primary">
-          {person.email || '-'}
+          {person.discordUsername || '-'}
         </Typography>
       </TableCell>
 

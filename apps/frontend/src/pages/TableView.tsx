@@ -179,7 +179,9 @@ const TableView: React.FC = () => {
         userId: score.userId, // maintain for API calls
         name: score.name ?? score.discordGlobalName ?? score.discordUsername ?? 'Unknown',
         discordGlobalName: score.discordGlobalName ?? score.discordUsername ?? score.name ?? 'Unknown',
-        email: score.discordUsername ?? '', // discord username
+        discordUsername: score.discordUsername ?? '',
+        email: score.email ?? '',
+        location: score.location ?? '',
         group: `Group ${groupNumber}`,
         ta: taName,
         attendance: isPresent,
@@ -239,8 +241,9 @@ const TableView: React.FC = () => {
       const term = searchTerm.toLowerCase();
       rows = rows.filter((p) =>
         p.name.toLowerCase().includes(term) ||
-        p.discordGlobalName?.toLowerCase().includes(term) ||
-        p.email?.toLowerCase().includes(term)
+        p.discordGlobalName.toLowerCase().includes(term) ||
+        p.discordUsername.toLowerCase().includes(term) ||
+        p.email.toLowerCase().includes(term)
       );
     }
 
@@ -395,7 +398,7 @@ const TableView: React.FC = () => {
     const hasExercises = cohortHasExercises(cohortData?.type || '');
 
     const headers = [
-      'Name', 'Discord Name', 'Group', 'TA', 'Attendance',
+      'Name', 'Discord Name', 'Location', 'Email', 'Group', 'TA', 'Attendance',
       'Communication', 'Depth of Answer', 'Technical Bitcoin Fluency', 'Engagement',
       'Bonus Attempt', 'Bonus Good', 'Bonus Follow Up',
       ...(hasExercises ? ['Exercise Submitted', 'Exercise Passing'] : []),
@@ -403,15 +406,14 @@ const TableView: React.FC = () => {
     ];
 
     const csvRows = rows.map((r) => [
-      r.name, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
+      r.discordGlobalName, r.discordUsername, r.location, r.email, r.group, r.ta, r.attendance ? 'Present' : 'Absent',
       r.gdScore?.fa ?? '-', r.gdScore?.fb ?? '-', r.gdScore?.fc ?? '-', r.gdScore?.fd ?? '-',
       r.bonusScore?.attempt ?? '-', r.bonusScore?.good ?? '-', r.bonusScore?.followUp ?? '-',
       ...(hasExercises ? [r.exerciseScore?.Submitted ? 'Yes' : 'No', r.exerciseScore?.privateTest ? 'Yes' : 'No'] : []),
       r.total,
     ]);
 
-    const weekLabel = weekIndex !== undefined ? `week${weekIndex}` : 'all';
-    downloadCSV(headers, csvRows, `students-${weekLabel}.csv`);
+    downloadCSV(headers, csvRows, `students-week${weekIndex}.csv`);
   }, [sortedFilteredData, cohortData?.type, weekIndex]);
 
   const handleOpenScheduleDate = useCallback(() => {
