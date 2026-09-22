@@ -9,6 +9,7 @@ root of that repository.
 assignment-grader/
 ├── .github/workflows/grade.yml   the only workflow that ever runs
 ├── run-tests.sh                  language-agnostic entrypoint
+├── grade-local.sh                run a suite on your machine
 ├── report.schema.json            the grading contract
 ├── manifest.schema.json          what each assignment declares to the workflow
 ├── lib/                          helpers shared by every grade.sh
@@ -70,6 +71,30 @@ which fixes the credentials and ports the assertions assume.
 
 For `pb-*`, where the book puts each `TestCase` in the same file as the function it
 tests, `fixtures/` carries a separate module of authoritative assertions instead.
+
+### Trying it locally
+
+```shell
+./grade-local.sh <suite> <student-repo> [--keep]
+./grade-local.sh bpd-week-1 ~/Desktop/Projects/bitshala-classrooms/bpd-week-1-assignment
+```
+
+Stages the workspace exactly as the `fetch` job does — student tree with `.git`
+and `.github` stripped, this assignment's tests, `lib/` beside them — so a suite
+that passes here and fails in CI means the two have drifted.
+
+It copies the student repo rather than grading in place, because `restore_fixtures`
+overwrites test files and `services_up` leaves a `.compose-file` and `logs/` behind;
+pointing it at a template checkout should not edit that checkout. `--keep` leaves
+the workspace for inspection.
+
+Toolchain versions are reported rather than installed — it uses whatever you have,
+and says so where that differs from the manifest. When a suite asks for python it
+builds a venv first, so `pip install` inside a grader does not reach your system
+python, which is the isolation `actions/setup-python` provides in CI.
+
+What it does not reproduce: the permission split. Everything runs as you. That
+split is about what *student code* can reach, and there is no student here.
 
 ### manifest.json
 
