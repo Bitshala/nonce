@@ -40,9 +40,11 @@ export interface TableRowData {
   discordRoleAssigned: boolean;
 }
 
-// Single source of truth for the label<->field pairs shared by the grid
-// header and the CSV export, so the two can't drift apart (see PR #38).
-type StudentTextField = 'discordGlobalName' | 'discordUsername' | 'location' | 'email' | 'group' | 'ta';
+// Single source of truth for the label text shared by the grid header and
+// the CSV export, so wording can't drift apart (see PR #38). The grid still
+// hand-writes its header cells (per-column sort handlers, sticky/responsive
+// styling), so this shares label text only, not the column set itself.
+export type StudentTextField = 'discordGlobalName' | 'discordUsername' | 'location' | 'email' | 'group' | 'ta';
 
 export const STUDENT_COLUMNS: { key: StudentTextField; label: string }[] = [
   { key: 'discordGlobalName', label: 'Name' },
@@ -53,9 +55,9 @@ export const STUDENT_COLUMNS: { key: StudentTextField; label: string }[] = [
   { key: 'ta', label: 'TA' },
 ];
 
-export const STUDENT_COLUMN_LABEL: Record<string, string> = Object.fromEntries(
+export const STUDENT_COLUMN_LABEL = Object.fromEntries(
   STUDENT_COLUMNS.map((c) => [c.key, c.label])
-);
+) as Record<StudentTextField, string>;
 
 // Weekly data for student detail view
 export interface WeeklyData {
