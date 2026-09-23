@@ -40,6 +40,23 @@ export interface TableRowData {
   discordRoleAssigned: boolean;
 }
 
+// Column names/labels shared by the grid and CSV export, tied to TableRowData's fields so a rename breaks the build instead of silently exporting blanks.
+type StringKeys<T> = { [K in keyof T]-?: T[K] extends string ? K : never }[keyof T];
+export type StudentTextField = StringKeys<Pick<TableRowData, 'discordGlobalName' | 'discordUsername' | 'location' | 'email' | 'group' | 'ta'>>;
+
+export const STUDENT_COLUMNS: { key: StudentTextField; label: string }[] = [
+  { key: 'discordGlobalName', label: 'Name' },
+  { key: 'discordUsername', label: 'Discord Name' },
+  { key: 'location', label: 'Location' },
+  { key: 'email', label: 'Email' },
+  { key: 'group', label: 'Group' },
+  { key: 'ta', label: 'TA' },
+];
+
+export const STUDENT_COLUMN_LABEL = Object.fromEntries(
+  STUDENT_COLUMNS.map((c) => [c.key, c.label])
+) as Record<StudentTextField, string>;
+
 // Weekly data for student detail view
 export interface WeeklyData {
   week: number;
