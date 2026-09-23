@@ -47,6 +47,7 @@ import {
   type GetFellowshipResponseDto,
 } from '../../../types/fellowship';
 import { SortOrder } from '@nonce/shared';
+import { formatDateTime } from '../../../utils/dateUtils';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';
 import { formatFellowshipType } from '../../../utils/fellowshipFormat';
 
@@ -120,11 +121,6 @@ const monthShort = (m: number) =>
   new Date(2024, m - 1, 1).toLocaleDateString('en-US', { month: 'short' });
 
 const formatMonthYear = (month: number, year: number) => `${monthShort(month)} ${year}`;
-const formatShortDate = (iso: string | null): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-};
 
 // ---- page ----
 
@@ -326,7 +322,7 @@ const ReportsAdmin = () => {
         }}
       >
         <TableContainer sx={{ overflowX: 'auto' }}>
-          <Table>
+          <Table sx={{ minWidth: 870 }}>
             <TableHead>
               <HeaderRow />
             </TableHead>
@@ -338,7 +334,7 @@ const ReportsAdmin = () => {
             >
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ border: 'none' }}>
+                  <TableCell colSpan={COLUMN_COUNT} sx={{ border: 'none' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                       <CircularProgress size={22} />
                     </Box>
@@ -346,7 +342,7 @@ const ReportsAdmin = () => {
                 </TableRow>
               ) : records.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ border: 'none' }}>
+                  <TableCell colSpan={COLUMN_COUNT} sx={{ border: 'none' }}>
                     <Box sx={{ py: 6, textAlign: 'center' }}>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         No reports match these filters.
@@ -629,17 +625,20 @@ const RowsPerPageSelect = ({
 // content together, so columns stay aligned down the table for free — no
 // per-row grid-track math to keep in sync. Matches the pattern already
 // established in components/ui/CohortTable.tsx.
-const headCellSx = { py: 1.25, px: 2 };
+const headCellSx = { py: 1.25, px: 2, letterSpacing: 0.8 };
 const cellSx = { py: 1.75, px: 2 };
+// Must match the number of <TableCell>s in HeaderRow — used for colSpan on
+// the loading/empty placeholder rows.
+const COLUMN_COUNT = 6;
 
 const HeaderRow = () => (
   <TableRow>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8, maxWidth: 180 }}>Fellow</TableCell>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8, maxWidth: 200 }}>Email</TableCell>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8, maxWidth: 220 }}>Project</TableCell>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8 }}>Month</TableCell>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8 }}>Submitted</TableCell>
-    <TableCell sx={{ ...headCellSx, letterSpacing: 0.8 }}>Status</TableCell>
+    <TableCell sx={{ ...headCellSx, maxWidth: 180 }}>Fellow</TableCell>
+    <TableCell sx={{ ...headCellSx, maxWidth: 200 }}>Email</TableCell>
+    <TableCell sx={{ ...headCellSx, maxWidth: 220 }}>Project</TableCell>
+    <TableCell sx={headCellSx}>Month</TableCell>
+    <TableCell sx={headCellSx}>Submitted</TableCell>
+    <TableCell sx={headCellSx}>Status</TableCell>
   </TableRow>
 );
 
@@ -652,7 +651,7 @@ const FellowEmailLink = ({ email }: { email: string }) => (
     sx={{
       display: 'inline-flex',
       alignItems: 'center',
-      maxWidth: '100%',
+      maxWidth: 170,
       color: 'text.secondary',
       fontFamily: fontFamilyMono,
       fontSize: '0.78rem',
@@ -692,10 +691,10 @@ const ReportRow = ({
   const trackColor = track ? TRACK_COLORS[track] : '#a1a1aa';
   const project = useFellowshipProjectTitle(fellowship) || null;
   const email = fellowship?.userEmail ?? null;
+  const updatedAtLabel = formatDateTime(report.updatedAt);
 
   return (
     <TableRow
-      hover
       onClick={onOpen}
       sx={{
         cursor: 'pointer',
@@ -731,6 +730,7 @@ const ReportRow = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                maxWidth: 150,
               }}
             >
               {report.fellowName ?? '—'}
@@ -768,6 +768,7 @@ const ReportRow = ({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            maxWidth: 190,
           }}
           title={project ?? undefined}
         >
@@ -782,8 +783,15 @@ const ReportRow = ({
       </TableCell>
 
       <TableCell sx={cellSx}>
-        <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.82rem', color: 'text.secondary' }}>
-          {formatShortDate(report.updatedAt)}
+        <Typography
+          sx={{
+            fontFamily: fontFamilyMono,
+            fontSize: '0.82rem',
+            color: 'text.secondary',
+          }}
+          title={updatedAtLabel}
+        >
+          {updatedAtLabel}
         </Typography>
       </TableCell>
 
@@ -849,7 +857,7 @@ const ReportDetail = ({
             </Typography>
           )}
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Submitted {formatShortDate(report.updatedAt)}
+            Submitted {formatDateTime(report.updatedAt)}
           </Typography>
         </Box>
         <StatusChip status={report.status} size="medium" />

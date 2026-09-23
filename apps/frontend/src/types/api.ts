@@ -99,6 +99,8 @@ export interface WeeklyScore {
 
 export interface UsersWeekScoreResponseDto extends WeeklyScore {
   userId: string;
+  email: string | null;
+  location: string | null;
   discordUsername: string;
   discordGlobalName: string | null;
   name: string | null;
@@ -131,6 +133,7 @@ export interface GetUsersScoresResponseDto {
 }
 
 export interface UpdateUserRequest {
+  email?: string;
   name?: string;
   description?: string;
   background?: string;

@@ -59,6 +59,7 @@ import {
   type GetFellowshipApplicationResponseDto,
 } from '../../../types/fellowship';
 import { SortOrder } from '@nonce/shared';
+import { formatDateTime } from '../../../utils/dateUtils';
 import { extractErrorMessage, isBadFilterError } from '../../../utils/errorUtils';
 import { formatFellowshipType } from '../../../utils/fellowshipFormat';
 import { normalizeGithub } from '../../../utils/proposalFormat';
@@ -83,8 +84,10 @@ const FILTERS: { label: string; value: FilterValue }[] = [
   { label: 'All', value: 'ALL' },
 ];
 
-// The server only sorts applications by createdAt/updatedAt, so the old
-// "by name" sort is gone — these map onto the supported fields.
+// "Newest"/"Oldest" sort by submittedAt, not createdAt — that's the date the
+// list actually displays (submittedAt ?? createdAt), so the sort matches
+// what's on screen instead of when the (possibly long-drafted) row was
+// created.
 type SortKey = 'newest' | 'oldest' | 'updated';
 
 const SORT_OPTIONS: {
@@ -93,8 +96,8 @@ const SORT_OPTIONS: {
   sortBy: FellowshipApplicationsSortBy;
   sortOrder: SortOrder;
 }[] = [
-  { label: 'Newest', value: 'newest', sortBy: 'createdAt', sortOrder: SortOrder.DESC },
-  { label: 'Oldest', value: 'oldest', sortBy: 'createdAt', sortOrder: SortOrder.ASC },
+  { label: 'Newest', value: 'newest', sortBy: 'submittedAt', sortOrder: SortOrder.DESC },
+  { label: 'Oldest', value: 'oldest', sortBy: 'submittedAt', sortOrder: SortOrder.ASC },
   { label: 'Recently updated', value: 'updated', sortBy: 'updatedAt', sortOrder: SortOrder.DESC },
 ];
 
@@ -126,17 +129,6 @@ const AVATAR_TINTS: { bg: string; color: string }[] = [
 ];
 
 const tintFor = (seed: string) => AVATAR_TINTS[hash(seed) % AVATAR_TINTS.length];
-
-const relativeDays = (iso: string | null): string => {
-  if (!iso) return '—';
-  const ms = Date.now() - new Date(iso).getTime();
-  const d = Math.floor(ms / (1000 * 60 * 60 * 24));
-  if (d <= 0) return 'today';
-  if (d === 1) return '1d ago';
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  return mo === 1 ? '1mo ago' : `${mo}mo ago`;
-};
 
 // ---- page ----
 
@@ -687,7 +679,7 @@ const ApplicantList = ({
                   }}
                 >
                   {formatFellowshipType(r.type)} fellowship ·{' '}
-                  {relativeDays(r.submittedAt ?? r.createdAt)}
+                  {formatDateTime(r.submittedAt ?? r.createdAt)}
                 </Typography>
                 <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
                   <StatusChip status={r.status} />
@@ -864,7 +856,7 @@ const DetailPane = ({
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {formatFellowshipType(app.type)}
               {handle && <> · {handle}</>}
-              <> · submitted {relativeDays(app.submittedAt ?? app.createdAt)}</>
+              <> · submitted {formatDateTime(app.submittedAt ?? app.createdAt)}</>
             </Typography>
           </Box>
 
