@@ -14,6 +14,12 @@ import {
   Link,
   MenuItem,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -313,41 +319,59 @@ const ReportsAdmin = () => {
           borderColor: 'divider',
           borderRadius: 0.75,
           bgcolor: 'background.paper',
-          overflowX: 'auto',
         }}
       >
-        <HeaderRow />
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress size={22} />
-          </Box>
-        ) : records.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              No reports match these filters.
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            {records.map((r) => (
-              <ReportRow
-                key={r.id}
-                report={r}
-                fellowship={r.fellowship}
-                onOpen={() => setSelected(r)}
-              />
-            ))}
-            {totalRecords > 0 && (
-              <PaginationFooter
-                page={page}
-                pageCount={pageCount}
-                total={totalRecords}
-                pageSize={pageSize}
-                onChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            )}
-          </>
+        <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 870 }}>
+            <TableHead>
+              <HeaderRow />
+            </TableHead>
+            <TableBody
+              sx={{
+                '& > tr:nth-of-type(odd)': { bgcolor: ROW_BG_DARK },
+                '& > tr:nth-of-type(even)': { bgcolor: ROW_BG_LIGHT },
+              }}
+            >
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_COUNT} sx={{ border: 'none' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={22} />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : records.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={COLUMN_COUNT} sx={{ border: 'none' }}>
+                    <Box sx={{ py: 6, textAlign: 'center' }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        No reports match these filters.
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                records.map((r) => (
+                  <ReportRow
+                    key={r.id}
+                    report={r}
+                    fellowship={r.fellowship}
+                    onOpen={() => setSelected(r)}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {!isLoading && records.length > 0 && totalRecords > 0 && (
+          <PaginationFooter
+            page={page}
+            pageCount={pageCount}
+            total={totalRecords}
+            pageSize={pageSize}
+            onChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </Box>
 
@@ -597,35 +621,25 @@ const RowsPerPageSelect = ({
 
 // ---- table ----
 
-// Project's max is a fixed length, not fr, so a long title can't stretch the row.
-const COLS =
-  'minmax(160px, 1.3fr) minmax(180px, 1.3fr) minmax(150px, 260px) minmax(100px, 0.8fr) minmax(100px, 0.8fr) minmax(120px, 0.9fr)';
-const COL_GAP = 3;
+// Real <table> layout: the browser sizes every column once, from all rows'
+// content together, so columns stay aligned down the table for free — no
+// per-row grid-track math to keep in sync. Matches the pattern already
+// established in components/ui/CohortTable.tsx.
+const headCellSx = { py: 1.25, px: 2, letterSpacing: 0.8 };
+const cellSx = { py: 1.75, px: 2 };
+// Must match the number of <TableCell>s in HeaderRow — used for colSpan on
+// the loading/empty placeholder rows.
+const COLUMN_COUNT = 6;
 
 const HeaderRow = () => (
-  <Box
-    sx={{
-      display: 'grid',
-      gridTemplateColumns: COLS,
-      columnGap: COL_GAP,
-      px: 3,
-      py: 1.25,
-      borderBottom: '1px solid',
-      borderColor: 'divider',
-      color: 'text.secondary',
-      fontSize: '0.66rem',
-      letterSpacing: 0.8,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-    }}
-  >
-    <Box>Fellow</Box>
-    <Box>Email</Box>
-    <Box>Project</Box>
-    <Box>Month</Box>
-    <Box>Submitted</Box>
-    <Box>Status</Box>
-  </Box>
+  <TableRow>
+    <TableCell sx={{ ...headCellSx, maxWidth: 180 }}>Fellow</TableCell>
+    <TableCell sx={{ ...headCellSx, maxWidth: 200 }}>Email</TableCell>
+    <TableCell sx={{ ...headCellSx, maxWidth: 220 }}>Project</TableCell>
+    <TableCell sx={headCellSx}>Month</TableCell>
+    <TableCell sx={headCellSx}>Submitted</TableCell>
+    <TableCell sx={headCellSx}>Status</TableCell>
+  </TableRow>
 );
 
 const FellowEmailLink = ({ email }: { email: string }) => (
@@ -637,8 +651,7 @@ const FellowEmailLink = ({ email }: { email: string }) => (
     sx={{
       display: 'inline-flex',
       alignItems: 'center',
-      minWidth: 0,
-      maxWidth: '100%',
+      maxWidth: 170,
       color: 'text.secondary',
       fontFamily: fontFamilyMono,
       fontSize: '0.78rem',
@@ -658,6 +671,12 @@ const FellowEmailLink = ({ email }: { email: string }) => (
   </Link>
 );
 
+// Zebra striping against the container's own background.paper (#19191d) —
+// one shade darker, one lighter, so rows stay readable without a divider on
+// every line.
+const ROW_BG_DARK = '#151518';
+const ROW_BG_LIGHT = '#1e1e23';
+
 const ReportRow = ({
   report,
   fellowship,
@@ -675,113 +694,111 @@ const ReportRow = ({
   const updatedAtLabel = formatDateTime(report.updatedAt);
 
   return (
-    <Box
+    <TableRow
       onClick={onOpen}
       sx={{
-        display: 'grid',
-        gridTemplateColumns: COLS,
-        columnGap: COL_GAP,
-        alignItems: 'center',
-        px: 3,
-        py: 1.75,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
         cursor: 'pointer',
-        transition: 'background-color 0.12s',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.025)' },
-        '&:last-of-type': { borderBottom: 'none' },
+        '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+        '&:last-child td': { borderBottom: 'none' },
       }}
     >
-      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-        <Box
-          sx={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            bgcolor: tint.bg,
-            color: tint.color,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          {initials(report.fellowName)}
-        </Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            title={report.fellowName ?? undefined}
+      <TableCell sx={{ ...cellSx, maxWidth: 180 }}>
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <Box
             sx={{
-              fontWeight: 600,
-              fontSize: '0.86rem',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              bgcolor: tint.bg,
+              color: tint.color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              flexShrink: 0,
             }}
           >
-            {report.fellowName ?? '—'}
-          </Typography>
-          {track && (
+            {initials(report.fellowName)}
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography
-              variant="caption"
+              title={report.fellowName ?? undefined}
               sx={{
-                color: trackColor,
-                fontSize: '0.66rem',
-                letterSpacing: 0.8,
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: '0.86rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 150,
               }}
             >
-              {formatFellowshipType(track)}
+              {report.fellowName ?? '—'}
             </Typography>
-          )}
-        </Box>
-      </Stack>
+            {track && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: trackColor,
+                  fontSize: '0.66rem',
+                  letterSpacing: 0.8,
+                  fontWeight: 700,
+                }}
+              >
+                {formatFellowshipType(track)}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </TableCell>
 
-      <Box sx={{ minWidth: 0 }}>
+      <TableCell sx={{ ...cellSx, maxWidth: 200 }}>
         {email ? (
           <FellowEmailLink email={email} />
         ) : (
           <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>—</Typography>
         )}
-      </Box>
+      </TableCell>
 
-      <Typography
-        sx={{
-          fontSize: '0.82rem',
-          color: project ? 'text.primary' : 'text.secondary',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-        title={project ?? undefined}
-      >
-        {project ?? '—'}
-      </Typography>
+      <TableCell sx={{ ...cellSx, maxWidth: 220 }}>
+        <Typography
+          sx={{
+            fontSize: '0.82rem',
+            color: project ? 'text.primary' : 'text.secondary',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: 190,
+          }}
+          title={project ?? undefined}
+        >
+          {project ?? '—'}
+        </Typography>
+      </TableCell>
 
-      <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.82rem' }}>
-        {formatMonthYear(report.month, report.year)}
-      </Typography>
+      <TableCell sx={cellSx}>
+        <Typography sx={{ fontFamily: fontFamilyMono, fontSize: '0.82rem' }}>
+          {formatMonthYear(report.month, report.year)}
+        </Typography>
+      </TableCell>
 
-      <Typography
-        sx={{
-          fontFamily: fontFamilyMono,
-          fontSize: '0.82rem',
-          color: 'text.secondary',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-        title={updatedAtLabel}
-      >
-        {updatedAtLabel}
-      </Typography>
+      <TableCell sx={cellSx}>
+        <Typography
+          sx={{
+            fontFamily: fontFamilyMono,
+            fontSize: '0.82rem',
+            color: 'text.secondary',
+          }}
+          title={updatedAtLabel}
+        >
+          {updatedAtLabel}
+        </Typography>
+      </TableCell>
 
-      <Box>
+      <TableCell sx={cellSx}>
         <StatusChip status={report.status} />
-      </Box>
-    </Box>
+      </TableCell>
+    </TableRow>
   );
 };
 
