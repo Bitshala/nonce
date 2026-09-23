@@ -40,11 +40,9 @@ export interface TableRowData {
   discordRoleAssigned: boolean;
 }
 
-// Single source of truth for the label text shared by the grid header and
-// the CSV export, so wording can't drift apart (see PR #38). The grid still
-// hand-writes its header cells (per-column sort handlers, sticky/responsive
-// styling), so this shares label text only, not the column set itself.
-export type StudentTextField = 'discordGlobalName' | 'discordUsername' | 'location' | 'email' | 'group' | 'ta';
+// Column names/labels shared by the grid and CSV export, tied to TableRowData's fields so a rename breaks the build instead of silently exporting blanks.
+type StringKeys<T> = { [K in keyof T]-?: T[K] extends string ? K : never }[keyof T];
+export type StudentTextField = StringKeys<Pick<TableRowData, 'discordGlobalName' | 'discordUsername' | 'location' | 'email' | 'group' | 'ta'>>;
 
 export const STUDENT_COLUMNS: { key: StudentTextField; label: string }[] = [
   { key: 'discordGlobalName', label: 'Name' },
