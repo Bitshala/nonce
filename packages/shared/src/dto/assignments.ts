@@ -210,11 +210,18 @@ export interface AdminSubmissionResponse extends SubmissionResponse {
   repoFullName: string | null;
   isSubmitted: boolean;
   isPassing: boolean;
+  /** Staff pins on the score. Null means that field follows grading. */
+  isSubmittedOverride: boolean | null;
+  isPassingOverride: boolean | null;
 }
 
+/**
+ * Per field: a boolean pins it, null clears the pin and hands the field back
+ * to grading, and leaving it out changes nothing.
+ */
 export interface UpdateSubmissionScoreRequest {
-  isSubmitted?: boolean;
-  isPassing?: boolean;
+  isSubmitted?: boolean | null;
+  isPassing?: boolean | null;
 }
 
 export interface SyncAssignmentsResponse {

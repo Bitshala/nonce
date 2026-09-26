@@ -88,7 +88,7 @@ export class AdminAssignmentsController {
     @ApiOperation({
         summary: 'Manually override a submission’s exercise score',
         description:
-            'Writes ExerciseScore directly for cases grading cannot express. Runs are left untouched.',
+            'For cases grading cannot express. Each field sent pins that part of the score, so later saves, runs, and regrades keep it. Send null to clear a pin and hand the field back to grading.',
     })
     async overrideScore(
         @Param('id', ParseUUIDPipe) id: string,

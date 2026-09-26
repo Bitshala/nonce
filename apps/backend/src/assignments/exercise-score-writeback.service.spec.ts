@@ -90,6 +90,40 @@ describe('ExerciseScoreWritebackService — sync', () => {
         expect(row.isPassing).toBe(true);
     });
 
+    it('lets a staff pin win over grading, field by field', async () => {
+        // Commits and a best run say submitted and passing; the pins say
+        // otherwise, and a manual call has to survive the next save or run.
+        const row = await runSync(
+            buildSubmission({
+                bestRun: { id: 'run-1' } as never,
+                isSubmittedOverride: false,
+                isPassingOverride: false,
+            }),
+        );
+
+        expect(row.isSubmitted).toBe(false);
+        expect(row.isPassing).toBe(false);
+    });
+
+    it('can pin a pass that grading never gave', async () => {
+        const row = await runSync(buildSubmission({ isPassingOverride: true }));
+
+        expect(row.isPassing).toBe(true);
+    });
+
+    it('follows grading for a field whose pin is null', async () => {
+        const row = await runSync(
+            buildSubmission({
+                bestRun: { id: 'run-1' } as never,
+                isSubmittedOverride: null,
+                isPassingOverride: null,
+            }),
+        );
+
+        expect(row.isSubmitted).toBe(true);
+        expect(row.isPassing).toBe(true);
+    });
+
     it('records the repository url the same way the Classroom sync did', async () => {
         const row = (await runSync(buildSubmission())) as ExerciseScore;
 
