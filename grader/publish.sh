@@ -3,7 +3,7 @@
 # Publish this directory to the root of the grader repository.
 #
 #   ./grader/publish.sh                      # uses githubApp.graderRepo's default
-#   ./grader/publish.sh git@github.com:Bitshala/assignment-grader.git
+#   ./grader/publish.sh git@github.com:Bitshala-Classrooms/assignment-grader.git
 #   ./grader/publish.sh <url> --dry-run
 #
 # The grader repo is a *published artifact*, not a place to edit. This
@@ -24,7 +24,7 @@ set -euo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 PREFIX="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")"
 
-REMOTE_URL="${1:-git@github.com:Bitshala/assignment-grader.git}"
+REMOTE_URL="${1:-git@github.com:Bitshala-Classrooms/assignment-grader.git}"
 DRY_RUN="${2:-}"
 
 cd "$REPO_ROOT"

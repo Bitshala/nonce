@@ -55,5 +55,5 @@ jobs:
 
       - name: Publish
         env:
-          GRADER_REMOTE: ${{ vars.GRADER_REMOTE || 'git@github.com:Bitshala/assignment-grader.git' }}
+          GRADER_REMOTE: ${{ vars.GRADER_REMOTE || 'git@github.com:Bitshala-Classrooms/assignment-grader.git' }}
         run: ./grader/publish.sh "$GRADER_REMOTE"

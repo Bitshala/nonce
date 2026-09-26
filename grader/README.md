@@ -1,6 +1,6 @@
 # Assignment grader
 
-These files run from a **separate private repository** — `Bitshala/assignment-grader`
+These files run from a **separate private repository** — `Bitshala-Classrooms/assignment-grader`
 by default, configured as `githubApp.graderRepo`. They are authored here, so that a
 change to a test suite is reviewed in the same pull request as the backend change that
 depends on it.
@@ -55,7 +55,7 @@ assignment-grader/
    merging, publish by hand:
 
    ```shell
-   ./grader/publish.sh git@github.com:Bitshala/assignment-grader.git
+   ./grader/publish.sh git@github.com:Bitshala-Classrooms/assignment-grader.git
    ./grader/publish.sh <url> --dry-run   # show what would be pushed
    ```
 
