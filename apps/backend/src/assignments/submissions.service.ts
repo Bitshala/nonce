@@ -2,7 +2,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
     BadRequestException,
     ConflictException,
-    ForbiddenException,
     Inject,
     Injectable,
     Logger,
@@ -19,7 +18,7 @@ import { BlobContent, RepoTree } from '@/github-app/client/response';
 import { AssignmentsService } from '@/assignments/assignments.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
-import { AssignmentStatus, ProvisionStatus } from '@/common/enum';
+import { ProvisionStatus } from '@/common/enum';
 import {
     CommitConflictResponseDto,
     CreateCommitResponseDto,
@@ -391,18 +390,9 @@ export class SubmissionsService {
     }
 
     private assertWritable(submission: AssignmentSubmission): void {
-        const assignment = submission.assignment;
-
-        if (assignment.status === AssignmentStatus.CLOSED) {
-            throw new ForbiddenException('This assignment is closed.');
-        }
         // Past the deadline, saving is still allowed by default so students can
         // keep practising. Scoring is gated separately, at dispatch time.
-        if (assignment.isPastDeadline() && !assignment.allowLateSubmission) {
-            throw new ForbiddenException(
-                'The deadline for this assignment has passed.',
-            );
-        }
+        this.assignmentsService.assertOpenForSubmission(submission.assignment);
     }
 
     private repoOf(submission: AssignmentSubmission): {

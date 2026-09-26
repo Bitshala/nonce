@@ -30,7 +30,7 @@ import { AssignmentsService } from '@/assignments/assignments.service';
 import { SubmissionsService } from '@/assignments/submissions.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
-import { AssignmentStatus, CIRunConclusion, CIRunStatus } from '@/common/enum';
+import { CIRunConclusion, CIRunStatus } from '@/common/enum';
 import {
     CIRunDetailResponseDto,
     CIRunLogResponseDto,
@@ -105,15 +105,7 @@ export class RunsService {
             user,
         );
         const assignment = submission.assignment;
-
-        if (assignment.status === AssignmentStatus.CLOSED) {
-            throw new ForbiddenException('This assignment is closed.');
-        }
-        if (assignment.isPastDeadline() && !assignment.allowLateSubmission) {
-            throw new ForbiddenException(
-                'The deadline for this assignment has passed.',
-            );
-        }
+        this.assignmentsService.assertOpenForSubmission(assignment);
 
         // Re-pressing Run on a commit that is already grading returns the run in
         // flight rather than burning quota on a duplicate.

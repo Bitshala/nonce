@@ -139,11 +139,7 @@ export class AssignmentsService {
                 `This assignment is ${assignment.status.toLowerCase()} and cannot be accepted.`,
             );
         }
-        if (assignment.isPastDeadline() && !assignment.allowLateSubmission) {
-            throw new ForbiddenException(
-                'The deadline for this assignment has passed.',
-            );
-        }
+        this.assertOpenForSubmission(assignment);
 
         const existing = await this.findSubmission(assignmentId, user.id);
         if (existing) return new SubmissionResponseDto(existing, assignmentId);
@@ -186,6 +182,19 @@ export class AssignmentsService {
             }
             throw error;
         }
+    }
+
+    /**
+     * The gate on student work: accepting, saving, and running all pass
+     * through here. Staff regrades deliberately do not.
+     */
+    assertOpenForSubmission(assignment: Assignment): void {
+        if (assignment.isOpenForSubmission()) return;
+        throw new ForbiddenException(
+            assignment.status === AssignmentStatus.CLOSED
+                ? 'This assignment is closed.'
+                : 'The deadline for this assignment has passed.',
+        );
     }
 
     /**

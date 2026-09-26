@@ -107,6 +107,8 @@ export interface AssignmentSummaryResponse {
   deadline: string | null;
   allowLateSubmission: boolean;
   isPastDeadline: boolean;
+  /** Whether the student may still accept, save, and run. Decided server-side. */
+  isOpenForSubmission: boolean;
   maxRunsPerDay: number;
   /** Null until the student accepts. */
   submission: SubmissionResponse | null;
