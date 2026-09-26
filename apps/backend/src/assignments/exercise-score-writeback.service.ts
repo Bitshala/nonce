@@ -72,10 +72,13 @@ export class ExerciseScoreWritebackService {
             );
         }
 
-        score.isSubmitted = submission.hasStudentCommits;
+        // A staff pin wins, field by field; without one, grading decides.
+        score.isSubmitted =
+            submission.isSubmittedOverride ?? submission.hasStudentCommits;
         // bestRun is the first score-eligible run that passed, and is never
         // cleared — breaking your code after passing does not un-pass you.
-        score.isPassing = submission.bestRun != null;
+        score.isPassing =
+            submission.isPassingOverride ?? submission.bestRun != null;
         score.classroomRepositoryUrl = submission.repoHtmlUrl;
 
         await manager.save(score);

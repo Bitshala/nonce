@@ -79,6 +79,15 @@ export class AssignmentSubmission extends BaseEntity {
     @ManyToOne(() => CIRun, { nullable: true })
     latestRun!: CIRun | null;
 
+    // Staff pins on the score, one per ExerciseScore field. Null follows
+    // grading; a value wins over whatever commits and runs say, so a manual
+    // call survives the student's next save, run, or a regrade.
+    @Column('boolean', { nullable: true })
+    isSubmittedOverride!: boolean | null;
+
+    @Column('boolean', { nullable: true })
+    isPassingOverride!: boolean | null;
+
     @OneToMany(() => CIRun, (r) => r.submission)
     runs!: CIRun[];
 

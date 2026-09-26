@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import { RunsService } from '@/assignments/runs.service';
+import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
@@ -19,8 +20,10 @@ describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
 
     const assignmentRepository = { findOne: jest.fn() };
-    const submissionRepository = { find: jest.fn() };
+    const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
+    const exerciseScoreRepository = { exists: jest.fn() };
+    const scoreWriteback = { sync: jest.fn() };
     const manager = {
         findOne: jest.fn(),
         update: jest.fn(),
@@ -45,10 +48,17 @@ describe('AdminAssignmentsService', () => {
                     useValue: submissionRepository,
                 },
                 { provide: getRepositoryToken(Cohort), useValue: {} },
-                { provide: getRepositoryToken(ExerciseScore), useValue: {} },
+                {
+                    provide: getRepositoryToken(ExerciseScore),
+                    useValue: exerciseScoreRepository,
+                },
                 { provide: CohortsConfigService, useValue: {} },
                 { provide: GitHubAppClient, useValue: {} },
                 { provide: RunsService, useValue: runsService },
+                {
+                    provide: ExerciseScoreWritebackService,
+                    useValue: scoreWriteback,
+                },
                 {
                     provide: DbTransactionService,
                     useValue: dbTransactionService,
@@ -189,6 +199,55 @@ describe('AdminAssignmentsService', () => {
             await expect(service.reprovision('missing')).rejects.toBeInstanceOf(
                 NotFoundException,
             );
+        });
+    });
+
+    describe('overrideScore', () => {
+        beforeEach(() => {
+            submissionRepository.findOne.mockResolvedValue({
+                id: 'submission-1',
+                user: { id: 'user-1' },
+                assignment: {
+                    cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
+                },
+            });
+            exerciseScoreRepository.exists.mockResolvedValue(true);
+        });
+
+        it('stores the pin on the submission and re-syncs the score in one transaction', async () => {
+            // Writing ExerciseScore directly would be undone by the next save
+            // or run, both of which re-sync it from grading.
+            await service.overrideScore('submission-1', { isPassing: true });
+
+            expect(manager.update).toHaveBeenCalledWith(
+                AssignmentSubmission,
+                { id: 'submission-1' },
+                { isPassingOverride: true },
+            );
+            expect(scoreWriteback.sync).toHaveBeenCalledWith(
+                manager,
+                'submission-1',
+            );
+        });
+
+        it('clears a pin with null, handing the field back to grading', async () => {
+            await service.overrideScore('submission-1', { isSubmitted: null });
+
+            expect(manager.update).toHaveBeenCalledWith(
+                AssignmentSubmission,
+                { id: 'submission-1' },
+                { isSubmittedOverride: null },
+            );
+        });
+
+        it('404s when enrollment never seeded a score row', async () => {
+            exerciseScoreRepository.exists.mockResolvedValueOnce(false);
+
+            await expect(
+                service.overrideScore('submission-1', { isPassing: true }),
+            ).rejects.toBeInstanceOf(NotFoundException);
+            expect(manager.update).not.toHaveBeenCalled();
+            expect(scoreWriteback.sync).not.toHaveBeenCalled();
         });
     });
 });

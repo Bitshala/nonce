@@ -18,6 +18,7 @@ import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
+import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
 import { AssignmentBackend, ProvisionStatus } from '@/common/enum';
 import {
@@ -59,6 +60,7 @@ export class AdminAssignmentsService {
         private readonly cohortsConfigService: CohortsConfigService,
         private readonly gitHubAppClient: GitHubAppClient,
         private readonly runsService: RunsService,
+        private readonly scoreWriteback: ExerciseScoreWritebackService,
         private readonly dbTransactionService: DbTransactionService,
         configService: ConfigService,
     ) {
@@ -261,8 +263,13 @@ export class AdminAssignmentsService {
     }
 
     /**
-     * Manual score override. Deliberately writes `ExerciseScore` directly and
-     * leaves the runs alone — this is for the cases grading cannot express.
+     * Manual score override, for the cases grading cannot express.
+     *
+     * The override is stored on the submission as a pin, and writeback applies
+     * it. Writing `ExerciseScore` directly would not stick: every save and run
+     * re-syncs it from grading. Per field, a boolean pins it, null clears the
+     * pin and hands the field back to grading, and leaving it out changes
+     * nothing.
      */
     async overrideScore(
         submissionId: string,
@@ -278,29 +285,40 @@ export class AdminAssignmentsService {
         if (!submission) throw new NotFoundException('Submission not found');
 
         const week = submission.assignment.cohortWeek;
-        const score = await this.exerciseScoreRepository.findOne({
+        const hasScore = await this.exerciseScoreRepository.exists({
             where: {
                 user: { id: submission.user.id },
                 cohort: { id: week.cohort.id },
                 cohortWeek: { id: week.id },
             },
         });
-        if (!score) {
+        if (!hasScore) {
             throw new NotFoundException(
                 'No exercise score row exists for this student and week',
             );
         }
 
+        const pins: Partial<AssignmentSubmission> = {};
         if (request.isSubmitted !== undefined) {
-            score.isSubmitted = request.isSubmitted;
+            pins.isSubmittedOverride = request.isSubmitted;
         }
         if (request.isPassing !== undefined) {
-            score.isPassing = request.isPassing;
+            pins.isPassingOverride = request.isPassing;
         }
-        await this.exerciseScoreRepository.save(score);
+
+        await this.dbTransactionService.execute(async (manager) => {
+            if (Object.keys(pins).length > 0) {
+                await manager.update(
+                    AssignmentSubmission,
+                    { id: submissionId },
+                    pins,
+                );
+            }
+            await this.scoreWriteback.sync(manager, submissionId);
+        });
 
         this.logger.log(
-            `Score override on submission ${submissionId}: submitted=${score.isSubmitted} passing=${score.isPassing}`,
+            `Score override on submission ${submissionId}: submitted=${describePin(request.isSubmitted)} passing=${describePin(request.isPassing)}`,
         );
     }
 
@@ -367,4 +385,9 @@ export class AdminAssignmentsService {
         if (!assignment) throw new NotFoundException('Assignment not found');
         return assignment;
     }
+}
+
+function describePin(pin: boolean | null | undefined): string {
+    if (pin === undefined) return 'unchanged';
+    return pin === null ? 'cleared' : `pinned ${pin}`;
 }

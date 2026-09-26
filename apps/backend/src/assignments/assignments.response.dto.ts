@@ -140,6 +140,8 @@ export class AdminSubmissionResponseDto
     repoFullName: string | null;
     isSubmitted: boolean;
     isPassing: boolean;
+    isSubmittedOverride: boolean | null;
+    isPassingOverride: boolean | null;
 
     constructor(
         submission: AssignmentSubmission,
@@ -152,6 +154,8 @@ export class AdminSubmissionResponseDto
         this.repoFullName = submission.repoFullName;
         this.isSubmitted = score?.isSubmitted ?? false;
         this.isPassing = score?.isPassing ?? false;
+        this.isSubmittedOverride = submission.isSubmittedOverride;
+        this.isPassingOverride = submission.isPassingOverride;
     }
 }
 

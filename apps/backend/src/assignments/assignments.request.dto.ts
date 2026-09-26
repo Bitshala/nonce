@@ -83,13 +83,14 @@ export class CreateRunRequestDto implements CreateRunRequest {
 }
 
 export class UpdateSubmissionScoreRequestDto implements UpdateSubmissionScoreRequest {
+    // null is the "clear the pin" value, and @IsOptional lets it through.
     @IsOptional()
     @IsBoolean()
-    isSubmitted?: boolean;
+    isSubmitted?: boolean | null;
 
     @IsOptional()
     @IsBoolean()
-    isPassing?: boolean;
+    isPassing?: boolean | null;
 }
 
 export class GetTreeQueryDto {
