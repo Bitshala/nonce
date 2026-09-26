@@ -12,6 +12,7 @@ import type { Cache } from 'cache-manager';
 import { randomUUID } from 'crypto';
 import AdmZip from 'adm-zip';
 import { In, IsNull, Not, Repository } from 'typeorm';
+import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import {
     CIRun,
@@ -116,14 +117,7 @@ export class RunsService {
 
         // Re-pressing Run on a commit that is already grading returns the run in
         // flight rather than burning quota on a duplicate.
-        const inFlight = await this.ciRunRepository.findOne({
-            where: {
-                submission: { id: submission.id },
-                commitSha,
-                status: Not(In([CIRunStatus.COMPLETED, CIRunStatus.ORPHANED])),
-            },
-            relations: { submission: true },
-        });
+        const inFlight = await this.findInFlight(submission.id, commitSha);
         if (inFlight) {
             return this.toDetail(inFlight, submission);
         }
@@ -137,66 +131,59 @@ export class RunsService {
             );
         }
 
-        const correlationToken = randomUUID();
-        const run = await this.dbTransactionService.execute(async (manager) => {
-            const created = manager.create(CIRun, {
-                submission,
-                triggeredByUser: user,
-                commitSha,
-                correlationToken,
-                status: CIRunStatus.DISPATCHING,
-                dispatchedAt: new Date(),
-                // Frozen now: a run started before the deadline still counts
-                // even if it finishes after it.
-                countsForScore: !assignment.isPastDeadline(),
-                jobs: [],
-            });
-            await manager.save(created);
-
-            await manager.update(
-                AssignmentSubmission,
-                { id: submission.id },
-                { latestRun: { id: created.id } },
-            );
-
-            await manager.save(
-                this.buildReconcileTask(
-                    created.id,
-                    0,
-                    new APITask<TaskType.RECONCILE_CI_RUN>(),
-                ),
-            );
-
-            return created;
-        });
-
-        await this.gitHubAppClient.dispatchWorkflow({
-            owner: this.graderOwner,
-            repo: this.graderRepo,
-            workflowFile: this.graderWorkflowFile,
-            ref: 'main',
-            inputs: {
-                student_repo: submission.repoFullName ?? '',
-                commit_sha: commitSha,
-                assignment_slug: assignment.slug,
-                test_path: assignment.graderTestPath,
-                correlation_token: correlationToken,
-                timeout_minutes: String(assignment.runTimeoutMinutes),
-            },
-        });
-
-        // Conditional because a fast webhook can already have moved it on.
-        await this.ciRunRepository.update(
-            { id: run.id, status: CIRunStatus.DISPATCHING },
-            { status: CIRunStatus.QUEUED },
+        const run = await this.dispatch(
+            submission,
+            assignment,
+            commitSha,
+            user,
+            // Frozen now: a run started before the deadline still counts even
+            // if it finishes after it.
+            !assignment.isPastDeadline(),
         );
-        run.status = CIRunStatus.QUEUED;
-
-        this.logger.log(
-            `Dispatched run ${run.id} (${correlationToken}) for submission ${submission.id} @ ${commitSha}`,
-        );
-
         return this.toDetail(run, submission);
+    }
+
+    /**
+     * Staff re-grade of one submission, for after a grader fix. None of the
+     * student gates apply: closed, the deadline, and the daily quota all exist
+     * to limit students, not staff repairing a result.
+     *
+     * What gets graded is the work that could have scored. Before the deadline
+     * that is the latest commit. After it, it is the commit of the last run
+     * that counted — grading the latest commit instead would let practice done
+     * after the deadline earn the pass. Null when there is nothing to re-grade.
+     */
+    async dispatchRegrade(
+        submission: AssignmentSubmission,
+        assignment: Assignment,
+        actor: User,
+    ): Promise<CIRun | null> {
+        let commitSha: string | null = null;
+        if (assignment.isPastDeadline()) {
+            const lastEligible = await this.ciRunRepository.findOne({
+                where: {
+                    submission: { id: submission.id },
+                    countsForScore: true,
+                },
+                order: { dispatchedAt: 'DESC' },
+            });
+            commitSha = lastEligible?.commitSha ?? null;
+        } else if (submission.hasStudentCommits) {
+            commitSha = submission.lastCommitSha;
+        }
+        if (!commitSha) return null;
+
+        // Only a run that can score may stand in for this one: a student's
+        // practice run on the same commit can be in flight, but passing it
+        // changes nothing.
+        const inFlight = await this.findInFlight(
+            submission.id,
+            commitSha,
+            true,
+        );
+        if (inFlight) return inFlight;
+
+        return this.dispatch(submission, assignment, commitSha, actor, true);
     }
 
     async listRuns(
@@ -635,6 +622,89 @@ export class RunsService {
         if (await this.cacheManager.get(key)) return false;
         await this.cacheManager.set(key, 1, REFRESH_COOLDOWN_MS);
         return true;
+    }
+
+    private findInFlight(
+        submissionId: string,
+        commitSha: string,
+        countsForScore?: boolean,
+    ): Promise<CIRun | null> {
+        return this.ciRunRepository.findOne({
+            where: {
+                submission: { id: submissionId },
+                commitSha,
+                status: Not(In(TERMINAL_STATUSES)),
+                ...(countsForScore === undefined ? {} : { countsForScore }),
+            },
+            relations: { submission: true },
+        });
+    }
+
+    /** Records the run, then asks GitHub to start it. */
+    private async dispatch(
+        submission: AssignmentSubmission,
+        assignment: Assignment,
+        commitSha: string,
+        triggeredBy: User,
+        countsForScore: boolean,
+    ): Promise<CIRun> {
+        const correlationToken = randomUUID();
+        const run = await this.dbTransactionService.execute(async (manager) => {
+            const created = manager.create(CIRun, {
+                submission,
+                triggeredByUser: triggeredBy,
+                commitSha,
+                correlationToken,
+                status: CIRunStatus.DISPATCHING,
+                dispatchedAt: new Date(),
+                countsForScore,
+                jobs: [],
+            });
+            await manager.save(created);
+
+            await manager.update(
+                AssignmentSubmission,
+                { id: submission.id },
+                { latestRun: { id: created.id } },
+            );
+
+            await manager.save(
+                this.buildReconcileTask(
+                    created.id,
+                    0,
+                    new APITask<TaskType.RECONCILE_CI_RUN>(),
+                ),
+            );
+
+            return created;
+        });
+
+        await this.gitHubAppClient.dispatchWorkflow({
+            owner: this.graderOwner,
+            repo: this.graderRepo,
+            workflowFile: this.graderWorkflowFile,
+            ref: 'main',
+            inputs: {
+                student_repo: submission.repoFullName ?? '',
+                commit_sha: commitSha,
+                assignment_slug: assignment.slug,
+                test_path: assignment.graderTestPath,
+                correlation_token: correlationToken,
+                timeout_minutes: String(assignment.runTimeoutMinutes),
+            },
+        });
+
+        // Conditional because a fast webhook can already have moved it on.
+        await this.ciRunRepository.update(
+            { id: run.id, status: CIRunStatus.DISPATCHING },
+            { status: CIRunStatus.QUEUED },
+        );
+        run.status = CIRunStatus.QUEUED;
+
+        this.logger.log(
+            `Dispatched run ${run.id} (${correlationToken}) for submission ${submission.id} @ ${commitSha}`,
+        );
+        return run;
     }
 
     private buildReconcileTask(

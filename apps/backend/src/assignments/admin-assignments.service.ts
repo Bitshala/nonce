@@ -173,38 +173,42 @@ export class AdminAssignmentsService {
     }
 
     /**
-     * Re-dispatches every submission's last commit — for when a grader bug is
-     * fixed after students have already run.
+     * Re-grades every submission that has not passed — for when a grader bug
+     * is fixed after students have already run. `RunsService.dispatchRegrade`
+     * decides which commit is graded; this only picks who gets one.
      */
     async regrade(
         assignmentId: string,
         actor: User,
     ): Promise<RegradeResponseDto> {
-        await this.loadAssignment(assignmentId);
+        const assignment = await this.loadAssignment(assignmentId);
 
         const submissions = await this.submissionRepository.find({
             where: {
                 assignment: { id: assignmentId },
                 provisionStatus: ProvisionStatus.READY,
             },
-            relations: { user: true },
+            relations: { user: true, bestRun: true },
         });
 
         let dispatched = 0;
         let skipped = 0;
 
         for (const submission of submissions) {
-            if (!submission.lastCommitSha || !submission.hasStudentCommits) {
+            // A pass is never replaced, so re-running one would only spend
+            // Actions minutes.
+            if (submission.bestRun) {
                 skipped++;
                 continue;
             }
             try {
-                await this.runsService.createRun(
-                    submission.id,
-                    submission.lastCommitSha,
+                const run = await this.runsService.dispatchRegrade(
+                    submission,
+                    assignment,
                     actor,
                 );
-                dispatched++;
+                if (run) dispatched++;
+                else skipped++;
             } catch (error) {
                 skipped++;
                 this.logger.warn(

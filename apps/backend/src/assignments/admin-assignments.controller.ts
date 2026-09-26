@@ -70,9 +70,9 @@ export class AdminAssignmentsController {
 
     @Post('assignments/:id/regrade')
     @ApiOperation({
-        summary: 'Re-dispatch grading for every submission with student work',
+        summary: 'Re-grade every submission that has not passed',
         description:
-            'Use after fixing a grader bug. Submissions with no commits beyond the template are skipped.',
+            'Use after fixing a grader bug. Ignores the deadline, closed status, and daily quota. Before the deadline the latest commit is graded; after it, the commit of the last run that counted, so practice after the deadline cannot earn a pass. Submissions that already passed, or have nothing eligible, are skipped.',
     })
     async regrade(
         @Param('id', ParseUUIDPipe) id: string,
