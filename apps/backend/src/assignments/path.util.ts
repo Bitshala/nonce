@@ -45,7 +45,9 @@ export function normalizeRepoPath(
         }
     }
 
-    if (segments[0] === '.git') {
+    // Any component, in any case — the same rule git applies when it checks a
+    // tree out, so a path it would refuse can never be committed here.
+    if (segments.some((segment) => segment.toLowerCase() === '.git')) {
         return { reason: 'path is inside .git' };
     }
 

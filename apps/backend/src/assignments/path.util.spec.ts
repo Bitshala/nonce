@@ -33,14 +33,19 @@ describe('path.util — normalizeRepoPath', () => {
         ['src/./main.rs', 'path contains a relative segment'],
         ['src//main.rs', 'path contains an empty segment'],
         ['.git/config', 'path is inside .git'],
+        ['foo/.git/config', 'path is inside .git'],
+        ['src/.git', 'path is inside .git'],
+        ['.GIT/config', 'path is inside .git'],
+        ['a/.Git/hooks/pre-commit', 'path is inside .git'],
         ['src/main\0.rs', 'path contains a null byte'],
     ])('rejects %p', (input, reason) => {
         expect(normalizeRepoPath(input)).toEqual({ reason });
     });
 
-    it('allows .git as a name that is not the root directory', () => {
-        // `.gitignore` and `src/.git-keep` are ordinary files; only a top-level
-        // `.git/` directory is git's own bookkeeping.
+    it('allows names that only start with .git', () => {
+        // Git refuses a `.git` component anywhere in a path, in any case, so
+        // those are rejected above. `.gitignore` and `src/.git-keep` are
+        // ordinary files.
         expect(normalizeRepoPath('.gitignore')).toEqual({ path: '.gitignore' });
         expect(normalizeRepoPath('src/.git-keep')).toEqual({
             path: 'src/.git-keep',
