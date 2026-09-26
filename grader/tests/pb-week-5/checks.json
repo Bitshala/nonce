@@ -1,0 +1,18 @@
+[
+  {
+    "chapter": "chapter-8",
+    "spec": "grader_checks_op:OpTest:test_op_checkmultisig"
+  },
+  {
+    "chapter": "chapter-8",
+    "spec": "grader_checks_helper:HelperTest:test_p2pkh_address"
+  },
+  {
+    "chapter": "chapter-8",
+    "spec": "grader_checks_helper:HelperTest:test_p2sh_address"
+  },
+  {
+    "chapter": "chapter-8",
+    "spec": "grader_checks_tx:TxTest:test_verify_p2sh"
+  }
+]

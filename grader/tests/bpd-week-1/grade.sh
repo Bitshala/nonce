@@ -17,11 +17,7 @@ cd "$STUDENT_DIR"
 
 assert_language_selected
 
-echo '--- Installing test dependencies ---'
-if ! npm ci --ignore-scripts --no-audit --no-fund; then
-    fail_early 'test dependencies installed' \
-        'npm ci failed. This is a fault in the assignment template, not your solution — please report it.'
-fi
+npm_ci
 
 echo '--- Starting bitcoind ---'
 services_up docker-compose.yaml
@@ -34,12 +30,8 @@ if ! wait_for_http http://127.0.0.1:18443 90; then
         'The regtest node never became ready. This is an infrastructure failure, not your solution — please re-run, and report it if it persists.'
 fi
 
-echo '--- Running the solution ---'
-chmod +x run.sh ./bash/*.sh ./python/*.sh ./javascript/*.sh ./rust/*.sh 2>/dev/null
-bash run.sh || echo "::warning::run.sh exited non-zero; grading the output anyway"
+run_solution
 
 assert_output_file out.txt
 
-echo '--- Running the test suite ---'
-npx jest --json --outputFile="${STUDENT_DIR}/jest-results.json" --testLocationInResults
-report_from_jest "${STUDENT_DIR}/jest-results.json"
+jest_report

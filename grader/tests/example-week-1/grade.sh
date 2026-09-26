@@ -19,16 +19,17 @@
 #   restore_fixtures                        # our test files beat theirs
 #   cd "$STUDENT_DIR"
 #   assert_language_selected                # run.sh still all comments?
-#   npm ci --ignore-scripts --no-audit --no-fund
+#   npm_ci
 #   services_up docker-compose.yml          # torn down on exit
 #   wait_for_http http://127.0.0.1:18443 90 # `up -d` returns too early
-#   bash run.sh
+#   run_solution
 #   assert_output_file out.txt
-#   npx jest --json --outputFile=jest-results.json
-#   report_from_jest jest-results.json
+#   jest_report
 #
 # See tests/bpd-week-1 for that shape with containers, tests/lbtcl-week-1 for it
-# without, and tests/pb-week-5 for a python/unittest assignment.
+# without, tests/ln-week-1 for one that also mints a rune, and tests/pb-week-5
+# for a python assignment (those are all driven by lib/pb_grade.py, so the
+# per-week file is three lines).
 
 set -uo pipefail
 
