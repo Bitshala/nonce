@@ -12,6 +12,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-1-assignment",
         "graderTestPath": "tests/pb-week-1",
+        "deadlineDaysAfterWeek": 49,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -53,6 +54,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-2-assignment",
         "graderTestPath": "tests/pb-week-2",
+        "deadlineDaysAfterWeek": 42,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -94,6 +96,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-3-assignment",
         "graderTestPath": "tests/pb-week-3",
+        "deadlineDaysAfterWeek": 35,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -141,6 +144,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-4-assignment",
         "graderTestPath": "tests/pb-week-4",
+        "deadlineDaysAfterWeek": 28,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -180,6 +184,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-5-assignment",
         "graderTestPath": "tests/pb-week-5",
+        "deadlineDaysAfterWeek": 21,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -224,6 +229,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-6-assignment",
         "graderTestPath": "tests/pb-week-6",
+        "deadlineDaysAfterWeek": 14,
         "runTimeoutMinutes": 20
       },
       "exercise": {
@@ -270,6 +276,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "PB-week-7-assignment",
         "graderTestPath": "tests/pb-week-7",
+        "deadlineDaysAfterWeek": 7,
         "runTimeoutMinutes": 20
       },
       "exercise": {
