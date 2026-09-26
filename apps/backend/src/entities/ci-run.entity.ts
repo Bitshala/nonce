@@ -45,7 +45,8 @@ export interface GradingReport {
     tests: GradingReportTest[];
 }
 
-const TERMINAL_STATUSES: CIRunStatus[] = [
+/** A run in one of these has finished; nothing may move it again. */
+export const TERMINAL_STATUSES: CIRunStatus[] = [
     CIRunStatus.COMPLETED,
     CIRunStatus.ORPHANED,
 ];

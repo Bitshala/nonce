@@ -12,7 +12,7 @@ import { ServiceError } from '@/common/errors';
 // students on every save.
 describe('ExerciseScoreWritebackService — sync', () => {
     let service: ExerciseScoreWritebackService;
-    const manager = { findOne: jest.fn(), save: jest.fn() };
+    const manager = { findOne: jest.fn(), save: jest.fn(), exists: jest.fn() };
 
     const buildSubmission = (
         overrides: Partial<AssignmentSubmission> = {},
@@ -120,10 +120,25 @@ describe('ExerciseScoreWritebackService — sync', () => {
         manager.findOne
             .mockResolvedValueOnce(buildSubmission())
             .mockResolvedValueOnce(null);
+        manager.exists.mockResolvedValueOnce(true);
 
         await expect(
             service.sync(manager as unknown as EntityManager, 'submission-1'),
         ).rejects.toBeInstanceOf(ServiceError);
+        expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing for staff, who can run an assignment without being enrolled', async () => {
+        // Throwing here would roll back the run's own completion, leaving a
+        // staff member's test run stuck in progress forever.
+        manager.findOne
+            .mockResolvedValueOnce(buildSubmission())
+            .mockResolvedValueOnce(null);
+        manager.exists.mockResolvedValueOnce(false);
+
+        await expect(
+            service.sync(manager as unknown as EntityManager, 'submission-1'),
+        ).resolves.toBeUndefined();
         expect(manager.save).not.toHaveBeenCalled();
     });
 

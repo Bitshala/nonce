@@ -11,9 +11,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
 import { randomUUID } from 'crypto';
 import AdmZip from 'adm-zip';
-import { In, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
-import { CIRun, CIRunJob, GradingReport } from '@/entities/ci-run.entity';
+import {
+    CIRun,
+    CIRunJob,
+    GradingReport,
+    TERMINAL_STATUSES,
+} from '@/entities/ci-run.entity';
 import { CIRunLog, MAX_LOG_BYTES } from '@/entities/ci-run-log.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { User } from '@/entities/user.entity';
@@ -25,7 +30,6 @@ import { SubmissionsService } from '@/assignments/submissions.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { AssignmentStatus, CIRunConclusion, CIRunStatus } from '@/common/enum';
-import { ServiceError } from '@/common/errors';
 import {
     CIRunDetailResponseDto,
     CIRunLogResponseDto,
@@ -181,8 +185,9 @@ export class RunsService {
             },
         });
 
+        // Conditional because a fast webhook can already have moved it on.
         await this.ciRunRepository.update(
-            { id: run.id },
+            { id: run.id, status: CIRunStatus.DISPATCHING },
             { status: CIRunStatus.QUEUED },
         );
         run.status = CIRunStatus.QUEUED;
@@ -221,7 +226,15 @@ export class RunsService {
         let run = await this.loadRunForViewer(runId, user);
 
         if (!run.isTerminal && (await this.claimRefreshSlot(run.id))) {
-            await this.refresh(run);
+            // Opportunistic: the reconcile sweep retries anything that fails
+            // here, so a GitHub hiccup must not fail an editor poll.
+            try {
+                await this.refresh(run);
+            } catch (error) {
+                this.logger.warn(
+                    `Could not refresh run ${run.id}: ${error instanceof Error ? error.message : error}`,
+                );
+            }
             run = await this.loadRunForViewer(runId, user);
         }
 
@@ -306,16 +319,25 @@ export class RunsService {
             }
 
             if (age > CORRELATION_WINDOW_MS) {
-                this.logger.warn(
-                    `Run ${run.id} never correlated to a GitHub run; marking ORPHANED`,
-                );
-                await this.ciRunRepository.update(
-                    { id: run.id },
+                // `run` was loaded before the list call. The webhook may have
+                // correlated — or even completed — it since, and the list only
+                // covers recent runs, so only orphan a row still uncorrelated.
+                const orphaned = await this.ciRunRepository.update(
+                    {
+                        id: run.id,
+                        githubRunId: IsNull(),
+                        status: Not(In(TERMINAL_STATUSES)),
+                    },
                     {
                         status: CIRunStatus.ORPHANED,
                         completedAt: new Date(),
                     },
                 );
+                if (orphaned.affected) {
+                    this.logger.warn(
+                        `Run ${run.id} never correlated to a GitHub run; marked ORPHANED`,
+                    );
+                }
             }
             return;
         }
@@ -352,12 +374,16 @@ export class RunsService {
         const status = mapRunStatus(remote.status);
         const jobs = await this.readJobs(Number(remote.id));
 
+        // Never writes the terminal status itself: that transition belongs to
+        // completeRun, which skips any run already marked finished — so writing
+        // COMPLETED here first would drop the report, conclusion, and score.
+        // Conditional so a late refresh cannot touch a run that has finished.
         await this.ciRunRepository.update(
-            { id: run.id },
+            { id: run.id, status: Not(In(TERMINAL_STATUSES)) },
             {
                 githubRunId: String(remote.id),
                 githubRunAttempt: remote.runAttempt,
-                status,
+                ...(status === CIRunStatus.COMPLETED ? {} : { status }),
                 jobs,
                 startedAt: remote.runStartedAt
                     ? new Date(remote.runStartedAt)
@@ -439,52 +465,53 @@ export class RunsService {
               ? CIRunConclusion.FAILURE
               : conclusion;
 
-        await this.dbTransactionService.execute(async (manager) => {
-            await manager.update(
-                CIRun,
-                { id: run.id },
-                {
-                    status: CIRunStatus.COMPLETED,
-                    conclusion: effective,
-                    completedAt: new Date(),
-                    report,
-                    testsPassed:
-                        report?.tests.filter((t) => t.status === 'passed')
-                            .length ?? null,
-                    testsTotal: report?.tests.length ?? null,
-                },
-            );
-
-            const submission = await manager.findOne(AssignmentSubmission, {
-                where: { id: run.submission.id },
-                relations: { bestRun: true },
-            });
-            if (!submission) {
-                throw new ServiceError(
-                    `Submission ${run.submission.id} vanished while completing run ${run.id}`,
+        const completed = await this.dbTransactionService.execute(
+            async (manager) => {
+                // The webhook, the reconcile sweep, and an editor's refresh can
+                // all get here for the same run. Claiming the transition in the
+                // UPDATE itself means exactly one of them records the result.
+                const claimed = await manager.update(
+                    CIRun,
+                    { id: run.id, status: Not(In(TERMINAL_STATUSES)) },
+                    {
+                        status: CIRunStatus.COMPLETED,
+                        conclusion: effective,
+                        completedAt: new Date(),
+                        report,
+                        testsPassed:
+                            report?.tests.filter((t) => t.status === 'passed')
+                                .length ?? null,
+                        testsTotal: report?.tests.length ?? null,
+                    },
                 );
-            }
+                if (!claimed.affected) return false;
 
-            // Best-run-wins: the first score-eligible pass is recorded and never
-            // replaced, so iterating cannot cost a student a pass they earned.
-            const shouldSetBest =
-                run.countsForScore &&
-                effective === CIRunConclusion.SUCCESS &&
-                submission.bestRun == null;
+                // Best-run-wins: the first score-eligible pass is recorded and
+                // never replaced, so iterating cannot cost a student a pass they
+                // earned. The IS NULL check is in the UPDATE rather than read
+                // first, so two passes finishing together cannot both win.
+                //
+                // latestRun is deliberately not touched: dispatch already set
+                // it, and a slow older run finishing last must not displace it.
+                if (
+                    run.countsForScore &&
+                    effective === CIRunConclusion.SUCCESS
+                ) {
+                    await manager.update(
+                        AssignmentSubmission,
+                        { id: run.submission.id, bestRun: IsNull() },
+                        { bestRun: { id: run.id } },
+                    );
+                }
 
-            await manager.update(
-                AssignmentSubmission,
-                { id: submission.id },
-                {
-                    latestRun: { id: run.id },
-                    ...(shouldSetBest ? { bestRun: { id: run.id } } : {}),
-                },
-            );
+                await this.scoreWriteback.sync(manager, run.submission.id);
+                return true;
+            },
+        );
 
-            await this.scoreWriteback.sync(manager, submission.id);
-        });
-
-        this.logger.log(`Run ${run.id} completed: ${effective}`);
+        if (completed) {
+            this.logger.log(`Run ${run.id} completed: ${effective}`);
+        }
     }
 
     private async fetchReport(
