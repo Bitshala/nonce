@@ -10,11 +10,12 @@ import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writ
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { WorkflowRunSummary } from '@/github-app/client/response';
+import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CIRunLog } from '@/entities/ci-run-log.entity';
 import { User } from '@/entities/user.entity';
-import { CIRunConclusion, CIRunStatus } from '@/common/enum';
+import { AssignmentStatus, CIRunConclusion, CIRunStatus } from '@/common/enum';
 
 /**
  * Enough of `UPDATE … WHERE` to tell a claimed row from a lost one. The races
@@ -48,6 +49,49 @@ function applyUpdate(
     if (!matches) return { affected: 0 };
     Object.assign(row, partial);
     return { affected: 1 };
+}
+
+/** RunsService with only the collaborators a test cares about wired in. */
+async function compileRunsService(deps: {
+    ciRunRepository?: object;
+    ciRunLogRepository?: object;
+    gitHubAppClient?: object;
+    assignmentsService?: object;
+    scoreWriteback?: object;
+    dbTransactionService?: object;
+    cacheManager?: object;
+}): Promise<RunsService> {
+    const module: TestingModule = await Test.createTestingModule({
+        providers: [
+            RunsService,
+            {
+                provide: getRepositoryToken(CIRun),
+                useValue: deps.ciRunRepository ?? {},
+            },
+            {
+                provide: getRepositoryToken(CIRunLog),
+                useValue: deps.ciRunLogRepository ?? {},
+            },
+            { provide: getRepositoryToken(AssignmentSubmission), useValue: {} },
+            { provide: GitHubAppClient, useValue: deps.gitHubAppClient ?? {} },
+            {
+                provide: AssignmentsService,
+                useValue: deps.assignmentsService ?? {},
+            },
+            { provide: SubmissionsService, useValue: {} },
+            {
+                provide: ExerciseScoreWritebackService,
+                useValue: deps.scoreWriteback ?? {},
+            },
+            {
+                provide: DbTransactionService,
+                useValue: deps.dbTransactionService ?? {},
+            },
+            { provide: CACHE_MANAGER, useValue: deps.cacheManager ?? {} },
+            { provide: ConfigService, useValue: { get: () => undefined } },
+        ],
+    }).compile();
+    return module.get(RunsService);
 }
 
 // Every path that finishes a run — webhook, reconcile sweep, an editor's poll —
@@ -147,37 +191,15 @@ describe('RunsService — completing a run', () => {
             latestRun: { id: 'run-1' },
         };
 
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                RunsService,
-                {
-                    provide: getRepositoryToken(CIRun),
-                    useValue: ciRunRepository,
-                },
-                {
-                    provide: getRepositoryToken(CIRunLog),
-                    useValue: ciRunLogRepository,
-                },
-                {
-                    provide: getRepositoryToken(AssignmentSubmission),
-                    useValue: {},
-                },
-                { provide: GitHubAppClient, useValue: gitHubAppClient },
-                { provide: AssignmentsService, useValue: assignmentsService },
-                { provide: SubmissionsService, useValue: {} },
-                {
-                    provide: ExerciseScoreWritebackService,
-                    useValue: scoreWriteback,
-                },
-                {
-                    provide: DbTransactionService,
-                    useValue: dbTransactionService,
-                },
-                { provide: CACHE_MANAGER, useValue: cacheManager },
-                { provide: ConfigService, useValue: { get: () => undefined } },
-            ],
-        }).compile();
-        service = module.get(RunsService);
+        service = await compileRunsService({
+            ciRunRepository,
+            ciRunLogRepository,
+            gitHubAppClient,
+            assignmentsService,
+            scoreWriteback,
+            dbTransactionService,
+            cacheManager,
+        });
     });
 
     afterEach(() => jest.clearAllMocks());
@@ -287,5 +309,159 @@ describe('RunsService — completing a run', () => {
         } as User);
 
         expect(detail.status).toBe(CIRunStatus.IN_PROGRESS);
+    });
+});
+
+// A regrade is how a grader fix reaches students who already ran. What it may
+// score is exactly the work that could have scored on its own — never practice
+// done after the deadline — and it ignores the gates that exist to limit
+// students (closed, the deadline, the daily quota).
+describe('RunsService — regrade', () => {
+    let service: RunsService;
+
+    const ELIGIBLE = 'e'.repeat(40);
+    const LATEST = 'f'.repeat(40);
+    const TEMPLATE = 'a'.repeat(40);
+
+    const ciRunRepository = {
+        findOne: jest.fn(),
+        update: jest.fn(async () => ({ affected: 1 })),
+    };
+    const gitHubAppClient = {
+        dispatchWorkflow: jest.fn(async () => undefined),
+    };
+    const manager = {
+        create: jest.fn((_: unknown, fields: object) => ({
+            id: 'run-new',
+            ...fields,
+        })),
+        save: jest.fn(async () => undefined),
+        update: jest.fn(async () => ({ affected: 1 })),
+    };
+    const dbTransactionService = {
+        execute: jest.fn(async (cb: (m: unknown) => unknown) => cb(manager)),
+    };
+
+    const staff = { id: 'staff-1' } as User;
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // Every student gate is shut, so a dispatch proves they were bypassed.
+    const assignment = (deadline: Date): Assignment =>
+        Object.assign(new Assignment(), {
+            slug: 'pb-week-1-s4',
+            graderTestPath: 'suites/pb-week-1',
+            runTimeoutMinutes: 10,
+            status: AssignmentStatus.CLOSED,
+            deadline,
+            allowLateSubmission: false,
+            maxRunsPerDay: 0,
+        });
+    const pastDeadline = () => assignment(new Date(Date.now() - DAY));
+    const beforeDeadline = () => assignment(new Date(Date.now() + DAY));
+
+    const submission = (lastCommitSha = LATEST): AssignmentSubmission =>
+        Object.assign(new AssignmentSubmission(), {
+            id: 'submission-1',
+            repoOwner: 'org',
+            repoName: 'pb-week-1-s4-user-1',
+            initialCommitSha: TEMPLATE,
+            lastCommitSha,
+        });
+
+    const dispatchedCommit = () =>
+        (
+            gitHubAppClient.dispatchWorkflow.mock.calls[0] as unknown as [
+                { inputs: { commit_sha: string } },
+            ]
+        )[0].inputs.commit_sha;
+
+    beforeEach(async () => {
+        service = await compileRunsService({
+            ciRunRepository,
+            gitHubAppClient,
+            dbTransactionService,
+        });
+    });
+
+    afterEach(() => jest.clearAllMocks());
+
+    it('past the deadline, grades the commit of the last run that counted', async () => {
+        ciRunRepository.findOne
+            .mockResolvedValueOnce({ commitSha: ELIGIBLE }) // last eligible run
+            .mockResolvedValueOnce(null); // nothing already in flight
+
+        const run = await service.dispatchRegrade(
+            submission(),
+            pastDeadline(),
+            staff,
+        );
+
+        expect(ciRunRepository.findOne).toHaveBeenNthCalledWith(1, {
+            where: { submission: { id: 'submission-1' }, countsForScore: true },
+            order: { dispatchedAt: 'DESC' },
+        });
+        expect(dispatchedCommit()).toBe(ELIGIBLE);
+        expect(run).toEqual(
+            expect.objectContaining({
+                commitSha: ELIGIBLE,
+                countsForScore: true,
+                triggeredByUser: staff,
+            }),
+        );
+    });
+
+    it('before the deadline, grades the latest commit', async () => {
+        ciRunRepository.findOne.mockResolvedValueOnce(null);
+
+        const run = await service.dispatchRegrade(
+            submission(),
+            beforeDeadline(),
+            staff,
+        );
+
+        expect(dispatchedCommit()).toBe(LATEST);
+        expect(run?.countsForScore).toBe(true);
+    });
+
+    it('past the deadline, has nothing to re-grade when no run ever counted', async () => {
+        ciRunRepository.findOne.mockResolvedValueOnce(null);
+
+        const run = await service.dispatchRegrade(
+            submission(),
+            pastDeadline(),
+            staff,
+        );
+
+        expect(run).toBeNull();
+        expect(gitHubAppClient.dispatchWorkflow).not.toHaveBeenCalled();
+    });
+
+    it('before the deadline, skips a submission with nothing beyond the template', async () => {
+        const run = await service.dispatchRegrade(
+            submission(TEMPLATE),
+            beforeDeadline(),
+            staff,
+        );
+
+        expect(run).toBeNull();
+        expect(gitHubAppClient.dispatchWorkflow).not.toHaveBeenCalled();
+    });
+
+    it('does not take a practice run in flight on the same commit as the regrade', async () => {
+        ciRunRepository.findOne
+            .mockResolvedValueOnce({ commitSha: ELIGIBLE })
+            .mockResolvedValueOnce(null);
+
+        await service.dispatchRegrade(submission(), pastDeadline(), staff);
+
+        const [inFlightQuery] = ciRunRepository.findOne.mock.calls[1] as [
+            { where: Record<string, unknown> },
+        ];
+        expect(inFlightQuery.where).toEqual(
+            expect.objectContaining({
+                commitSha: ELIGIBLE,
+                countsForScore: true,
+            }),
+        );
     });
 });
