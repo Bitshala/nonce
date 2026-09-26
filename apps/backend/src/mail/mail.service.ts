@@ -536,9 +536,11 @@ export class MailService implements OnModuleInit {
         userName: string,
         month: number,
         year: number,
+        fellowshipType: FellowshipType,
     ): Promise<void> {
         const monthName = this.getMonthName(month);
-        const subject = `Reminder: Submit Your Fellowship Report for ${monthName} ${year}`;
+        const displayType = this.getFellowshipTypeDisplayName(fellowshipType);
+        const subject = `Reminder: Submit Your ${displayType} Fellowship Report for ${monthName} ${year}`;
 
         return this.sendTemplatedEmail({
             to: userEmail,
@@ -548,6 +550,7 @@ export class MailService implements OnModuleInit {
                 userName,
                 monthName,
                 year,
+                fellowshipType: displayType,
             },
         });
     }

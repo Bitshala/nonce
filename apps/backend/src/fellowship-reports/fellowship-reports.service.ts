@@ -6,7 +6,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, Repository } from 'typeorm';
+import { Brackets, In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { FellowshipReport } from '@/entities/fellowship-report.entity';
 import { Fellowship } from '@/entities/fellowship.entity';
 import { User } from '@/entities/user.entity';
@@ -473,8 +473,25 @@ export class FellowshipReportsService {
         const { month, year } = task.data;
 
         try {
+            // Bounds of the target month. `month` is 1-indexed, so `month - 1` is
+            // its 0-indexed value (first instant of the month) and `month` is the
+            // next month's index (first instant of the month after it).
+            const periodStart = new Date(Date.UTC(year, month - 1, 1));
+            const periodEnd = new Date(Date.UTC(year, month, 1));
+
+            // Only remind fellowships whose contract actually overlaps the target
+            // month. `status` never auto-transitions off ACTIVE, so we cannot lean
+            // on it for either bound:
+            //   - startDate < periodEnd  → excludes not-yet-started contracts
+            //     (e.g. an Oct-1 start must not get a Sept reminder).
+            //   - endDate >= periodStart → excludes already-ended contracts
+            //     (a fellowship that ended in Aug owes no Sept report).
             const activeFellowships = await this.fellowshipRepository.find({
-                where: { status: FellowshipStatus.ACTIVE },
+                where: {
+                    status: FellowshipStatus.ACTIVE,
+                    startDate: LessThan(periodEnd),
+                    endDate: MoreThanOrEqual(periodStart),
+                },
                 relations: { user: true },
             });
 
@@ -515,6 +532,7 @@ export class FellowshipReportsService {
                             user.displayName,
                             month,
                             year,
+                            fellowship.type,
                         );
                     }
                 } catch (error) {

@@ -106,6 +106,7 @@ export interface FellowshipReportReminderContext {
     userName: string;
     monthName: string;
     year: number;
+    fellowshipType: string;
 }
 
 export interface FellowshipReportApprovedContext {

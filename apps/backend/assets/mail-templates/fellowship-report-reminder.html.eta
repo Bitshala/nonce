@@ -17,7 +17,7 @@
                 Monthly Report Reminder
               </h1>
               <p style="margin:8px 0 0 0; font-size:14px; color:#f9b233; font-weight:500;">
-                <%~ it.monthName %> <%~ it.year %>
+                <%~ it.fellowshipType %> Fellowship · <%~ it.monthName %> <%~ it.year %>
               </p>
             </td>
           </tr>
@@ -29,8 +29,9 @@
               </p>
 
               <p style="margin:0 0 16px 0;">
-                This is a reminder to submit your monthly fellowship report for
-                <strong style="color:#f9b233;"><%~ it.monthName %> <%~ it.year %></strong>.
+                This is a reminder to submit your monthly report for your
+                <strong style="color:#f9b233;"><%~ it.fellowshipType %> Fellowship</strong>
+                for <strong style="color:#f9b233;"><%~ it.monthName %> <%~ it.year %></strong>.
                 Please log in and submit your report at your earliest convenience.
               </p>
 
