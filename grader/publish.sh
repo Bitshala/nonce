@@ -39,10 +39,20 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "Publishing ${PREFIX}/ from ${BRANCH} to ${REMOTE_URL}"
 
 # Lands on a detached ref rather than a branch, so this leaves no local
-# bookkeeping behind for someone to trip over later.
-SPLIT_SHA="$(git subtree split --prefix="$PREFIX" HEAD)"
+# bookkeeping behind for someone to trip over later. Progress goes to stderr as
+# one line per commit walked, which buries the useful output.
+SPLIT_SHA="$(git subtree split --prefix="$PREFIX" HEAD 2>/dev/null)"
 echo "  split commit: ${SPLIT_SHA:0:12}"
 echo "  tree: $(git ls-tree --name-only "$SPLIT_SHA" | tr '\n' ' ')"
+
+# The grader repo needs grade.yml at this exact path. If the split root were
+# ever wrong the push would still succeed and the workflow would simply never
+# be found, so check it here rather than discover it on the next dispatch.
+if ! git cat-file -e "${SPLIT_SHA}:.github/workflows/grade.yml" 2>/dev/null; then
+    echo "error: .github/workflows/grade.yml is not at the root of the split." >&2
+    exit 1
+fi
+echo "  grade.yml: present at the root"
 
 if [ "$DRY_RUN" = '--dry-run' ]; then
     echo "  (dry run — not pushing)"
