@@ -13,7 +13,7 @@
         "templateRepo": "BPD-week-1-assignment",
         "graderTestPath": "tests/bpd-week-1",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yaml"],
-        "deadlineDaysAfterWeek": 35,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -64,7 +64,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "BPD-week-2-assignment",
         "graderTestPath": "tests/bpd-week-2",
-        "deadlineDaysAfterWeek": 28,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 10
       },
       "exercise": {
@@ -115,7 +115,7 @@
         "templateRepo": "BPD-week-3-assignment",
         "graderTestPath": "tests/bpd-week-3",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "mempool/**"],
-        "deadlineDaysAfterWeek": 21,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -164,7 +164,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "BPD-week-4-assignment",
         "graderTestPath": "tests/bpd-week-4",
-        "deadlineDaysAfterWeek": 14,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 10
       },
       "exercise": {
@@ -205,7 +205,7 @@
         "templateRepo": "BPD-week-5-assignment",
         "graderTestPath": "tests/bpd-week-5",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yaml", "bitcoin-regtest-explorer.conf.in", "data/**"],
-        "deadlineDaysAfterWeek": 7,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 30
       },
       "exercise": {

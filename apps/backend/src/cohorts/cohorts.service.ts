@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cohort } from '@/entities/cohort.entity';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import {
     CreateCohortRequestDto,
     JoinWaitlistRequestDto,
@@ -32,7 +32,10 @@ import { DiscordClient } from '@/discord-client/discord.client';
 import { ConfigService } from '@nestjs/config';
 import { AssignmentBackend, CohortType, CohortWeekType } from '@/common/enum';
 import { Assignment } from '@/entities/assignment.entity';
-import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
+import {
+    applyAssignmentConfig,
+    resolveDeadline,
+} from '@/assignments/assignment-seed.util';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { CohortWaitlist } from '@/entities/cohort-waitlist.entity';
 import { Certificate } from '@/entities/certificate.entity';
@@ -509,6 +512,9 @@ export class CohortsService {
                         });
                     if (assignments.length > 0) {
                         await manager.save(assignments);
+                        // applyAssignmentConfig cannot resolve a GRADUATION
+                        // deadline — it sees one week, not the calendar.
+                        await this.syncAssignmentDeadlines(manager, cohort.id);
                     }
                 }
 
@@ -604,6 +610,9 @@ export class CohortsService {
                 }
                 await manager.save(CohortWeek, cohort.weeks);
 
+                // Graduation moved, so every deadline anchored to it moves.
+                await this.syncAssignmentDeadlines(manager, cohort.id);
+
                 // Cancel all unprocessed reminder tasks and recreate with new dates
                 await manager
                     .createQueryBuilder()
@@ -667,6 +676,14 @@ export class CohortsService {
             await manager.save(CohortWeek, cohortWeek);
 
             if (scheduledDateChanged) {
+                // Moving the graduation week moves every deadline in the
+                // cohort; moving an exercise week moves its own WEEK_OFFSET
+                // one. Cheaper to recompute the lot than to work out which.
+                await this.syncAssignmentDeadlines(
+                    manager,
+                    cohortWeek.cohort.id,
+                );
+
                 // Cancel existing unprocessed reminder task for this week
                 await manager
                     .createQueryBuilder()
@@ -698,6 +715,50 @@ export class CohortsService {
                 await manager.save(APITask, calendarTask);
             }
         });
+    }
+
+    /**
+     * Recompute every in-house assignment deadline for a cohort.
+     *
+     * `Assignment.deadline` is a materialised date, so anything that moves a
+     * week has to call this or the deadline silently keeps pointing at the old
+     * schedule. Both write paths that move dates do — `updateCohort` shifting
+     * the whole calendar, and `updateCohortWeek` moving a single week.
+     *
+     * The graduation date is read off the GRADUATION week rather than computed
+     * from `startDate`, because `updateCohortWeek` can move one week on its own
+     * and the calendar is then no longer a clean run of sevens.
+     */
+    private async syncAssignmentDeadlines(
+        manager: EntityManager,
+        cohortId: string,
+    ): Promise<void> {
+        const weeks = await manager.find(CohortWeek, {
+            where: { cohort: { id: cohortId } },
+            relations: { assignment: true },
+        });
+
+        const graduation =
+            weeks.find((week) => week.type === CohortWeekType.GRADUATION)
+                ?.scheduledDate ?? null;
+
+        const changed: Assignment[] = [];
+        for (const week of weeks) {
+            const assignment = week.assignment;
+            if (!assignment) continue;
+
+            assignment.deadline = resolveDeadline(
+                assignment.deadlineSource,
+                week.scheduledDate,
+                graduation,
+                assignment.deadlineDaysAfterWeek,
+            );
+            changed.push(assignment);
+        }
+
+        if (changed.length > 0) {
+            await manager.save(Assignment, changed);
+        }
     }
 
     private createReminderTask(

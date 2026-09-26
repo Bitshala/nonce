@@ -1,29 +1,24 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
+import {
+    applyAssignmentConfig,
+    resolveDeadline,
+} from '@/assignments/assignment-seed.util';
 import { Assignment } from '@/entities/assignment.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
+import { AssignmentDeadlineSource } from '@/common/enum';
 
 /**
- * Every exercise has to be submitted before graduation, so each assignment's
- * `deadlineDaysAfterWeek` is the distance from its own week to the graduation
- * week — a different number for every week, and one nothing else would catch
- * if it were wrong. A week added to a config, or a changed `gdSessions`, moves
- * graduation and silently leaves all of that cohort's deadlines short.
+ * Every exercise is due at its cohort's graduation day, and has to stay there
+ * when the cohort moves — `Assignment.deadline` is a materialised date, so the
+ * rule behind it is what actually has to be right in config.
  *
- * So: rebuild the schedule the way `createCohort` does and check each deadline
- * lands on graduation day.
+ * Checks both halves: that each in-house assignment is anchored to GRADUATION,
+ * and that resolving that anchor lands on graduation day whatever date
+ * graduation happens to be.
  */
-describe('cohort configs — assignment deadlines land on graduation day', () => {
+describe('cohort configs — exercise deadlines follow graduation', () => {
     const dir = join(__dirname, '..', '..', 'assets', 'cohort-configs');
-    // Arbitrary; the assertion is relative, so any start date will do.
-    const start = new Date('2026-03-02T00:00:00.000Z');
-
-    const weekDate = (week: number): Date => {
-        const date = new Date(start);
-        date.setUTCDate(date.getUTCDate() + week * 7);
-        return date;
-    };
 
     const inhouseConfigs = [
         'learning-bitcoin-from-command-line.json',
@@ -32,56 +27,83 @@ describe('cohort configs — assignment deadlines land on graduation day', () =>
         'programming-bitcoin.json',
     ];
 
-    for (const file of inhouseConfigs) {
-        it(file, () => {
-            const config = JSON.parse(
-                readFileSync(join(dir, file), 'utf-8'),
-            ) as {
-                gdSessions: number;
-                weeks: {
-                    hasExercise: boolean;
-                    assignment?: { slug: string };
-                }[];
-            };
+    const load = (file: string) =>
+        JSON.parse(readFileSync(join(dir, file), 'utf-8')) as {
+            gdSessions: number;
+            weeks: {
+                hasExercise: boolean;
+                assignment?: { slug: string };
+            }[];
+        };
 
-            // createCohort lays out weeks 0..gdSessions+1: orientation, the GD
-            // weeks, then graduation.
-            const graduation = weekDate(config.gdSessions + 1);
-            // resolveDeadline lands on 23:59:59.999 IST.
-            graduation.setUTCHours(18, 29, 59, 999);
+    const seed = (weekConfig: { slug: string }, weekNumber: number) => {
+        const scheduled = new Date('2026-03-02T00:00:00.000Z');
+        scheduled.setUTCDate(scheduled.getUTCDate() + weekNumber * 7);
+        return applyAssignmentConfig(
+            new Assignment(),
+            weekConfig as never,
+            { week: weekNumber, scheduledDate: scheduled } as CohortWeek,
+            1,
+        );
+    };
 
-            let checked = 0;
-            config.weeks.forEach((weekConfig, index) => {
-                if (!weekConfig.assignment) return;
+    describe.each(inhouseConfigs)('%s', (file) => {
+        it('anchors every exercise to graduation', () => {
+            const config = load(file);
 
-                const week = {
-                    week: index + 1,
-                    scheduledDate: weekDate(index + 1),
-                } as CohortWeek;
-                const assignment = applyAssignmentConfig(
-                    new Assignment(),
-                    weekConfig.assignment as never,
-                    week,
-                    1,
-                );
+            const anchors = config.weeks
+                .map((week, index) => ({ week, number: index + 1 }))
+                .filter(({ week }) => week.assignment)
+                .map(({ week, number }) => ({
+                    slug: week.assignment!.slug,
+                    source: seed(week.assignment!, number).deadlineSource,
+                }));
 
-                // Compared as an object so a failure names the week at fault.
-                expect({
-                    slug: weekConfig.assignment.slug,
-                    deadline: assignment.deadline?.toISOString(),
-                }).toEqual({
-                    slug: weekConfig.assignment.slug,
-                    deadline: graduation.toISOString(),
+            expect(anchors).not.toHaveLength(0);
+            for (const anchor of anchors) {
+                expect(anchor).toEqual({
+                    slug: anchor.slug,
+                    source: AssignmentDeadlineSource.GRADUATION,
                 });
-                checked++;
-            });
-
-            // An exercise week with no assignment block would otherwise pass
-            // here by being skipped; boot-time validation rejects it, and this
-            // keeps the two in agreement.
-            expect(checked).toBe(
+            }
+            // An exercise week with no assignment block would pass above by
+            // being skipped; boot validation rejects that, and this keeps the
+            // two in agreement.
+            expect(anchors).toHaveLength(
                 config.weeks.filter((w) => w.hasExercise).length,
             );
         });
-    }
+
+        it('lands on graduation day wherever graduation is', () => {
+            const config = load(file);
+
+            // Two unrelated schedules: the deadline has to track graduation,
+            // not the week it was seeded against.
+            for (const graduationDay of ['2026-05-04', '2027-11-22']) {
+                const graduation = new Date(`${graduationDay}T00:00:00.000Z`);
+                const expected = new Date(graduation);
+                expected.setUTCHours(18, 29, 59, 999); // 23:59:59.999 IST
+
+                config.weeks.forEach((week, index) => {
+                    if (!week.assignment) return;
+                    const assignment = seed(week.assignment, index + 1);
+
+                    const deadline = resolveDeadline(
+                        assignment.deadlineSource,
+                        { week: index + 1 } as never,
+                        graduation,
+                        assignment.deadlineDaysAfterWeek,
+                    );
+
+                    expect({
+                        slug: week.assignment.slug,
+                        deadline: deadline?.toISOString(),
+                    }).toEqual({
+                        slug: week.assignment.slug,
+                        deadline: expected.toISOString(),
+                    });
+                });
+            }
+        });
+    });
 });

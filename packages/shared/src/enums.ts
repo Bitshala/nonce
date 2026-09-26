@@ -170,6 +170,20 @@ export enum AssignmentBackend {
   INHOUSE = 'INHOUSE',
 }
 
+// Where an assignment's deadline comes from. Stored rather than inferred
+// because `Assignment.deadline` is a materialised date: cohort dates move, and
+// the deadline has to move with them, so the rule that produced it has to
+// survive on the row.
+export enum AssignmentDeadlineSource {
+  // No deadline. Every run counts for score, forever.
+  NONE = 'NONE',
+  // The cohort's graduation day. Everything is due when the cohort ends, which
+  // is the policy these courses actually run.
+  GRADUATION = 'GRADUATION',
+  // A fixed number of days after the assignment's own week.
+  WEEK_OFFSET = 'WEEK_OFFSET',
+}
+
 export enum AssignmentStatus {
   DRAFT = 'DRAFT',
   PUBLISHED = 'PUBLISHED',
