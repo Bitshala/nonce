@@ -16,6 +16,7 @@
         "templateOwner": "Bitshala-Classrooms",
         "templateRepo": "LBTCL-week-1-assignment",
         "graderTestPath": "tests/lbtcl-week-1",
+        "deadlineDaysAfterWeek": 42,
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -65,6 +66,7 @@
         "templateRepo": "LBTCL-week-2-assignment",
         "graderTestPath": "tests/lbtcl-week-2",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "deadlineDaysAfterWeek": 35,
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -111,6 +113,7 @@
         "templateRepo": "LBTCL-week-3-assignment",
         "graderTestPath": "tests/lbtcl-week-3",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "deadlineDaysAfterWeek": 28,
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -153,6 +156,7 @@
         "templateRepo": "LBTCL-week-4-assignment",
         "graderTestPath": "tests/lbtcl-week-4",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "deadlineDaysAfterWeek": 21,
         "runTimeoutMinutes": 15
       },
       "exercise": {
@@ -196,6 +200,7 @@
         "templateRepo": "LBTCL-week-5-assignment",
         "graderTestPath": "tests/lbtcl-week-5",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "deadlineDaysAfterWeek": 14,
         "runTimeoutMinutes": 15
       },
       "exercise": {
