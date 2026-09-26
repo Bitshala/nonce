@@ -1,0 +1,34 @@
+[
+  {
+    "chapter": "chapter-1",
+    "spec": "grader_checks_ecc:FieldElementTest:test_ne"
+  },
+  {
+    "chapter": "chapter-1",
+    "spec": "grader_checks_ecc:FieldElementTest:test_sub"
+  },
+  {
+    "chapter": "chapter-1",
+    "spec": "grader_checks_ecc:FieldElementTest:test_mul"
+  },
+  {
+    "chapter": "chapter-1",
+    "spec": "grader_checks_ecc:FieldElementTest:test_div"
+  },
+  {
+    "chapter": "chapter-2",
+    "spec": "grader_checks_ecc:PointTest:test_ne"
+  },
+  {
+    "chapter": "chapter-2",
+    "spec": "grader_checks_ecc:PointTest:test_add0"
+  },
+  {
+    "chapter": "chapter-2",
+    "spec": "grader_checks_ecc:PointTest:test_add1"
+  },
+  {
+    "chapter": "chapter-2",
+    "spec": "grader_checks_ecc:PointTest:test_add2"
+  }
+]

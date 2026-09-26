@@ -89,7 +89,26 @@ services_up() {
     printf '%s' "$_COMPOSE_FILE" > "${STUDENT_DIR}/.compose-file"
 
     echo "Starting services from ${compose}"
-    docker compose -f "$_COMPOSE_FILE" up -d --quiet-pull
+    # Check this: a container that cannot start — a port already taken on the
+    # host is the usual cause — otherwise shows up minutes later as "the node
+    # never became ready", which sends whoever reads it looking at the node.
+    if ! docker compose -f "$_COMPOSE_FILE" up -d --quiet-pull; then
+        docker compose -f "$_COMPOSE_FILE" ps -a
+        fail_early 'the assignment services started' \
+            'A container failed to start. This is an infrastructure failure, not your solution — please re-run, and report it if it persists.'
+    fi
+
+    # `up -d` can still report success while leaving a container behind, so
+    # confirm what is actually running rather than trusting the exit status.
+    local stopped
+    stopped="$(docker compose -f "$_COMPOSE_FILE" ps -a \
+        --filter status=created --filter status=exited --format '{{.Name}}')"
+    if [ -n "$stopped" ]; then
+        echo "::error::These containers did not start: ${stopped}"
+        docker compose -f "$_COMPOSE_FILE" ps -a
+        fail_early 'the assignment services started' \
+            "Containers failed to start: ${stopped}. This is an infrastructure failure, not your solution — please re-run, and report it if it persists."
+    fi
 
     # Container logs are the only way to diagnose a node that came up wrong, and
     # they are gone once the stack is down.
@@ -148,6 +167,72 @@ wait_for_command() {
 
     echo "::error::Timed out waiting for: $*"
     return 1
+}
+
+# ---------------------------------------------------------------------------
+# The jest flow
+# ---------------------------------------------------------------------------
+#
+# Fourteen of these assignments are the same three steps around a different
+# middle: install the runner, run the student's script, grade what it wrote.
+# Only the middle — which services, which output file — differs.
+
+# --ignore-scripts because package.json is ours but the dependency tree is not,
+# and nothing in a jest install needs a lifecycle hook.
+npm_ci() {
+    echo '--- Installing test dependencies ---'
+    if ! npm ci --ignore-scripts --no-audit --no-fund; then
+        fail_early 'test dependencies installed' \
+            'npm ci failed. This is a fault in the assignment template, not your solution — please report it.'
+    fi
+}
+
+# Not fatal on its own: a solution can exit non-zero having already written a
+# correct answer, and the assertions are the real verdict. A genuine failure
+# shows up as a missing output file immediately after.
+run_solution() {
+    echo '--- Running the solution ---'
+    chmod +x run.sh ./bash/*.sh ./python/*.sh ./javascript/*.sh ./rust/*.sh 2>/dev/null
+    bash run.sh || echo "::warning::run.sh exited non-zero; grading the output anyway"
+}
+
+# Wait for a Core Lightning node, then mint a rune for it and export it.
+#
+# lightningd waits on bitcoind itself, so it is ready meaningfully later than
+# its container is. And clnrest authenticates with a rune that cannot exist
+# until the node is up, which the python and javascript solutions read from the
+# environment — the template's own test.sh exports it the same way, so a grader
+# that skips this fails every non-bash submission.
+#
+#   cln_rune alice ALICE_RUNE
+cln_rune() {
+    local container="${1:?cln_rune needs a container}"
+    local variable="${2:?cln_rune needs a variable name}"
+
+    if ! wait_for_command 180 \
+        docker exec "$container" lightning-cli --network=regtest getinfo; then
+        fail_early "the ${container} Lightning node is running" \
+            "The ${container} node never became ready. This is an infrastructure failure, not your solution — please re-run, and report it if it persists."
+    fi
+
+    local rune
+    rune="$(docker exec "$container" lightning-cli --network=regtest \
+        createrune restrictions='[]' \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["rune"])')"
+    if [ -z "$rune" ]; then
+        fail_early "a rune could be minted for ${container}" \
+            "Could not mint a Core Lightning rune for ${container}. This is an infrastructure failure, not your solution — please re-run, and report it if it persists."
+    fi
+
+    export "${variable}=${rune}"
+    echo "  ${variable} minted for ${container}"
+}
+
+jest_report() {
+    echo '--- Running the test suite ---'
+    npx jest --json --outputFile="${STUDENT_DIR}/jest-results.json" \
+        --testLocationInResults
+    report_from_jest "${STUDENT_DIR}/jest-results.json"
 }
 
 # ---------------------------------------------------------------------------

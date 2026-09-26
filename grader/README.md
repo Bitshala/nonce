@@ -49,15 +49,26 @@ block of the cohort config (`apps/backend/assets/cohort-configs/<cohort>.json`).
 write a `report.json` matching `report.schema.json`. Language, test runner, and build
 steps are entirely the assignment's business.
 
-Five worked examples, covering the shapes the real courses take:
+All 21 graded weeks have a suite. They come in five shapes:
 
-| Suite | Shape |
+| Shape | Suites |
 | --- | --- |
-| `tests/bpd-week-1` | jest; bitcoind from a compose file |
-| `tests/lbtcl-week-1` | jest; the student's own `setup.sh` installs and starts bitcoind |
-| `tests/ln-week-1` | jest; bitcoind + Core Lightning, and a rune minted at run time |
-| `tests/bpd-week-3` | jest, offline; a pinned data corpus the tests read as their oracle |
-| `tests/pb-week-5` | python; Jupyter notebook plus a unittest suite |
+| jest; bitcoind from a compose file | `bpd-week-1` |
+| jest; bitcoind installed onto the runner | `lbtcl-week-1`…`5` |
+| jest; bitcoind + Core Lightning, runes minted at run time | `ln-week-1`…`4` |
+| jest, fully offline | `bpd-week-2`, `bpd-week-3`, `bpd-week-4` |
+| python; notebooks plus a unittest suite | `pb-week-1`…`7` |
+
+`bpd-week-5` is its own thing — an Esplora stack (bitcoind, electrs and the explorer
+in one container) served from a regtest chain the template ships, which takes minutes
+rather than seconds to answer.
+
+The common jest flow is three helpers — `npm_ci`, `run_solution`, `jest_report` — so a
+suite's `grade.sh` carries only what is distinctive about it. The pb weeks are all
+driven by `lib/pb_grade.py`, so each of those is the same three lines over a different
+`checks.json`.
+
+The bpd capstone has no suite: it is a README with no tests and wants manual grading.
 
 ### fixtures/
 
