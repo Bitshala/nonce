@@ -63,6 +63,8 @@ export class AdminAssignmentsController {
     @HttpCode(HttpStatus.ACCEPTED)
     @ApiOperation({
         summary: 'Retry repository provisioning for a failed submission',
+        description:
+            'Refused with 409 once the repository exists, or while provisioning is still running (a run silent for 10 minutes is presumed dead and can be retried).',
     })
     async reprovision(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
         return this.adminAssignmentsService.reprovision(id);
