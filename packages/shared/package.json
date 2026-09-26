@@ -27,6 +27,11 @@
       "import": "./dist/esm/cohort-display.js",
       "require": "./dist/cjs/cohort-display.js"
     },
+    "./protected-paths": {
+      "types": "./dist/cjs/protected-paths.d.ts",
+      "import": "./dist/esm/protected-paths.js",
+      "require": "./dist/cjs/protected-paths.js"
+    },
     "./dto": {
       "types": "./dist/cjs/dto/index.d.ts",
       "import": "./dist/esm/dto/index.js",
@@ -38,6 +43,7 @@
       "enums": ["./dist/cjs/enums.d.ts"],
       "constants": ["./dist/cjs/constants.d.ts"],
       "cohort-display": ["./dist/cjs/cohort-display.d.ts"],
+      "protected-paths": ["./dist/cjs/protected-paths.d.ts"],
       "dto": ["./dist/cjs/dto/index.d.ts"]
     }
   },

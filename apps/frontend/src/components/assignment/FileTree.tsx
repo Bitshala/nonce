@@ -6,6 +6,7 @@ import {
   File as FileIcon,
   Lock,
 } from 'lucide-react';
+import { isProtectedPath } from '@nonce/shared';
 import type { RepoTreeEntryResponse } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
 
@@ -53,8 +54,9 @@ export const FileTree = ({
     const isCollapsed = collapsed.has(node.path);
     const isActive = node.path === activePath;
     const isDirty = dirtyPaths.has(node.path);
+    // Presentation only: the API refuses the write whatever this says.
     const isLocked =
-      !node.isDirectory && matchesAny(node.path, protectedPaths);
+      !node.isDirectory && isProtectedPath(node.path, protectedPaths);
 
     return (
       <Box key={node.path}>
@@ -190,19 +192,4 @@ function buildTree(entries: RepoTreeEntryResponse[]): TreeNode[] {
   sort(root);
 
   return root;
-}
-
-/**
- * Mirrors the backend's matcher so locked files look locked before a save is
- * attempted. The backend remains authoritative — this is only presentation.
- */
-function matchesAny(path: string, patterns: string[]): boolean {
-  return patterns.some(pattern => {
-    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    const source = escaped
-      .split('**')
-      .map(part => part.replace(/\*/g, '[^/]*'))
-      .join('.*');
-    return new RegExp(`^${source}$`).test(path);
-  });
 }
