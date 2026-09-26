@@ -6,6 +6,12 @@
  * repository. There is no push path around them.
  */
 
+import { isProtectedPath, matchesGlob } from '@nonce/shared/protected-paths';
+
+// The glob matcher lives in the shared package so the editor greys out exactly
+// the paths refused here. Re-exported so callers keep importing from this file.
+export { isProtectedPath, matchesGlob };
+
 /** Per-file ceiling. Anything larger is not something the editor can edit. */
 export const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -52,26 +58,6 @@ export function normalizeRepoPath(
     }
 
     return { path: segments.join('/') };
-}
-
-/**
- * Matches a path against one glob. Deliberately supports only what assignment
- * configs need — `*` within a segment and `**` across segments — so no glob
- * dependency is required.
- */
-export function matchesGlob(path: string, pattern: string): boolean {
-    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    // Order matters: `**` has to be consumed before the single-segment `*`.
-    const source = escaped
-        .split('**')
-        .map((part) => part.replace(/\*/g, '[^/]*'))
-        .join('.*');
-
-    return new RegExp(`^${source}$`).test(path);
-}
-
-export function isProtectedPath(path: string, patterns: string[]): boolean {
-    return patterns.some((pattern) => matchesGlob(path, pattern));
 }
 
 /**
