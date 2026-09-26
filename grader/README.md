@@ -1,15 +1,21 @@
 # Assignment grader
 
-These files belong in a **separate private repository** — `bitshala/assignment-grader`
-by default, configured as `githubApp.graderRepo`. They live here so they are reviewed
-alongside the backend that dispatches them; copy the contents of this directory to the
-root of that repository.
+These files run from a **separate private repository** — `Bitshala/assignment-grader`
+by default, configured as `githubApp.graderRepo`. They are authored here, so that a
+change to a test suite is reviewed in the same pull request as the backend change that
+depends on it.
+
+**This directory is the source of truth; the grader repo is a published artifact.**
+`.github/workflows/publish-grader.yml` mirrors one to the other on every merge to main,
+so nothing has to be copied by hand and nobody should edit the artifact directly.
 
 ```
 assignment-grader/
 ├── .github/workflows/grade.yml   the only workflow that ever runs
 ├── run-tests.sh                  language-agnostic entrypoint
 ├── grade-local.sh                run a suite on your machine
+├── publish.sh                    mirrors this directory here (a nonce-side tool;
+│                                 it rides along, but has no job in the artifact)
 ├── report.schema.json            the grading contract
 ├── manifest.schema.json          what each assignment declares to the workflow
 ├── lib/                          helpers shared by every grade.sh
@@ -25,8 +31,9 @@ assignment-grader/
 
 ## Setup
 
-1. Create the repository **private**. It holds every test suite, so it can never be
-   public.
+1. Create the repository **private**. It holds `APP_KEY`, which is why it cannot be
+   public. (The test suites themselves are not secret — see *What this does and does
+   not protect*.)
 2. Add two repository secrets, used only by the trusted `fetch` job:
    - `APP_CLIENT_ID` — the GitHub App's Client ID. `actions/create-github-app-token`
      marks the older `app-id` input deprecated, and GitHub recommends the Client ID
@@ -34,6 +41,23 @@ assignment-grader/
    - `APP_KEY` — the App's PEM private key, unencoded (not base64 — that encoding
      is only for the backend's config)
 3. Point `githubApp.graderRepo` and `githubApp.graderWorkflowFile` at it.
+4. Wire up publishing, so the repo stays in step with this directory:
+   - `ssh-keygen -t ed25519 -f grader-deploy -N ""`
+   - add `grader-deploy.pub` to the grader repo as a deploy key **with write access**
+   - add the private half to *this* repo as the `GRADER_DEPLOY_KEY` secret
+   - if the repo is not at the default URL, set the `GRADER_REMOTE` repository variable
+
+   A deploy key rather than a token because pushing anything under
+   `.github/workflows/` needs `workflow` scope on a PAT, and `grade.yml` is exactly
+   that. Deploy keys are not subject to that restriction and are scoped to one repo.
+
+   To seed the repo the first time, or to try a grader change from a branch before
+   merging, publish by hand:
+
+   ```shell
+   ./grader/publish.sh git@github.com:Bitshala/assignment-grader.git
+   ./grader/publish.sh <url> --dry-run   # show what would be pushed
+   ```
 
 Student repositories run **no workflows at all**. Every Actions minute this project
 consumes is billed against this repository, which is also why student repo visibility
@@ -185,11 +209,13 @@ have no access to this repository, the commit endpoint refuses to write the harn
 paths, and `restore_fixtures` overwrites them anyway — which is what makes a passing
 score mean something.
 
-**It does not** make the tests unreadable to code that is already running. Student code
-executes in the same job as the test files, so a determined student could print them.
-Network isolation stops them shipping the contents anywhere, but stdout still reaches the
-run log, which their own API access can read — and no current assignment can use that
-isolation.
+**It does not** hide the tests, and for the current 21 suites it never did: the template
+repositories under `Bitshala-Classrooms` are public, and they ship `test/*.spec.ts` so
+students can run the suite locally. Every assertion is already readable from a browser.
+The private grader repo protects `APP_KEY`, not the tests.
+
+Even for an assignment whose tests were only here, student code executes in the same job
+as the test files, so a determined student could print them to the run log.
 
 Treat hidden tests as a deterrent, not a boundary. If a specific assignment needs more,
 the options in rough order of effort are: run the suite as a separate unix user with the
