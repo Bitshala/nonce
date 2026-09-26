@@ -15,7 +15,8 @@ assignment-grader/
 ├── lib/                          helpers shared by every grade.sh
 │   ├── grade-lib.sh              fixtures, services, readiness, reporting
 │   ├── report.py                 runner output -> report.json
-│   └── unittest_json.py          a unittest runner that reports failures
+│   ├── unittest_json.py          a unittest runner that reports failures
+│   └── tree_digest.py            pins a data corpus too big for fixtures/
 └── tests/<assignment-slug>/
     ├── manifest.json             toolchains, network policy, timeout
     ├── grade.sh                  per-assignment grader
@@ -48,13 +49,14 @@ block of the cohort config (`apps/backend/assets/cohort-configs/<cohort>.json`).
 write a `report.json` matching `report.schema.json`. Language, test runner, and build
 steps are entirely the assignment's business.
 
-Four worked examples, covering the shapes the real courses take:
+Five worked examples, covering the shapes the real courses take:
 
 | Suite | Shape |
 | --- | --- |
-| `tests/lbtcl-week-1` | jest; the student's own `setup.sh` installs and starts bitcoind |
 | `tests/bpd-week-1` | jest; bitcoind from a compose file |
+| `tests/lbtcl-week-1` | jest; the student's own `setup.sh` installs and starts bitcoind |
 | `tests/ln-week-1` | jest; bitcoind + Core Lightning, and a rune minted at run time |
+| `tests/bpd-week-3` | jest, offline; a pinned data corpus the tests read as their oracle |
 | `tests/pb-week-5` | python; Jupyter notebook plus a unittest suite |
 
 ### fixtures/
@@ -71,6 +73,25 @@ which fixes the credentials and ports the assertions assume.
 
 For `pb-*`, where the book puts each `TestCase` in the same file as the function it
 tests, `fixtures/` carries a separate module of authoritative assertions instead.
+
+### Pinned data
+
+Some assignments hand the student a corpus and then check their answer against it.
+`bpd-week-3` gives out 8,132 mempool transactions: `mempool.json` decides which txids
+count as real, and each transaction's file supplies the `weight` the 4M block limit is
+measured against. Both are worth marks to edit.
+
+At 63 MB it is too big to push through `fixtures/` on every run, so `assert_tree_digest`
+pins it by hash instead — 64 bytes in `grade.sh`, checked in under a second. Regenerate
+after changing a template:
+
+```shell
+python3 lib/tree_digest.py <student-repo>/mempool '*.json'
+```
+
+Set `protectedPaths` for such an assignment to include the corpus (`mempool/**` here) on
+top of the defaults, so the editor refuses the write rather than letting a student
+discover the problem only when their run fails.
 
 ### Trying it locally
 
