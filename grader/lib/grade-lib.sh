@@ -13,6 +13,7 @@
 LIB_DIR="${LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 REPORT_PY="${LIB_DIR}/report.py"
 UNITTEST_JSON_PY="${LIB_DIR}/unittest_json.py"
+TREE_DIGEST_PY="${LIB_DIR}/tree_digest.py"
 
 # ---------------------------------------------------------------------------
 # Authoritative files
@@ -39,6 +40,27 @@ restore_fixtures() {
 
     # Trailing /. copies the directory's contents rather than the directory.
     cp -Rf "${fixtures}/." "${STUDENT_DIR}/"
+}
+
+# Fail unless a directory the tests trust is exactly what this assignment pins.
+#
+# For a corpus too large to restore through fixtures on every run. The student
+# is given the data and asked to work from it; the suite then checks their
+# answer against the same data, so an edit there is worth marks and has to be
+# caught. Regenerate the expected value with:
+#
+#   python3 lib/tree_digest.py <student-repo>/<dir> '<glob>'
+assert_tree_digest() {
+    local relative="${1:?assert_tree_digest needs a directory}"
+    local pattern="${2:?assert_tree_digest needs a glob}"
+    local expected="${3:?assert_tree_digest needs a digest}"
+
+    echo "Verifying ${relative} against the pinned digest"
+    if ! python3 "$TREE_DIGEST_PY" "${STUDENT_DIR}/${relative}" "$pattern" \
+        --check "$expected"; then
+        fail_early "${relative} is unmodified" \
+            "The files in ${relative} are not the ones this assignment provides. They are the input your block is checked against, so they cannot be edited. Restore them from the template and run again."
+    fi
 }
 
 # ---------------------------------------------------------------------------
