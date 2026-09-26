@@ -71,10 +71,10 @@ githubApp:
   installationId: '0'
   # Base64-encoded PEM. Supply via env GITHUB_APP_PRIVATE_KEY in real environments.
   privateKey: '<base64_encoded_pem_private_key>'
-  org: 'bitshala'
+  org: 'Bitshala-Classrooms'
   # Random 32 bytes, matching the App's webhook secret. Env: GITHUB_APP_WEBHOOK_SECRET.
   webhookSecret: '<github_app_webhook_secret>'
-  graderRepo: 'bitshala/assignment-grader'
+  graderRepo: 'Bitshala-Classrooms/assignment-grader'
   graderWorkflowFile: 'grade.yml'
 googleDrive:
   # Base64-encoded service-account JSON for a service account that is a member of
