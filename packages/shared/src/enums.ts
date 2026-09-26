@@ -162,3 +162,56 @@ export enum SortOrder {
   ASC = 'ASC',
   DESC = 'DESC',
 }
+
+// Which system backs a cohort's exercises. Cohorts created before the in-house
+// classroom stay on CLASSROOM; rollout is per-cohort.
+export enum AssignmentBackend {
+  CLASSROOM = 'CLASSROOM',
+  INHOUSE = 'INHOUSE',
+}
+
+// Where an assignment's deadline comes from. Stored rather than inferred
+// because `Assignment.deadline` is a materialised date: cohort dates move, and
+// the deadline has to move with them, so the rule that produced it has to
+// survive on the row.
+export enum AssignmentDeadlineSource {
+  // No deadline. Every run counts for score, forever.
+  NONE = 'NONE',
+  // The cohort's graduation day. Everything is due when the cohort ends, which
+  // is the policy these courses actually run.
+  GRADUATION = 'GRADUATION',
+  // A fixed number of days after the assignment's own week.
+  WEEK_OFFSET = 'WEEK_OFFSET',
+}
+
+export enum AssignmentStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  CLOSED = 'CLOSED',
+}
+
+// Lifecycle of the per-student repository created from the assignment template.
+export enum ProvisionStatus {
+  PENDING = 'PENDING',
+  PROVISIONING = 'PROVISIONING',
+  READY = 'READY',
+  FAILED = 'FAILED',
+}
+
+// ORPHANED means the workflow dispatch was accepted but no matching GitHub run
+// could be correlated back to it; the student is asked to retry.
+export enum CIRunStatus {
+  DISPATCHING = 'DISPATCHING',
+  QUEUED = 'QUEUED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  ORPHANED = 'ORPHANED',
+}
+
+export enum CIRunConclusion {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+  CANCELLED = 'CANCELLED',
+  TIMED_OUT = 'TIMED_OUT',
+  STARTUP_FAILURE = 'STARTUP_FAILURE',
+}

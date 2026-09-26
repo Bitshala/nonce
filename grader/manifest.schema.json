@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Assignment manifest",
+  "description": "tests/<slug>/manifest.json. Declares only what the workflow has to know before grade.sh runs — which toolchains to install, whether student code gets a network, how long to allow. Everything else (services, fixtures, the test invocation itself) is grade.sh's business, because that is bash and needs no schema. Absent, the defaults here apply.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "network": {
+      "enum": ["full", "none"],
+      "default": "full",
+      "description": "`none` runs student code in a network namespace with only loopback, and is the stronger sandbox. It is only usable when nothing in the assignment needs to reach the internet at grade time: no npm install, no image pull, no cargo fetch, and no `services`. Every assignment in this repo today needs `full` — learning-bitcoin-from-command-line has the student's own setup.sh download Bitcoin Core, which is the exercise. Dependencies for a `none` assignment must be vendored into the template or staged by prefetch.sh."
+    },
+    "toolchains": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Installed before grade.sh runs. Omit a key to skip it. The templates try to install nvm and rustup themselves at test time; doing it here instead is faster, cached, and works under `network: none`.",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "Version passed to actions/setup-node, e.g. \"20\"."
+        },
+        "python": {
+          "type": "string",
+          "description": "Version passed to actions/setup-python, e.g. \"3.11\"."
+        },
+        "rust": {
+          "type": "string",
+          "description": "Toolchain passed to dtolnay/rust-toolchain, e.g. \"stable\"."
+        }
+      }
+    },
+    "services": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether grade.sh brings up containers. Only used to decide whether the workflow adds a teardown step; grade.sh starts them itself via services_up. Incompatible with `network: none` — the daemon runs outside the namespace, so published ports would be unreachable even if the images were already local."
+    },
+    "timeoutMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60,
+      "description": "Overrides the assignment's configured timeout when this suite needs longer — a large image pull, a chain to sync. Omit to use what the backend dispatched."
+    }
+  }
+}

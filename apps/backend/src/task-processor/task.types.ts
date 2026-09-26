@@ -39,6 +39,21 @@ export type SendFellowshipReportReminderEmailsTaskData = {
     year: number;
 };
 
+export type ProvisionAssignmentRepoTaskData = {
+    submissionId: string;
+};
+
+export type ReconcileCIRunTaskData = {
+    ciRunId: string;
+    // Bumped on each self-reschedule so the handler can give up on correlating
+    // a dispatch that GitHub never turned into a run.
+    attempt: number;
+};
+
+export type ArchiveAssignmentReposTaskData = {
+    cohortId: string;
+};
+
 export type TaskDataMap = {
     [TaskType.ASSIGN_COHORT_ROLE]: AssignCohortRoleTaskData;
     [TaskType.ASSIGN_COHORT_ALUMNI_ROLE]: AssignCohortAlumniRoleTaskData;
@@ -49,6 +64,9 @@ export type TaskDataMap = {
     [TaskType.SEND_FEEDBACK_REMINDER_EMAILS]: SendFeedbackReminderEmailsTaskData;
     [TaskType.SEND_CALENDAR_UPDATE_EMAILS]: SendCalendarUpdateEmailsTaskData;
     [TaskType.SEND_FELLOWSHIP_REPORT_REMINDER_EMAILS]: SendFellowshipReportReminderEmailsTaskData;
+    [TaskType.PROVISION_ASSIGNMENT_REPO]: ProvisionAssignmentRepoTaskData;
+    [TaskType.RECONCILE_CI_RUN]: ReconcileCIRunTaskData;
+    [TaskType.ARCHIVE_ASSIGNMENT_REPOS]: ArchiveAssignmentReposTaskData;
 };
 
 export type TaskData<T extends TaskType> = TaskDataMap[T];

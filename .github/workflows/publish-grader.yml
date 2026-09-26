@@ -1,0 +1,59 @@
+name: Publish grader
+
+# The grader runs from its own private repository — it needs `APP_KEY` as a
+# secret, and this repository is public. But it is authored here, so that a
+# change to a test suite is reviewed in the same pull request as the backend
+# change that depends on it.
+#
+# So `grader/` is the source of truth and the grader repo is a published
+# artifact: this mirrors one to the other on every merge. Nobody edits the
+# artifact, and nobody has to remember to copy anything across.
+on:
+  push:
+    branches: ['main']
+    paths: ['grader/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Two merges in quick succession would otherwise race to force-push the same
+# branch, and the loser silently wins.
+concurrency:
+  group: publish-grader
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # subtree split walks the history of grader/, so a shallow clone
+          # would produce a truncated one.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # An SSH deploy key rather than a token: pushing anything under
+      # `.github/workflows/` needs `workflow` scope on a PAT, and grade.yml is
+      # exactly that. Deploy keys are not subject to the restriction, and this
+      # one is write-scoped to the single repository it needs.
+      - name: Authorise the grader repository
+        env:
+          DEPLOY_KEY: ${{ secrets.GRADER_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::GRADER_DEPLOY_KEY is not set. See grader/README.md."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Publish
+        env:
+          GRADER_REMOTE: ${{ vars.GRADER_REMOTE || 'git@github.com:Bitshala-Classrooms/assignment-grader.git' }}
+        run: ./grader/publish.sh "$GRADER_REMOTE"

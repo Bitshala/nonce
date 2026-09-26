@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cohort } from '@/entities/cohort.entity';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import {
     CreateCohortRequestDto,
     JoinWaitlistRequestDto,
@@ -30,7 +30,12 @@ import { Attendance } from '@/entities/attendance.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { DiscordClient } from '@/discord-client/discord.client';
 import { ConfigService } from '@nestjs/config';
-import { CohortType, CohortWeekType } from '@/common/enum';
+import { AssignmentBackend, CohortType, CohortWeekType } from '@/common/enum';
+import { Assignment } from '@/entities/assignment.entity';
+import {
+    applyAssignmentConfig,
+    resolveDeadline,
+} from '@/assignments/assignment-seed.util';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { CohortWaitlist } from '@/entities/cohort-waitlist.entity';
 import { Certificate } from '@/entities/certificate.entity';
@@ -406,7 +411,16 @@ export class CohortsService {
                     minRole: l.minRole,
                 }));
 
-                if (hasExercises) cohort.classroomId = config.classroomId;
+                const assignmentBackend =
+                    config.assignmentBackend ?? AssignmentBackend.CLASSROOM;
+                cohort.assignmentBackend = assignmentBackend;
+
+                if (
+                    hasExercises &&
+                    assignmentBackend === AssignmentBackend.CLASSROOM
+                ) {
+                    cohort.classroomId = config.classroomId;
+                }
 
                 await manager.save(cohort);
 
@@ -479,11 +493,40 @@ export class CohortsService {
 
                 await manager.save(cohort.weeks);
 
-                // Create an initial sync task when cohort is created
-                const apiTask = new APITask<TaskType.SYNC_CLASSROOM_SCORES>();
-                apiTask.type = TaskType.SYNC_CLASSROOM_SCORES;
-                apiTask.data = { cohortId: cohort.id };
-                await manager.save(apiTask);
+                // In-house cohorts get an Assignment per exercise week, seeded
+                // straight from config. Config is the source of truth for the
+                // mechanics; nothing authors these through the API.
+                if (assignmentBackend === AssignmentBackend.INHOUSE) {
+                    const assignments = cohort.weeks
+                        .filter((week) => week.hasExercise)
+                        .map((week) => {
+                            const weekConfig = config.weeks[week.week - 1];
+                            // Guaranteed by the boot-time config validation in
+                            // CohortsConfigService.
+                            return applyAssignmentConfig(
+                                new Assignment(),
+                                weekConfig.assignment!,
+                                week,
+                                season,
+                            );
+                        });
+                    if (assignments.length > 0) {
+                        await manager.save(assignments);
+                        // applyAssignmentConfig cannot resolve a GRADUATION
+                        // deadline — it sees one week, not the calendar.
+                        await this.syncAssignmentDeadlines(manager, cohort.id);
+                    }
+                }
+
+                // Classroom sync only applies to cohorts still on that backend.
+                if (assignmentBackend === AssignmentBackend.CLASSROOM) {
+                    // Create an initial sync task when cohort is created
+                    const apiTask =
+                        new APITask<TaskType.SYNC_CLASSROOM_SCORES>();
+                    apiTask.type = TaskType.SYNC_CLASSROOM_SCORES;
+                    apiTask.data = { cohortId: cohort.id };
+                    await manager.save(apiTask);
+                }
 
                 // Start the daily Discord role reconciliation recurrence.
                 // The handler self-reschedules at +24h after each run.
@@ -567,6 +610,9 @@ export class CohortsService {
                 }
                 await manager.save(CohortWeek, cohort.weeks);
 
+                // Graduation moved, so every deadline anchored to it moves.
+                await this.syncAssignmentDeadlines(manager, cohort.id);
+
                 // Cancel all unprocessed reminder tasks and recreate with new dates
                 await manager
                     .createQueryBuilder()
@@ -630,6 +676,14 @@ export class CohortsService {
             await manager.save(CohortWeek, cohortWeek);
 
             if (scheduledDateChanged) {
+                // Moving the graduation week moves every deadline in the
+                // cohort; moving an exercise week moves its own WEEK_OFFSET
+                // one. Cheaper to recompute the lot than to work out which.
+                await this.syncAssignmentDeadlines(
+                    manager,
+                    cohortWeek.cohort.id,
+                );
+
                 // Cancel existing unprocessed reminder task for this week
                 await manager
                     .createQueryBuilder()
@@ -661,6 +715,50 @@ export class CohortsService {
                 await manager.save(APITask, calendarTask);
             }
         });
+    }
+
+    /**
+     * Recompute every in-house assignment deadline for a cohort.
+     *
+     * `Assignment.deadline` is a materialised date, so anything that moves a
+     * week has to call this or the deadline silently keeps pointing at the old
+     * schedule. Both write paths that move dates do — `updateCohort` shifting
+     * the whole calendar, and `updateCohortWeek` moving a single week.
+     *
+     * The graduation date is read off the GRADUATION week rather than computed
+     * from `startDate`, because `updateCohortWeek` can move one week on its own
+     * and the calendar is then no longer a clean run of sevens.
+     */
+    private async syncAssignmentDeadlines(
+        manager: EntityManager,
+        cohortId: string,
+    ): Promise<void> {
+        const weeks = await manager.find(CohortWeek, {
+            where: { cohort: { id: cohortId } },
+            relations: { assignment: true },
+        });
+
+        const graduation =
+            weeks.find((week) => week.type === CohortWeekType.GRADUATION)
+                ?.scheduledDate ?? null;
+
+        const changed: Assignment[] = [];
+        for (const week of weeks) {
+            const assignment = week.assignment;
+            if (!assignment) continue;
+
+            assignment.deadline = resolveDeadline(
+                assignment.deadlineSource,
+                week.scheduledDate,
+                graduation,
+                assignment.deadlineDaysAfterWeek,
+            );
+            changed.push(assignment);
+        }
+
+        if (changed.length > 0) {
+            await manager.save(Assignment, changed);
+        }
     }
 
     private createReminderTask(

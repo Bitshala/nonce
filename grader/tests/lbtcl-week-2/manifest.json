@@ -1,0 +1,8 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "schemaVersion": 1,
+  "network": "full",
+  "toolchains": { "node": "20", "python": "3.11", "rust": "stable" },
+  "services": false,
+  "timeoutMinutes": 15
+}

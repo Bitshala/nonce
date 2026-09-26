@@ -1,0 +1,10 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "schemaVersion": 1,
+  "network": "full",
+  "toolchains": {
+    "python": "3.11"
+  },
+  "services": false,
+  "timeoutMinutes": 20
+}
