@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { ServiceError } from '@/common/errors';
 
@@ -52,6 +53,20 @@ export class ExerciseScoreWritebackService {
         // so a missing one means the enrollment data is wrong, not that we
         // should invent a score. Same stance the Classroom sync takes.
         if (!score) {
+            // The exception is staff, who can accept and run an assignment to
+            // try it without being enrolled — there is no score to write.
+            const enrolled = await manager.exists(CohortMembership, {
+                where: {
+                    user: { id: submission.user.id },
+                    cohort: { id: cohort.id },
+                },
+            });
+            if (!enrolled) {
+                this.logger.log(
+                    `Submission ${submission.id} belongs to a user outside cohort ${cohort.id}; no score to write`,
+                );
+                return;
+            }
             throw new ServiceError(
                 `No ExerciseScore for user ${submission.user.id}, cohort ${cohort.id}, week ${week.id}`,
             );
