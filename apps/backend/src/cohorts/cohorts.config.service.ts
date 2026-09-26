@@ -91,6 +91,24 @@ export class CohortsConfigService implements OnModuleInit {
                 }
             }
 
+            // `deadline` and `deadlineDaysAfterWeek` are two answers to the
+            // same question. class-validator can only skip one when both are
+            // present, which would silently drop whichever lost — so reject the
+            // pair outright rather than pick.
+            const conflicting = config.weeks
+                .map((week, index) => ({ week, number: index + 1 }))
+                .filter(
+                    ({ week }) =>
+                        week.assignment?.deadline !== undefined &&
+                        week.assignment?.deadlineDaysAfterWeek !== undefined,
+                )
+                .map(({ number }) => number);
+            if (conflicting.length > 0) {
+                throw new Error(
+                    `Invalid config for ${type}: week(s) ${conflicting.join(', ')} set both \`deadline\` and \`deadlineDaysAfterWeek\`; use one`,
+                );
+            }
+
             // Validate that all referenced attachment files exist
             const attachDir = join(
                 configDir,

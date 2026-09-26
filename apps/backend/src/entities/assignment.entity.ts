@@ -10,7 +10,7 @@ import {
 import { BaseEntity } from '@/entities/base.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
-import { AssignmentStatus } from '@/common/enum';
+import { AssignmentDeadlineSource, AssignmentStatus } from '@/common/enum';
 
 /**
  * Editor writes to these paths are refused. Grading config must stay ours.
@@ -84,6 +84,29 @@ export class Assignment extends BaseEntity {
     })
     status!: AssignmentStatus;
 
+    // What the deadline is anchored to. Kept on the row because `deadline`
+    // below is derived: cohort dates get moved after a cohort exists, and the
+    // rule has to still be here to recompute from.
+    @Column({
+        type: 'enum',
+        enum: AssignmentDeadlineSource,
+        default: AssignmentDeadlineSource.NONE,
+    })
+    deadlineSource!: AssignmentDeadlineSource;
+
+    // Only meaningful for WEEK_OFFSET.
+    @Column('int', { nullable: true })
+    deadlineDaysAfterWeek!: number | null;
+
+    /**
+     * The materialised deadline. Derived from `deadlineSource` — recomputed by
+     * `CohortsService.syncAssignmentDeadlines` whenever a week date moves, so
+     * a rescheduled graduation drags every deadline with it.
+     *
+     * Stored rather than computed on read because it is consulted on every
+     * save and every run, and deriving it would mean loading the cohort's whole
+     * week list at each of those call sites.
+     */
     @Column('timestamptz', { nullable: true })
     deadline!: Date | null;
 

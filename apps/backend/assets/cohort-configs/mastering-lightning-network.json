@@ -13,7 +13,7 @@
         "templateRepo": "LN-week-1-assignment",
         "graderTestPath": "tests/ln-week-1",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
-        "deadlineDaysAfterWeek": 56,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 20
       },
       "title": "Introduction to Lightning Network",
@@ -85,7 +85,7 @@
         "templateRepo": "LN-week-2-assignment",
         "graderTestPath": "tests/ln-week-2",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
-        "deadlineDaysAfterWeek": 42,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 25
       },
       "title": "Node Operations and Lightning Architecture",
@@ -157,7 +157,7 @@
         "templateRepo": "LN-week-3-assignment",
         "graderTestPath": "tests/ln-week-3",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
-        "deadlineDaysAfterWeek": 28,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 25
       },
       "title": "Channel Operations and Onion Routing",
@@ -231,7 +231,7 @@
         "templateRepo": "LN-week-4-assignment",
         "graderTestPath": "tests/ln-week-4",
         "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
-        "deadlineDaysAfterWeek": 14,
+        "deadline": "GRADUATION",
         "runTimeoutMinutes": 25
       },
       "title": "Wire Protocol and Encrypted Transport",

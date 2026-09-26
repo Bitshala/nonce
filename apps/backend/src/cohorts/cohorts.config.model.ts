@@ -5,6 +5,7 @@ import {
     IsBoolean,
     IsDefined,
     IsEnum,
+    IsIn,
     IsInt,
     IsNumberString,
     IsOptional,
@@ -92,8 +93,18 @@ export class AssignmentConfig {
     @IsString({ each: true })
     protectedPaths?: string[];
 
-    // Days after the week's scheduled date that the deadline falls on. Omit for
-    // no deadline at all, in which case every run counts for score.
+    // "GRADUATION" makes the deadline the cohort's graduation day, and keeps
+    // it there: move the cohort and the deadline moves with it. This is what
+    // the courses actually run — everything is due when the cohort ends.
+    //
+    // Mutually exclusive with `deadlineDaysAfterWeek`; both omitted means no
+    // deadline, and every run counts for score.
+    @IsOptional()
+    @IsIn(['GRADUATION'])
+    deadline?: 'GRADUATION';
+
+    // Days after this assignment's own week that the deadline falls on. A fixed
+    // offset, for an assignment that should be due before the cohort ends.
     @IsOptional()
     @IsInt()
     @Min(0)

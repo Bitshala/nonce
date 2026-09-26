@@ -341,10 +341,16 @@
           },
           "description": "Paths the editor refuses to write. Exact paths and prefix/** patterns only. Defaults to [\".github/**\"]."
         },
+        "deadline": {
+          "enum": [
+            "GRADUATION"
+          ],
+          "description": "Anchors the deadline to the cohort's graduation day, and keeps it there \u2014 moving the cohort's dates moves the deadline with them, because it is recomputed from the graduation week rather than frozen at seed time. This is what the courses run: every exercise is due when the cohort ends. Mutually exclusive with `deadlineDaysAfterWeek`; omit both for no deadline, in which case every run counts for score."
+        },
         "deadlineDaysAfterWeek": {
           "type": "integer",
           "minimum": 0,
-          "description": "Deadline offset from the week's scheduled date. Omit for no deadline, in which case every run counts for score."
+          "description": "A fixed offset from this assignment's own week, for an exercise due before the cohort ends. Unlike `deadline`, this is relative to the week, so it moves when that week moves but is unaffected by graduation. Mutually exclusive with `deadline`; omit both for no deadline."
         },
         "allowLateSubmission": {
           "type": "boolean",
