@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -22,6 +27,12 @@ import {
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
+
+/**
+ * How long a PROVISIONING row is presumed to have a live worker behind it.
+ * Provisioning takes seconds; this only has to outlast a slow GitHub.
+ */
+const PROVISIONING_LEASE_MS = 10 * 60 * 1000;
 
 /**
  * Staff operations on assignments: repairing provisioning, re-grading, manual
@@ -144,14 +155,40 @@ export class AdminAssignmentsService {
         );
     }
 
-    /** Re-queues provisioning for a submission whose repo never got created. */
+    /**
+     * Re-queues provisioning for a submission whose repo never got created.
+     *
+     * Refuses a READY submission: provisioning it again would re-adopt the repo
+     * and record the student's current head as the template commit, which
+     * reads as "nothing submitted". Refuses one still provisioning, too, unless
+     * its worker has been silent past the lease — the task processor never
+     * re-runs a task that died mid-run, so this is the way out for one.
+     */
     async reprovision(submissionId: string): Promise<void> {
-        const submission = await this.submissionRepository.findOne({
-            where: { id: submissionId },
-        });
-        if (!submission) throw new NotFoundException('Submission not found');
-
         await this.dbTransactionService.execute(async (manager) => {
+            // Locked so two reprovisions cannot both get past the checks.
+            const submission = await manager.findOne(AssignmentSubmission, {
+                where: { id: submissionId },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!submission) {
+                throw new NotFoundException('Submission not found');
+            }
+            if (submission.provisionStatus === ProvisionStatus.READY) {
+                throw new ConflictException(
+                    'This submission already has its repository',
+                );
+            }
+            if (
+                submission.provisionStatus === ProvisionStatus.PROVISIONING &&
+                Date.now() - submission.updatedAt.getTime() <
+                    PROVISIONING_LEASE_MS
+            ) {
+                throw new ConflictException(
+                    'Provisioning is already running for this submission',
+                );
+            }
+
             await manager.update(
                 AssignmentSubmission,
                 { id: submissionId },

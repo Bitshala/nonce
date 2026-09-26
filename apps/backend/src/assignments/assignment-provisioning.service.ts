@@ -52,13 +52,21 @@ export class AssignmentProvisioningService {
             );
             return;
         }
-        if (submission.provisionStatus === ProvisionStatus.READY) return;
+        // Claimed in the UPDATE rather than read and then written: an admin
+        // reprovision can queue a second task while the first is still pending
+        // or running, and only one of them may go on to create the repo.
+        const claimed = await this.submissionRepository.update(
+            { id: submission.id, provisionStatus: ProvisionStatus.PENDING },
+            { provisionStatus: ProvisionStatus.PROVISIONING },
+        );
+        if (!claimed.affected) {
+            this.logger.log(
+                `Submission ${submission.id} is ${submission.provisionStatus === ProvisionStatus.READY ? 'already provisioned' : 'not pending provisioning'}; skipping`,
+            );
+            return;
+        }
 
         try {
-            await this.submissionRepository.update(
-                { id: submission.id },
-                { provisionStatus: ProvisionStatus.PROVISIONING },
-            );
             await this.provision(submission);
         } catch (error) {
             const message =
@@ -66,20 +74,15 @@ export class AssignmentProvisioningService {
 
             // Only give up once retries are exhausted; a transient GitHub error
             // should not strand a student with a FAILED submission.
-            if (isLastRetry(task)) {
-                await this.submissionRepository.update(
-                    { id: submission.id },
-                    {
-                        provisionStatus: ProvisionStatus.FAILED,
-                        provisionError: message,
-                    },
-                );
-            } else {
-                await this.submissionRepository.update(
-                    { id: submission.id },
-                    { provisionStatus: ProvisionStatus.PENDING },
-                );
-            }
+            await this.submissionRepository.update(
+                ownedClaim(submission.id),
+                isLastRetry(task)
+                    ? {
+                          provisionStatus: ProvisionStatus.FAILED,
+                          provisionError: message,
+                      }
+                    : { provisionStatus: ProvisionStatus.PENDING },
+            );
             throw error;
         }
     }
@@ -116,8 +119,8 @@ export class AssignmentProvisioningService {
             repo.defaultBranch,
         );
 
-        await this.submissionRepository.update(
-            { id: submission.id },
+        const recorded = await this.submissionRepository.update(
+            ownedClaim(submission.id),
             {
                 repoOwner: repo.owner,
                 repoName: repo.name,
@@ -129,6 +132,13 @@ export class AssignmentProvisioningService {
                 provisionError: null,
             },
         );
+
+        if (!recorded.affected) {
+            this.logger.warn(
+                `Provisioned ${repo.owner}/${repo.name}, but submission ${submission.id} was handed to another worker first; leaving it to them`,
+            );
+            return;
+        }
 
         this.logger.log(
             `Provisioned ${repo.owner}/${repo.name} for submission ${submission.id}`,
@@ -154,6 +164,15 @@ export class AssignmentProvisioningService {
             `Repo ${owner}/${repo} has no commit on ${branch} after template generation`,
         );
     }
+}
+
+/**
+ * Every write after the claim is conditional on still holding it. A worker
+ * stuck on a slow GitHub call can outlive the lease an admin reprovision
+ * respects; once the row has been handed on, it is no longer this worker's.
+ */
+function ownedClaim(submissionId: string) {
+    return { id: submissionId, provisionStatus: ProvisionStatus.PROVISIONING };
 }
 
 function sleep(ms: number): Promise<void> {
