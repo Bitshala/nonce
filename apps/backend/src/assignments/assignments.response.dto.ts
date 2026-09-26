@@ -168,6 +168,7 @@ export class AssignmentSummaryResponseDto implements AssignmentSummaryResponse {
     deadline: string | null;
     allowLateSubmission: boolean;
     isPastDeadline: boolean;
+    isOpenForSubmission: boolean;
     maxRunsPerDay: number;
     submission: SubmissionResponse | null;
 
@@ -194,6 +195,7 @@ export class AssignmentSummaryResponseDto implements AssignmentSummaryResponse {
         this.deadline = assignment.deadline?.toISOString() ?? null;
         this.allowLateSubmission = assignment.allowLateSubmission;
         this.isPastDeadline = assignment.isPastDeadline();
+        this.isOpenForSubmission = assignment.isOpenForSubmission();
         this.maxRunsPerDay = assignment.maxRunsPerDay;
         this.submission = submission
             ? new SubmissionResponseDto(submission, assignment.id, runsToday)

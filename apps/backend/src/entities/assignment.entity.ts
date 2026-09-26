@@ -132,4 +132,18 @@ export class Assignment extends BaseEntity {
     isPastDeadline(at: Date = new Date()): boolean {
         return this.deadline !== null && at > this.deadline;
     }
+
+    /**
+     * Whether students may still accept, save, and run. The single definition
+     * of that rule — the API gates on it and the frontend reads it off the DTO.
+     *
+     * Not the same as score eligibility, which stays "dispatched before the
+     * deadline" even when late work is allowed (see `CIRun.countsForScore`).
+     */
+    isOpenForSubmission(at: Date = new Date()): boolean {
+        return (
+            this.status !== AssignmentStatus.CLOSED &&
+            (!this.isPastDeadline(at) || this.allowLateSubmission)
+        );
+    }
 }

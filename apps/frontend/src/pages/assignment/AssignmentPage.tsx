@@ -144,8 +144,7 @@ export const AssignmentPage = () => {
             <Button
               variant="contained"
               disabled={
-                acceptAssignment.isPending ||
-                (assignment.isPastDeadline && !assignment.allowLateSubmission)
+                acceptAssignment.isPending || !assignment.isOpenForSubmission
               }
               onClick={() => acceptAssignment.mutate(assignment.id)}
             >
