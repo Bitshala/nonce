@@ -1,11 +1,20 @@
 {
   "$schema": "./cohort-config.schema.json",
+  "assignmentBackend": "INHOUSE",
   "gdSessions": 8,
   "classroomId": "300036",
   "links": [],
   "weeks": [
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "ln-week-1",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LN-week-1-assignment",
+        "graderTestPath": "tests/ln-week-1",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
+        "runTimeoutMinutes": 20
+      },
       "title": "Introduction to Lightning Network",
       "readingMaterial": [
         { "label": "Mastering the Lightning Network - Introduction", "url": "https://github.com/lnbook/lnbook/blob/develop/01_introduction.asciidoc" },
@@ -69,6 +78,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "ln-week-2",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LN-week-2-assignment",
+        "graderTestPath": "tests/ln-week-2",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
+        "runTimeoutMinutes": 25
+      },
       "title": "Node Operations and Lightning Architecture",
       "readingMaterial": [
         { "label": "Node Operations", "url": "https://github.com/lnbook/lnbook/blob/develop/05_node_operations.asciidoc" },
@@ -132,6 +149,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "ln-week-3",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LN-week-3-assignment",
+        "graderTestPath": "tests/ln-week-3",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
+        "runTimeoutMinutes": 25
+      },
       "title": "Channel Operations and Onion Routing",
       "readingMaterial": [
         { "label": "Channel Operations", "url": "https://github.com/lnbook/lnbook/blob/develop/09_channel_operation.asciidoc" },
@@ -197,6 +222,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "ln-week-4",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LN-week-4-assignment",
+        "graderTestPath": "tests/ln-week-4",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yml"],
+        "runTimeoutMinutes": 25
+      },
       "title": "Wire Protocol and Encrypted Transport",
       "readingMaterial": [
         { "label": "Wire Protocol", "url": "https://github.com/lnbook/lnbook/blob/develop/13_wire_protocol.asciidoc" },

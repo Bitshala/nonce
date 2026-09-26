@@ -1,5 +1,6 @@
 {
   "$schema": "./cohort-config.schema.json",
+  "assignmentBackend": "INHOUSE",
   "gdSessions": 6,
   "classroomId": "234007",
   "links": [
@@ -10,6 +11,13 @@
   "weeks": [
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "lbtcl-week-1",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LBTCL-week-1-assignment",
+        "graderTestPath": "tests/lbtcl-week-1",
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Setting Up and Interacting with a Bitcoin Node",
         "concepts": "Node setup, bitcoin.conf configuration, RPC interaction, wallet creation, block rewards, coinbase maturity, transaction lifecycle",
@@ -51,6 +59,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "lbtcl-week-2",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LBTCL-week-2-assignment",
+        "graderTestPath": "tests/lbtcl-week-2",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Fee Bumping with RBF and CPFP",
         "concepts": "Replace-By-Fee (RBF), Child-Pays-For-Parent (CPFP), mempool inspection, transaction conflicts, fee management",
@@ -89,6 +105,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "lbtcl-week-3",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LBTCL-week-3-assignment",
+        "graderTestPath": "tests/lbtcl-week-3",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "2-of-2 Multisig with PSBT",
         "concepts": "Multisig scripts, P2WSH addresses, PSBT workflow, collaborative signing, joint custody",
@@ -123,6 +147,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "lbtcl-week-4",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LBTCL-week-4-assignment",
+        "graderTestPath": "tests/lbtcl-week-4",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Absolute Timelocks and OP_RETURN",
         "concepts": "Absolute timelocks (nLockTime), block height locks, non-final transactions, OP_RETURN data embedding",
@@ -158,6 +190,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "lbtcl-week-5",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "LBTCL-week-5-assignment",
+        "graderTestPath": "tests/lbtcl-week-5",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "setup-bitcoin-node.sh"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Relative Timelocks",
         "concepts": "Relative timelocks, nSequence, BIP68, input aging, refund transactions",

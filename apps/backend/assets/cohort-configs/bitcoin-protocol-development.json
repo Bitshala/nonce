@@ -1,11 +1,20 @@
 {
   "$schema": "./cohort-config.schema.json",
+  "assignmentBackend": "INHOUSE",
   "gdSessions": 5,
   "classroomId": "255956",
   "links": [],
   "weeks": [
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bpd-week-1",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "BPD-week-1-assignment",
+        "graderTestPath": "tests/bpd-week-1",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yaml"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Bitcoin Node Interaction and OP_RETURN Transaction",
         "concepts": "RPC interface, wallet management, block mining, transaction construction, OP_RETURN outputs, fee rates",
@@ -49,6 +58,13 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bpd-week-2",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "BPD-week-2-assignment",
+        "graderTestPath": "tests/bpd-week-2",
+        "runTimeoutMinutes": 10
+      },
       "exercise": {
         "title": "Building a P2SH-P2WSH Multisig Transaction",
         "concepts": "P2SH wrapping, P2WSH, 2-of-2 multisig, sighash calculation, ECDSA signatures, scriptSig and witness construction",
@@ -91,6 +107,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bpd-week-3",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "BPD-week-3-assignment",
+        "graderTestPath": "tests/bpd-week-3",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "mempool/**"],
+        "runTimeoutMinutes": 15
+      },
       "exercise": {
         "title": "Mine Your First Block",
         "concepts": "Transaction validation, mempool processing, coinbase transactions, merkle root, block header construction, proof-of-work",
@@ -132,6 +156,13 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bpd-week-4",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "BPD-week-4-assignment",
+        "graderTestPath": "tests/bpd-week-4",
+        "runTimeoutMinutes": 10
+      },
       "exercise": {
         "title": "Connecting to the P2P Network",
         "concepts": "P2P protocol, version/verack handshake, network message serialization, block retrieval, block parsing, fee and coinbase analysis",
@@ -164,6 +195,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bpd-week-5",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "BPD-week-5-assignment",
+        "graderTestPath": "tests/bpd-week-5",
+        "protectedPaths": [".github/**", "test/**", "jest.config.ts", "tsconfig.json", "package.json", "package-lock.json", "docker-compose.yaml", "bitcoin-regtest-explorer.conf.in", "data/**"],
+        "runTimeoutMinutes": 30
+      },
       "exercise": {
         "title": "Parsing a Descriptor and Calculating Wallet Balance",
         "concepts": "Output descriptors, extended public keys, address derivation, gap limit handling, Esplora API, balance calculation",
