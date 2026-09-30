@@ -1,21 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Box, Typography } from '@mui/material';
-import {
-  ChevronDown,
-  ChevronRight,
-  File as FileIcon,
-  Lock,
-} from 'lucide-react';
-import { isProtectedPath } from '@nonce/shared';
+import { Box, Collapse, Typography } from '@mui/material';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import type { RepoTreeEntryResponse } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
-
-interface TreeNode {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  children: TreeNode[];
-}
+import { belongsToLanguage, fileRole, isBriefPath, type FileRole } from './languages';
 
 interface Props {
   entries: RepoTreeEntryResponse[];
@@ -23,14 +12,46 @@ interface Props {
   dirtyPaths: Set<string>;
   protectedPaths: string[];
   onSelect: (path: string) => void;
+  /** Selected language folder; its files are listed without the folder prefix. */
+  language?: string | null;
+  languages?: string[];
 }
 
+interface Item {
+  path: string;
+  name: string;
+}
+
+const GROUPS: { role: Exclude<FileRole, 'grader'>; title: string }[] = [
+  { role: 'answer', title: 'YOUR ANSWER' },
+  { role: 'provided', title: 'PROVIDED' },
+  { role: 'other', title: 'OTHER' },
+];
+
+const Overline = ({ children }: { children: string }) => (
+  <Typography
+    sx={{
+      px: 2,
+      pt: 1.75,
+      pb: 0.5,
+      fontSize: 11.5,
+      letterSpacing: '0.08em',
+      fontWeight: 700,
+      color: '#80808a',
+    }}
+  >
+    {children}
+  </Typography>
+);
+
 /**
- * The flat, recursive tree the API returns, rendered as a folder hierarchy.
+ * The student's view of the repository, grouped by what each file is for: the
+ * answer they write, the helpers the template provides, and everything else.
+ * Grader files are pinned to the bottom, read-only.
  *
- * Under the no-GitHub-access design this is the student's only view of their
- * repository, so it shows every file including ones they cannot edit — a
- * protected file they can read is far less confusing than one that is missing.
+ * Under the no-GitHub-access design this is the only view of the repo, so it
+ * lists every file including ones that cannot be edited — a protected file
+ * that can be read is far less confusing than one that is missing.
  */
 export const FileTree = ({
   entries,
@@ -38,89 +59,76 @@ export const FileTree = ({
   dirtyPaths,
   protectedPaths,
   onSelect,
+  language = null,
+  languages = [],
 }: Props) => {
-  const root = useMemo(() => buildTree(entries), [entries]);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [graderOpen, setGraderOpen] = useState(false);
 
-  const toggle = (path: string) =>
-    setCollapsed(previous => {
-      const next = new Set(previous);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
+  const { groups, grader } = useMemo(() => {
+    const prefix = language ? `${language}/` : null;
+    const buckets: Record<FileRole, Item[]> = { answer: [], provided: [], other: [], grader: [] };
+    for (const entry of entries) {
+      if (entry.type === 'tree') continue;
+      if (isBriefPath(entry.path) || !belongsToLanguage(entry.path, language, languages)) continue;
+      const name = prefix && entry.path.startsWith(prefix) ? entry.path.slice(prefix.length) : entry.path;
+      buckets[fileRole(entry.path, protectedPaths)].push({ path: entry.path, name });
+    }
+    for (const list of Object.values(buckets)) list.sort((a, b) => a.name.localeCompare(b.name));
+    return { groups: buckets, grader: buckets.grader };
+  }, [entries, protectedPaths, language, languages]);
 
-  const renderNode = (node: TreeNode, depth: number) => {
-    const isCollapsed = collapsed.has(node.path);
-    const isActive = node.path === activePath;
-    const isDirty = dirtyPaths.has(node.path);
-    // Presentation only: the API refuses the write whatever this says.
-    const isLocked =
-      !node.isDirectory && isProtectedPath(node.path, protectedPaths);
-
+  const row = (item: Item, role: FileRole) => {
+    const isActive = item.path === activePath;
+    const isDirty = dirtyPaths.has(item.path);
     return (
-      <Box key={node.path}>
-        <Box
-          onClick={() =>
-            node.isDirectory ? toggle(node.path) : onSelect(node.path)
+      <Box
+        key={item.path}
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(item.path)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSelect(item.path);
           }
+        }}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          mx: 1,
+          px: 1.5,
+          height: 30,
+          cursor: 'pointer',
+          borderRadius: '6px',
+          bgcolor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+          '&:hover': { bgcolor: isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)' },
+        }}
+      >
+        {role === 'answer' && (
+          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#f5873a', flexShrink: 0 }} />
+        )}
+        {role === 'grader' && <LockOutlinedIcon sx={{ fontSize: 13, color: '#80808a' }} />}
+        <Typography
+          noWrap
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.75,
-            pl: `${8 + depth * 12}px`,
-            pr: 1,
-            py: 0.5,
-            cursor: 'pointer',
-            borderRadius: 1,
-            bgcolor: isActive ? 'rgba(249,115,22,0.14)' : 'transparent',
-            '&:hover': {
-              bgcolor: isActive
-                ? 'rgba(249,115,22,0.18)'
-                : 'rgba(255,255,255,0.04)',
-            },
+            fontFamily: fontFamilyMono,
+            fontSize: 13,
+            fontWeight: isActive ? 700 : 500,
+            color: isActive ? '#fff' : role === 'grader' ? '#a3a3ad' : '#e4e4e7',
+            flex: 1,
+            minWidth: 0,
           }}
         >
-          {node.isDirectory ? (
-            isCollapsed ? (
-              <ChevronRight size={14} />
-            ) : (
-              <ChevronDown size={14} />
-            )
-          ) : (
-            <FileIcon size={13} opacity={0.6} />
-          )}
-          <Typography
-            sx={{
-              fontFamily: fontFamilyMono,
-              fontSize: 12.5,
-              color: isActive ? '#f97316' : 'text.primary',
-              opacity: isLocked ? 0.55 : 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {node.name}
-          </Typography>
-          {/* Unsaved work is the one thing a student must never lose track of. */}
-          {isDirty && (
-            <Box
-              sx={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                bgcolor: '#fbbf24',
-                flexShrink: 0,
-              }}
-            />
-          )}
-          {isLocked && <Lock size={11} opacity={0.5} />}
-        </Box>
-
-        {node.isDirectory &&
-          !isCollapsed &&
-          node.children.map(child => renderNode(child, depth + 1))}
+          {item.name}
+        </Typography>
+        {/* Unsaved work is the one thing a student must never lose track of. */}
+        {isDirty && (
+          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'warning.main', flexShrink: 0 }} />
+        )}
+        {role === 'answer' && !isDirty && (
+          <Typography sx={{ fontSize: 11.5, color: '#80808a' }}>edit</Typography>
+        )}
       </Box>
     );
   };
@@ -133,63 +141,59 @@ export const FileTree = ({
     );
   }
 
-  return <Box sx={{ py: 1 }}>{root.map(node => renderNode(node, 0))}</Box>;
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+        {GROUPS.map(
+          ({ role, title }) =>
+            groups[role].length > 0 && (
+              <Box key={role}>
+                <Overline>{title}</Overline>
+                {groups[role].map(item => row(item, role))}
+              </Box>
+            )
+        )}
+      </Box>
+
+      {grader.length > 0 && (
+        <Box sx={{ flexShrink: 0, borderTop: '1px solid #2a2a30', mx: 1, mb: 1 }}>
+          <Collapse in={graderOpen} unmountOnExit>
+            <Box sx={{ maxHeight: 220, overflowY: 'auto', py: 0.5, mx: -1 }}>
+              {grader.map(item => row(item, 'grader'))}
+            </Box>
+          </Collapse>
+          <Box
+            role="button"
+            tabIndex={0}
+            aria-expanded={graderOpen}
+            onClick={() => setGraderOpen(open => !open)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setGraderOpen(open => !open);
+              }
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.5,
+              height: 40,
+              cursor: 'pointer',
+              color: 'text.secondary',
+              '&:hover': { color: '#fff' },
+            }}
+          >
+            <LockOutlinedIcon sx={{ fontSize: 14 }} />
+            <Typography sx={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>
+              {grader.length} grader files
+            </Typography>
+            <ChevronRightIcon
+              sx={{ fontSize: 16, transition: 'transform .2s', transform: graderOpen ? 'rotate(90deg)' : 'none' }}
+            />
+          </Box>
+        </Box>
+      )}
+    </Box>
+  );
 };
-
-/** Turns `src/a/b.rs` paths into nested nodes, directories before files. */
-function buildTree(entries: RepoTreeEntryResponse[]): TreeNode[] {
-  const root: TreeNode[] = [];
-  const directories = new Map<string, TreeNode>();
-
-  const ensureDirectory = (path: string): TreeNode[] => {
-    if (path === '') return root;
-
-    const existing = directories.get(path);
-    if (existing) return existing.children;
-
-    const separator = path.lastIndexOf('/');
-    const parent = ensureDirectory(
-      separator === -1 ? '' : path.slice(0, separator)
-    );
-    const node: TreeNode = {
-      name: separator === -1 ? path : path.slice(separator + 1),
-      path,
-      isDirectory: true,
-      children: [],
-    };
-    directories.set(path, node);
-    parent.push(node);
-    return node.children;
-  };
-
-  for (const entry of entries) {
-    if (entry.type === 'tree') {
-      ensureDirectory(entry.path);
-      continue;
-    }
-    const separator = entry.path.lastIndexOf('/');
-    const siblings = ensureDirectory(
-      separator === -1 ? '' : entry.path.slice(0, separator)
-    );
-    siblings.push({
-      name: separator === -1 ? entry.path : entry.path.slice(separator + 1),
-      path: entry.path,
-      isDirectory: false,
-      children: [],
-    });
-  }
-
-  const sort = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) =>
-      a.isDirectory === b.isDirectory
-        ? a.name.localeCompare(b.name)
-        : a.isDirectory
-          ? -1
-          : 1
-    );
-    nodes.forEach(node => node.isDirectory && sort(node.children));
-  };
-  sort(root);
-
-  return root;
-}

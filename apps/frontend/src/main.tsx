@@ -28,6 +28,8 @@ const LNInstructions = lazy(() => import('./pages/Students/LNInstructions.tsx'))
 const BPDInstructions = lazy(() => import('./pages/Students/BPDInstructions.tsx'));
 const PBInstructions = lazy(() => import('./pages/Students/PBInstructions.tsx'));
 const BBRInstructions = lazy(() => import('./pages/Students/BBRInstructions.tsx'));
+const MyAssignmentsPage = lazy(() => import('./pages/assignment/MyAssignmentsPage.tsx'));
+const AdminAssignmentsPage = lazy(() => import('./pages/assignment/AdminAssignmentsPage.tsx'));
 const AssignmentPage = lazy(() => import('./pages/assignment/AssignmentPage.tsx'));
 // Lazy on purpose: this pulls in Monaco, which is its own vendor chunk.
 const AssignmentEditorPage = lazy(() => import('./pages/assignment/AssignmentEditorPage.tsx'));
@@ -165,6 +167,16 @@ const routes = [
       element: <Layout><ProtectedRoute><CohortFeedback /></ProtectedRoute></Layout>,
     },
     {
+      path: '/assignments',
+      element: (
+        <Layout>
+          <ProtectedRoute>
+            <MyAssignmentsPage />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
       path: '/assignments/:assignmentId',
       element: (
         <Layout>
@@ -215,6 +227,16 @@ const routes = [
         <Layout>
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
             <FeedbackAdmin />
+          </ProtectedRoute>
+        </Layout>
+      ),
+    },
+    {
+      path: '/admin/assignments',
+      element: (
+        <Layout>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.TEACHING_ASSISTANT]}>
+            <AdminAssignmentsPage />
           </ProtectedRoute>
         </Layout>
       ),
