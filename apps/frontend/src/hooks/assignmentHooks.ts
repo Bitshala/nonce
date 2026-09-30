@@ -1,6 +1,11 @@
 import assignmentService from '../services/assignmentService.ts';
 import { createUseMutation, createUseQuery } from '../http';
 import type {
+  AdminAssignmentResponse,
+  AdminSubmissionResponse,
+  RegradeResponse,
+  SyncAssignmentsResponse,
+  UpdateSubmissionScoreRequest,
   AssignmentDetailResponse,
   AssignmentSummaryResponse,
   CIRunDetailResponse,
@@ -133,4 +138,76 @@ export const useCreateRun = createUseMutation<
       await useSubmissionRuns.invalidate(submissionId);
     },
   }
+);
+
+// ===============
+// Admin
+// ===============
+
+export const useAdminAssignments = createUseQuery<
+  AdminAssignmentResponse[],
+  void
+>(
+  () => ['admin', 'assignments'],
+  () => assignmentService.listAdminAssignments
+);
+
+export const useAdminSubmissions = createUseQuery<
+  AdminSubmissionResponse[],
+  string
+>(
+  assignmentId => ['admin', 'assignments', assignmentId, 'submissions'],
+  assignmentId => () => assignmentService.listAdminSubmissions(assignmentId)
+);
+
+const invalidateAdmin = async () => {
+  await useAdminAssignments.invalidate();
+};
+
+export const useReprovisionSubmission = createUseMutation<
+  void,
+  { submissionId: string; assignmentId: string }
+>(({ submissionId }) => assignmentService.reprovisionSubmission(submissionId), {
+  queryInvalidation: async ({ variables: { assignmentId } }) => {
+    await useAdminSubmissions.invalidate(assignmentId);
+    await invalidateAdmin();
+  },
+});
+
+export const useRegradeAssignment = createUseMutation<RegradeResponse, string>(
+  assignmentId => assignmentService.regradeAssignment(assignmentId),
+  {
+    queryInvalidation: async ({ variables: assignmentId }) => {
+      await useAdminSubmissions.invalidate(assignmentId);
+    },
+  }
+);
+
+export const useOverrideSubmissionScore = createUseMutation<
+  void,
+  {
+    submissionId: string;
+    assignmentId: string;
+    body: UpdateSubmissionScoreRequest;
+  }
+>(
+  ({ submissionId, body }) =>
+    assignmentService.overrideSubmissionScore(submissionId, body),
+  {
+    queryInvalidation: async ({ variables: { assignmentId } }) => {
+      await useAdminSubmissions.invalidate(assignmentId);
+      await invalidateAdmin();
+    },
+  }
+);
+
+export const useSyncCohortAssignments = createUseMutation<
+  SyncAssignmentsResponse,
+  string
+>(cohortId => assignmentService.syncCohortAssignments(cohortId), {
+  queryInvalidation: invalidateAdmin,
+});
+
+export const useArchiveCohortRepos = createUseMutation<void, string>(
+  cohortId => assignmentService.archiveCohortRepos(cohortId)
 );
