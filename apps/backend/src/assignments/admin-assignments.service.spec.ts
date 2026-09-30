@@ -5,13 +5,14 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { CohortsService } from '@/cohorts/cohorts.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
-import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
@@ -20,10 +21,10 @@ import { ProvisionStatus, UserRole } from '@/common/enum';
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
 
-    const assignmentRepository = { findOne: jest.fn() };
+    const assignmentRepository = { findOne: jest.fn(), find: jest.fn() };
+    const membershipRepository = { find: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
-    const membershipRepository = { find: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
     const scoreWriteback = { sync: jest.fn() };
     const manager = {
@@ -58,6 +59,7 @@ describe('AdminAssignmentsService', () => {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
                 },
+                { provide: CohortsService, useValue: {} },
                 { provide: CohortsConfigService, useValue: {} },
                 { provide: GitHubAppClient, useValue: {} },
                 { provide: RunsService, useValue: runsService },
@@ -80,6 +82,54 @@ describe('AdminAssignmentsService', () => {
         dbTransactionService.execute.mockImplementation(
             async (cb: (m: unknown) => unknown) => cb(manager),
         );
+    });
+
+    describe('listAssignments', () => {
+        it('buckets each enrolled submission once and ignores staff trial runs', async () => {
+            const cohort = { id: 'c1', type: 'x', season: 1 };
+            const assignment = {
+                id: 'a1',
+                cohortWeek: { week: 1, cohort },
+                isPastDeadline: () => false,
+                isOpenForSubmission: () => true,
+            };
+            const sub = (userId: string, o: object) => ({
+                assignment: { id: 'a1' },
+                user: { id: userId },
+                bestRun: null,
+                latestRun: null,
+                isPassingOverride: null,
+                provisionStatus: ProvisionStatus.READY,
+                ...o,
+            });
+            assignmentRepository.find.mockResolvedValue([assignment]);
+            submissionRepository.find.mockResolvedValue([
+                sub('u1', { bestRun: { id: 'r' } }),
+                sub('u2', { latestRun: { id: 'r' } }),
+                sub('u3', {}),
+                sub('u4', { provisionStatus: ProvisionStatus.FAILED }),
+                sub('u5', { isPassingOverride: true }),
+                sub('staff', { bestRun: { id: 'r' } }),
+            ]);
+            membershipRepository.find.mockResolvedValue(
+                ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
+                    cohort,
+                    user: { id },
+                })),
+            );
+
+            const [row] = await service.listAssignments();
+
+            expect(row).toMatchObject({
+                enrolledCount: 6,
+                submissionCount: 5,
+                passedCount: 2,
+                failingCount: 1,
+                inProgressCount: 1,
+                failedProvisionCount: 1,
+                notStartedCount: 1,
+            });
+        });
     });
 
     describe('regrade', () => {

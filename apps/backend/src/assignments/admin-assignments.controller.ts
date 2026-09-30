@@ -18,6 +18,7 @@ import { User } from '@/entities/user.entity';
 import { UserRole } from '@/common/enum';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import {
+    AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
     RegradeResponseDto,
     SyncAssignmentsResponseDto,
@@ -47,6 +48,14 @@ export class AdminAssignmentsController {
         @Param('cohortId', ParseUUIDPipe) cohortId: string,
     ): Promise<SyncAssignmentsResponseDto> {
         return this.adminAssignmentsService.syncAssignments(cohortId);
+    }
+
+    @Get('assignments')
+    @ApiOperation({
+        summary: 'Every assignment across all cohorts, with submission tallies',
+    })
+    async listAssignments(): Promise<AdminAssignmentResponseDto[]> {
+        return this.adminAssignmentsService.listAssignments();
     }
 
     @Get('assignments/:id/submissions')
