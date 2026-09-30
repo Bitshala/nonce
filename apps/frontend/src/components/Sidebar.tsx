@@ -32,6 +32,7 @@ import {
   FileCheck,
   FileText,
   ClipboardList,
+  ListChecks,
   MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -49,12 +50,14 @@ interface NavItem {
 const adminNavItems: NavItem[] = [
   { label: 'Cohorts', path: '/select', icon: GraduationCap },
   { label: 'Cohort Metrics', path: '/cohort-metrics', icon: BarChart3 },
+  { label: 'Assignments', path: '/admin/assignments', icon: ListChecks },
   { label: 'Cohort Feedback', path: '/admin/feedback', icon: MessageSquare },
 ];
 
 // Profile is reached from the button on the dashboard header, not from here.
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/myDashboard', icon: LayoutDashboard },
+  { label: 'Assignments', path: '/assignments', icon: ListChecks },
 ];
 
 const instructionLinks = [
@@ -97,6 +100,37 @@ const getInitial = (name: string | null | undefined): string => {
   if (!name) return '?';
   return name.charAt(0).toUpperCase();
 };
+
+/**
+ * Icon and label are always mounted, at the same offsets whether the rail is
+ * open or not. Only the label fades, so nothing reflows while the width
+ * animates.
+ */
+const NavLabel = ({
+  icon,
+  label,
+  collapsed,
+  weight = 500,
+  trailing,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  weight?: number;
+  trailing?: React.ReactNode;
+}) => (
+  <>
+    <ListItemIcon sx={{ minWidth: 36, color: 'inherit', flexShrink: 0 }}>{icon}</ListItemIcon>
+    <ListItemText
+      primary={label}
+      primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: weight, noWrap: true }}
+      sx={{ m: 0, opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}
+    />
+    {trailing && (
+      <Box sx={{ display: 'flex', opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>{trailing}</Box>
+    )}
+  </>
+);
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -236,18 +270,28 @@ const Sidebar = () => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          px: collapsed ? 1 : 2.5,
+          justifyContent: 'space-between',
+          px: 2.5,
           height: 64,
           borderBottom: '1px solid #27272a',
           flexShrink: 0,
         }}
       >
-        {!collapsed && (
-          <Typography variant="h6" sx={{ fontWeight: 700, color: '#fafafa', fontSize: '1.1rem' }}>
-            Bitshala
-          </Typography>
-        )}
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            color: '#fafafa',
+            fontSize: '1.1rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            maxWidth: collapsed ? 0 : 160,
+            opacity: collapsed ? 0 : 1,
+            transition: 'opacity 150ms ease, max-width 200ms ease',
+          }}
+        >
+          Bitshala
+        </Typography>
         <IconButton onClick={toggleCollapse} size="small" sx={{ color: '#71717a', '&:hover': { color: '#d4d4d8', bgcolor: '#27272a' } }}>
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </IconButton>
@@ -267,22 +311,16 @@ const Sidebar = () => {
                     borderRadius: 1.5,
                     mb: 0.5,
                     py: 1.25,
-                    px: collapsed ? 0 : 2,
-                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    px: 2,
                     minHeight: 44,
                     ...(active ? activeItemSx : inactiveItemSx),
                   }}
                 >
-                  {collapsed ? (
-                    <ListItemIcon sx={{ minWidth: 0, color: 'inherit', justifyContent: 'center' }}>
-                      <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
-                    </ListItemIcon>
-                  ) : (
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
-                    />
-                  )}
+                  <NavLabel
+                    icon={<Icon size={20} strokeWidth={active ? 2.2 : 1.8} />}
+                    label={item.label}
+                    collapsed={collapsed}
+                  />
                 </ListItemButton>
               </Tooltip>
             );
@@ -306,25 +344,17 @@ const Sidebar = () => {
               sx={{
                 borderRadius: 1.5,
                 py: 1.25,
-                px: collapsed ? 0 : 2,
-                justifyContent: collapsed ? 'center' : 'flex-start',
+                px: 2,
                 minHeight: 44,
                 ...(fellowshipsSectionActive ? activeItemSx : inactiveItemSx),
               }}
             >
-              {collapsed ? (
-                <ListItemIcon sx={{ minWidth: 0, color: 'inherit', justifyContent: 'center' }}>
-                  <Award size={20} strokeWidth={fellowshipsSectionActive ? 2.2 : 1.8} />
-                </ListItemIcon>
-              ) : (
-                <>
-                  <ListItemText
-                    primary="Fellowships"
-                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
-                  />
-                  {fellowshipsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </>
-              )}
+              <NavLabel
+                icon={<Award size={20} strokeWidth={fellowshipsSectionActive ? 2.2 : 1.8} />}
+                label="Fellowships"
+                collapsed={collapsed}
+                trailing={fellowshipsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              />
             </ListItemButton>
           </Box>
 
@@ -511,25 +541,17 @@ const Sidebar = () => {
               sx={{
                 borderRadius: 1.5,
                 py: 1.25,
-                px: collapsed ? 0 : 2,
-                justifyContent: collapsed ? 'center' : 'flex-start',
+                px: 2,
                 minHeight: 44,
                 ...(instructionLinks.some(l => isActive(l.path)) ? activeItemSx : inactiveItemSx),
               }}
             >
-              {collapsed ? (
-                <ListItemIcon sx={{ minWidth: 0, color: 'inherit', justifyContent: 'center' }}>
-                  <BookOpen size={20} strokeWidth={instructionLinks.some(l => isActive(l.path)) ? 2.2 : 1.8} />
-                </ListItemIcon>
-              ) : (
-                <>
-                  <ListItemText
-                    primary="Instructions"
-                    primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
-                  />
-                  {instructionsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </>
-              )}
+              <NavLabel
+                icon={<BookOpen size={20} strokeWidth={instructionLinks.some(l => isActive(l.path)) ? 2.2 : 1.8} />}
+                label="Instructions"
+                collapsed={collapsed}
+                trailing={instructionsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              />
             </ListItemButton>
           </Box>
 
@@ -619,8 +641,7 @@ const Sidebar = () => {
               sx={{
                 borderRadius: 1.5,
                 py: 1,
-                px: collapsed ? 0 : 1.5,
-                justifyContent: collapsed ? 'center' : 'flex-start',
+                px: '10px',
                 color: '#d4d4d8',
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
                 mb: 0.5,
@@ -634,13 +655,13 @@ const Sidebar = () => {
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   color: '#d4d4d8',
-                  mr: collapsed ? 0 : 1.5,
+                  mr: 1.5,
+                  flexShrink: 0,
                 }}
               >
                 {getInitial(user.name || user.discordUsername)}
               </Avatar>
-              {!collapsed && (
-                <Box sx={{ overflow: 'hidden' }}>
+              <Box sx={{ overflow: 'hidden', opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>
                   <Typography
                     variant="body2"
                     sx={{ fontWeight: 500, color: '#e4e4e7', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -653,8 +674,7 @@ const Sidebar = () => {
                   >
                     {user.role}
                   </Typography>
-                </Box>
-              )}
+              </Box>
             </ListItemButton>
           </Tooltip>
         )}
@@ -666,24 +686,19 @@ const Sidebar = () => {
             sx={{
               borderRadius: 1.5,
               py: 1,
-              px: collapsed ? 0 : 2,
-              justifyContent: collapsed ? 'center' : 'flex-start',
+              px: 2,
               color: isAuthenticated ? '#a1a1aa' : '#fb923c',
               '&:hover': isAuthenticated
                 ? { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.1)' }
                 : { color: '#fdba74', bgcolor: 'rgba(249,115,22,0.1)' },
             }}
           >
-            {collapsed ? (
-              <ListItemIcon sx={{ minWidth: 0, color: 'inherit', justifyContent: 'center' }}>
-                {isAuthenticated ? <LogOut size={20} strokeWidth={1.8} /> : <LogIn size={20} strokeWidth={1.8} />}
-              </ListItemIcon>
-            ) : (
-              <ListItemText
-                primary={isAuthenticated ? 'Logout' : 'Sign in'}
-                primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: isAuthenticated ? 500 : 600 }}
-              />
-            )}
+            <NavLabel
+              icon={isAuthenticated ? <LogOut size={20} strokeWidth={1.8} /> : <LogIn size={20} strokeWidth={1.8} />}
+              label={isAuthenticated ? 'Logout' : 'Sign in'}
+              weight={isAuthenticated ? 500 : 600}
+              collapsed={collapsed}
+            />
           </ListItemButton>
         </Tooltip>
       </Box>

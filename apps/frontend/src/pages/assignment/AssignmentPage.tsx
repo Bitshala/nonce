@@ -6,12 +6,19 @@ import {
   Button,
   Chip,
   CircularProgress,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   Paper,
+  Stack,
+  ThemeProvider,
   Typography,
 } from '@mui/material';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { ProvisionStatus } from '@nonce/shared';
-import { FellowshipPageLayout } from '../../components/fellowship/FellowshipPageLayout.tsx';
-import { fontFamilyMono } from '../../components/fellowship/theme.ts';
+import { fellowshipDarkTheme } from '../../components/fellowship/theme.ts';
 import {
   useAcceptAssignment,
   useAssignment,
@@ -23,7 +30,7 @@ import { usePageMeta } from '../../hooks/usePageMeta.ts';
 const PROVISION_POLL_MS = 2000;
 
 /**
- * Assignment detail: the problem statement, and the Accept button that
+ * Assignment detail: the problem statement, and the Start button that
  * provisions the student's repository.
  *
  * Accepting is asynchronous — a background task creates the repo from a
@@ -67,146 +74,153 @@ export const AssignmentPage = () => {
     }
   }, [isReady, assignmentId, navigate]);
 
-  if (isLoading) {
+  if (isLoading || isError || !assignment) {
     return (
-      <FellowshipPageLayout>
-        <CircularProgress />
-      </FellowshipPageLayout>
-    );
-  }
-
-  if (isError || !assignment) {
-    return (
-      <FellowshipPageLayout>
-        <Alert severity="error">{extractErrorMessage(error)}</Alert>
-      </FellowshipPageLayout>
+      <Themed center>
+        {isLoading ? (
+          <CircularProgress aria-label="Loading assignment" />
+        ) : (
+          <Alert severity="error">{extractErrorMessage(error)}</Alert>
+        )}
+      </Themed>
     );
   }
 
   return (
-    <FellowshipPageLayout
-      title={assignment.title ?? `Week ${assignment.weekNumber} exercise`}
-      subtitle={`Week ${assignment.weekNumber} · Season ${assignment.cohortSeason}`}
-      badge={assignment.slug}
-      hideIcon
-    >
-      <Box sx={{ maxWidth: 900 }}>
-        {assignment.deadline && (
-          <Chip
-            size="small"
-            label={`Due ${new Date(assignment.deadline).toLocaleString()}`}
-            color={assignment.isPastDeadline ? 'default' : 'primary'}
-            sx={{ mb: 2 }}
-          />
-        )}
-
-        {assignment.isPastDeadline && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            The deadline has passed.{' '}
-            {assignment.allowLateSubmission
-              ? 'You can still edit and run for practice, but runs no longer affect your score.'
-              : 'This assignment is closed for changes.'}
-          </Alert>
-        )}
-
-        {assignment.exercise && (
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Section title="Concepts" body={assignment.exercise.concepts} />
-            <Section title="Problem" body={assignment.exercise.problem} />
-            {assignment.exercise.expectedOutput.length > 0 && (
-              <>
-                <Typography
-                  sx={{ fontSize: 13, fontWeight: 700, mt: 2, mb: 0.5 }}
-                >
-                  Expected output
-                </Typography>
-                <Box
-                  component="pre"
-                  sx={{
-                    fontFamily: fontFamilyMono,
-                    fontSize: 12.5,
-                    bgcolor: 'rgba(255,255,255,0.04)',
-                    p: 1.5,
-                    borderRadius: 1,
-                    whiteSpace: 'pre-wrap',
-                    m: 0,
-                  }}
-                >
-                  {assignment.exercise.expectedOutput.join('\n')}
-                </Box>
-              </>
-            )}
-          </Paper>
-        )}
-
-        {!submission && (
+    <Themed>
+      <Paper variant="outlined" sx={{ width: '100%', maxWidth: 560, p: 3.5, alignSelf: 'flex-start' }}>
+        <Stack spacing={2.5}>
           <Box>
-            <Button
-              variant="contained"
-              disabled={
-                acceptAssignment.isPending || !assignment.isOpenForSubmission
-              }
-              onClick={() => acceptAssignment.mutate(assignment.id)}
-            >
-              {acceptAssignment.isPending ? 'Accepting…' : 'Accept assignment'}
-            </Button>
-            <Typography
-              sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}
-            >
-              This creates your private workspace. You will edit and run
-              everything here — there is nothing to clone or install.
+            <Typography variant="overline" color="text.secondary">
+              Week {assignment.weekNumber} · Season {assignment.cohortSeason}
             </Typography>
-            {acceptAssignment.isError && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {extractErrorMessage(acceptAssignment.error)}
-              </Alert>
-            )}
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {assignment.title ?? `Week ${assignment.weekNumber} exercise`}
+            </Typography>
           </Box>
-        )}
 
-        {submission &&
-          (submission.provisionStatus === ProvisionStatus.PENDING ||
-            submission.provisionStatus === ProvisionStatus.PROVISIONING) && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <CircularProgress size={18} />
-              <Typography sx={{ fontSize: 13.5 }}>
-                Setting up your workspace…
-              </Typography>
-            </Box>
+          {assignment.deadline && (
+            <Chip
+              size="small"
+              color="success"
+              variant="outlined"
+              label={`${assignment.isPastDeadline ? 'Was due' : 'Due'} ${new Date(assignment.deadline).toLocaleString()}`}
+              sx={{ alignSelf: 'flex-start' }}
+            />
           )}
 
-        {submission?.provisionStatus === ProvisionStatus.FAILED && (
-          <Alert severity="error">
-            We could not create your workspace. Please contact an admin and
-            mention this assignment.
-            {submission.provisionError && (
-              <Box
-                component="pre"
-                sx={{
-                  fontFamily: fontFamilyMono,
-                  fontSize: 11.5,
-                  mt: 1,
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {submission.provisionError}
-              </Box>
+          {assignment.isPastDeadline && (
+            <Alert severity="warning">
+              The deadline has passed.{' '}
+              {assignment.allowLateSubmission
+                ? 'You can still edit and run for practice, but runs no longer affect your score.'
+                : 'This assignment is closed for changes.'}
+            </Alert>
+          )}
+
+          {assignment.exercise && (
+            <>
+              {assignment.exercise.concepts && (
+                <Section title="Concepts" body={assignment.exercise.concepts} />
+              )}
+              {assignment.exercise.problem && (
+                <Section title="Problem" body={assignment.exercise.problem} />
+              )}
+              {assignment.exercise.expectedOutput.length > 0 && (
+                <Box>
+                  <Typography variant="overline" color="text.secondary">
+                    You're done when
+                  </Typography>
+                  <List dense disablePadding>
+                    {assignment.exercise.expectedOutput.map((line, i) => (
+                      <ListItem key={i} disableGutters>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          <RadioButtonUncheckedIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={line} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+            </>
+          )}
+
+          <Stack spacing={1} sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+            {!submission && (
+              <>
+                <Button
+                  variant="contained"
+                  size="large"
+                  disabled={acceptAssignment.isPending || !assignment.isOpenForSubmission}
+                  onClick={() => acceptAssignment.mutate(assignment.id)}
+                >
+                  {acceptAssignment.isPending ? 'Starting…' : 'Start assignment'}
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                  This creates your private workspace. You will edit and run
+                  everything here — there is nothing to clone or install.
+                </Typography>
+                {acceptAssignment.isError && (
+                  <Alert severity="error">{extractErrorMessage(acceptAssignment.error)}</Alert>
+                )}
+              </>
             )}
-          </Alert>
-        )}
-      </Box>
-    </FellowshipPageLayout>
+
+            {submission &&
+              (submission.provisionStatus === ProvisionStatus.PENDING ||
+                submission.provisionStatus === ProvisionStatus.PROVISIONING) && (
+                <>
+                  <Typography sx={{ fontWeight: 600 }}>Setting up</Typography>
+                  <LinearProgress />
+                  <Typography variant="caption" color="text.secondary">
+                    Opens automatically — you can close this and keep browsing.
+                  </Typography>
+                </>
+              )}
+
+            {submission?.provisionStatus === ProvisionStatus.FAILED && (
+              <Alert severity="error">
+                We could not create your workspace. Please contact an admin
+                and mention this assignment.
+                {submission.provisionError && (
+                  <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap', m: 0, mt: 1 }}>
+                    {submission.provisionError}
+                  </Box>
+                )}
+              </Alert>
+            )}
+          </Stack>
+        </Stack>
+      </Paper>
+    </Themed>
   );
 };
 
+const Themed = ({ children, center }: { children: React.ReactNode; center?: boolean }) => (
+  <ThemeProvider theme={fellowshipDarkTheme}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: center ? 'center' : 'flex-start',
+        p: { xs: 2, md: 6 },
+      }}
+    >
+      {children}
+    </Box>
+  </ThemeProvider>
+);
+
 const Section = ({ title, body }: { title: string; body: string }) => (
-  <Box sx={{ mb: 2 }}>
-    <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 0.5 }}>
+  <Box>
+    <Typography variant="overline" color="text.secondary">
       {title}
     </Typography>
-    <Typography
-      sx={{ fontSize: 13.5, color: 'text.secondary', whiteSpace: 'pre-wrap' }}
-    >
+    <Typography color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
       {body}
     </Typography>
   </Box>
