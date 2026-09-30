@@ -13,21 +13,23 @@ import {
   ListItemText,
   Paper,
   Stack,
-  ThemeProvider,
   Typography,
 } from '@mui/material';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { ProvisionStatus } from '@nonce/shared';
-import { fellowshipDarkTheme } from '../../components/fellowship/theme.ts';
+import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
+import {
+  isProvisioning,
+  provisionRefetchInterval,
+} from '../../components/assignment/provision.ts';
+import { fontFamilyMono } from '../../components/fellowship/theme.ts';
+import { formatDateTime } from '../../utils/dateUtils.ts';
 import {
   useAcceptAssignment,
   useAssignment,
 } from '../../hooks/assignmentHooks.ts';
 import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
-
-/** How often to re-check while a repository is being created. */
-const PROVISION_POLL_MS = 2000;
 
 /**
  * Assignment detail: the problem statement, and the Start button that
@@ -49,13 +51,7 @@ export const AssignmentPage = () => {
   } = useAssignment(assignmentId ?? '', {
     enabled: !!assignmentId,
     // Only poll while a repository is actually being created.
-    refetchInterval: query => {
-      const status = query.state.data?.submission?.provisionStatus;
-      return status === ProvisionStatus.PENDING ||
-        status === ProvisionStatus.PROVISIONING
-        ? PROVISION_POLL_MS
-        : false;
-    },
+    refetchInterval: provisionRefetchInterval,
   });
 
   const acceptAssignment = useAcceptAssignment();
@@ -88,7 +84,10 @@ export const AssignmentPage = () => {
 
   return (
     <Themed>
-      <Paper variant="outlined" sx={{ width: '100%', maxWidth: 560, p: 3.5, alignSelf: 'flex-start' }}>
+      <Paper
+        variant="outlined"
+        sx={{ width: '100%', maxWidth: 560, p: 3.5, alignSelf: 'flex-start' }}
+      >
         <Stack spacing={2.5}>
           <Box>
             <Typography variant="overline" color="text.secondary">
@@ -104,7 +103,7 @@ export const AssignmentPage = () => {
               size="small"
               color="success"
               variant="outlined"
-              label={`${assignment.isPastDeadline ? 'Was due' : 'Due'} ${new Date(assignment.deadline).toLocaleString()}`}
+              label={`${assignment.isPastDeadline ? 'Was due' : 'Due'} ${formatDateTime(assignment.deadline)}`}
               sx={{ alignSelf: 'flex-start' }}
             />
           )}
@@ -146,45 +145,66 @@ export const AssignmentPage = () => {
             </>
           )}
 
-          <Stack spacing={1} sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Stack
+            spacing={1}
+            sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}
+          >
             {!submission && (
               <>
                 <Button
                   variant="contained"
                   size="large"
-                  disabled={acceptAssignment.isPending || !assignment.isOpenForSubmission}
+                  disabled={
+                    acceptAssignment.isPending ||
+                    !assignment.isOpenForSubmission
+                  }
                   onClick={() => acceptAssignment.mutate(assignment.id)}
                 >
-                  {acceptAssignment.isPending ? 'Starting…' : 'Start assignment'}
+                  {acceptAssignment.isPending
+                    ? 'Starting…'
+                    : 'Start assignment'}
                 </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ textAlign: 'center' }}
+                >
                   This creates your private workspace. You will edit and run
                   everything here — there is nothing to clone or install.
                 </Typography>
                 {acceptAssignment.isError && (
-                  <Alert severity="error">{extractErrorMessage(acceptAssignment.error)}</Alert>
+                  <Alert severity="error">
+                    {extractErrorMessage(acceptAssignment.error)}
+                  </Alert>
                 )}
               </>
             )}
 
-            {submission &&
-              (submission.provisionStatus === ProvisionStatus.PENDING ||
-                submission.provisionStatus === ProvisionStatus.PROVISIONING) && (
-                <>
-                  <Typography sx={{ fontWeight: 600 }}>Setting up</Typography>
-                  <LinearProgress />
-                  <Typography variant="caption" color="text.secondary">
-                    Opens automatically — you can close this and keep browsing.
-                  </Typography>
-                </>
-              )}
+            {isProvisioning(submission?.provisionStatus) && (
+              <>
+                <Typography sx={{ fontWeight: 600 }}>Setting up</Typography>
+                <LinearProgress />
+                <Typography variant="caption" color="text.secondary">
+                  Opens automatically — you can close this and keep browsing.
+                </Typography>
+              </>
+            )}
 
             {submission?.provisionStatus === ProvisionStatus.FAILED && (
               <Alert severity="error">
-                We could not create your workspace. Please contact an admin
-                and mention this assignment.
+                We could not create your workspace. Please contact an admin and
+                mention this assignment.
                 {submission.provisionError && (
-                  <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap', m: 0, mt: 1 }}>
+                  <Box
+                    component="pre"
+                    sx={{
+                      fontFamily: fontFamilyMono,
+                      fontSize: 12,
+                      whiteSpace: 'pre-wrap',
+                      m: 0,
+                      mt: 1,
+                    }}
+                  >
                     {submission.provisionError}
                   </Box>
                 )}
@@ -197,8 +217,14 @@ export const AssignmentPage = () => {
   );
 };
 
-const Themed = ({ children, center }: { children: React.ReactNode; center?: boolean }) => (
-  <ThemeProvider theme={fellowshipDarkTheme}>
+const Themed = ({
+  children,
+  center,
+}: {
+  children: React.ReactNode;
+  center?: boolean;
+}) => (
+  <AssignmentTheme>
     <Box
       sx={{
         minHeight: '100vh',
@@ -212,7 +238,7 @@ const Themed = ({ children, center }: { children: React.ReactNode; center?: bool
     >
       {children}
     </Box>
-  </ThemeProvider>
+  </AssignmentTheme>
 );
 
 const Section = ({ title, body }: { title: string; body: string }) => (

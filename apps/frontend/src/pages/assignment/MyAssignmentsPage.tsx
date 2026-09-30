@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { alpha } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -21,7 +22,6 @@ import {
   TableCell,
   TableRow,
   Tabs,
-  ThemeProvider,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -33,23 +33,26 @@ import {
   CIRunConclusion,
   ProvisionStatus,
 } from '@nonce/shared';
-import { fellowshipDarkTheme } from '../../components/fellowship/theme.ts';
+import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
+import type { ChipColor } from '../../components/assignment/chips.ts';
+import {
+  isProvisioning,
+  provisionRefetchInterval,
+} from '../../components/assignment/provision.ts';
+import { fontFamilyMono } from '../../components/fellowship/theme.ts';
+import { formatDate, formatDateTime } from '../../utils/dateUtils.ts';
+import { readStored, writeStored } from '../../utils/storage.ts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers.ts';
-import { useAcceptAssignment, useAssignment, useMyAssignments } from '../../hooks/assignmentHooks.ts';
+import {
+  useAcceptAssignment,
+  useAssignment,
+  useMyAssignments,
+} from '../../hooks/assignmentHooks.ts';
 import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 
-/** How often to re-check while a repository is being created. */
-const PROVISION_POLL_MS = 2000;
-
 type RowState =
-  | 'available'
-  | 'closed'
-  | 'setup'
-  | 'failed'
-  | 'progress'
-  | 'needs'
-  | 'passed';
+  'available' | 'closed' | 'setup' | 'failed' | 'progress' | 'needs' | 'passed';
 
 const rowStateOf = (assignment: AssignmentSummaryResponse): RowState => {
   const submission = assignment.submission;
@@ -57,11 +60,7 @@ const rowStateOf = (assignment: AssignmentSummaryResponse): RowState => {
     return assignment.isOpenForSubmission ? 'available' : 'closed';
   }
   if (submission.provisionStatus === ProvisionStatus.FAILED) return 'failed';
-  if (
-    submission.provisionStatus === ProvisionStatus.PENDING ||
-    submission.provisionStatus === ProvisionStatus.PROVISIONING
-  )
-    return 'setup';
+  if (isProvisioning(submission.provisionStatus)) return 'setup';
   if (submission.bestRun) {
     return submission.bestRun.conclusion === CIRunConclusion.SUCCESS
       ? 'passed'
@@ -70,19 +69,15 @@ const rowStateOf = (assignment: AssignmentSummaryResponse): RowState => {
   return 'progress';
 };
 
-type ChipColor = 'default' | 'success' | 'error' | 'info' | 'warning';
-
 const BADGE: Record<RowState, { label: string; color: ChipColor }> = {
   available: { label: 'Available', color: 'success' },
   closed: { label: 'Closed', color: 'default' },
   setup: { label: 'Setting up', color: 'info' },
-  failed: { label: 'Setup failed', color: 'error' },
+  failed: { label: 'Setup failed', color: 'warning' },
   progress: { label: 'In progress', color: 'info' },
   needs: { label: 'Needs work', color: 'warning' },
   passed: { label: 'Passed', color: 'success' },
 };
-
-const mono = { fontFamily: 'monospace' } as const;
 
 const VERB: Record<RowState, string | null> = {
   available: 'Start',
@@ -109,7 +104,9 @@ interface CourseGroup {
   seasons: SeasonGroup[];
 }
 
-const groupByCourse = (assignments: AssignmentSummaryResponse[]): CourseGroup[] => {
+const groupByCourse = (
+  assignments: AssignmentSummaryResponse[]
+): CourseGroup[] => {
   const courses = new Map<string, CourseGroup>();
   for (const assignment of assignments) {
     let course = courses.get(assignment.cohortType);
@@ -123,13 +120,17 @@ const groupByCourse = (assignments: AssignmentSummaryResponse[]): CourseGroup[] 
     }
     let season = course.seasons.find(s => s.cohortId === assignment.cohortId);
     if (!season) {
-      season = { season: assignment.cohortSeason, cohortId: assignment.cohortId, assignments: [] };
+      season = {
+        season: assignment.cohortSeason,
+        cohortId: assignment.cohortId,
+        assignments: [],
+      };
       course.seasons.push(season);
     }
     season.assignments.push(assignment);
   }
   for (const course of courses.values()) {
-    course.seasons.sort((a, b) => a.season - b.season);
+    course.seasons.sort((a, b) => b.season - a.season);
     for (const season of course.seasons) {
       season.assignments.sort((a, b) => a.weekNumber - b.weekNumber);
     }
@@ -138,35 +139,29 @@ const groupByCourse = (assignments: AssignmentSummaryResponse[]): CourseGroup[] 
 };
 
 /** The single most useful thing to do next in a course: something in progress, else the next available week. */
-const findUpNext = (course: CourseGroup): AssignmentSummaryResponse | null => {
-  const all = course.seasons.flatMap(s => s.assignments);
+const findUpNext = (
+  season: SeasonGroup | null
+): AssignmentSummaryResponse | null => {
+  const all = season?.assignments ?? [];
   const inProgress = all.find(a => rowStateOf(a) === 'progress');
   if (inProgress) return inProgress;
   const available = all.find(a => rowStateOf(a) === 'available');
   return available ?? null;
 };
 
-const readStored = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-const writeStored = (key: string, value: string) => {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // ignore
-  }
-};
-
 const Themed = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={fellowshipDarkTheme}>
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary', p: { xs: 2, md: 5 } }}>
+  <AssignmentTheme>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        p: { xs: 2, md: 5 },
+      }}
+    >
       {children}
     </Box>
-  </ThemeProvider>
+  </AssignmentTheme>
 );
 
 export const MyAssignmentsPage = () => {
@@ -175,21 +170,30 @@ export const MyAssignmentsPage = () => {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(() =>
     readStored('assignments-course')
   );
-  const [selectedSeason, setSelectedSeason] = useState<Record<string, number>>({});
+  const [selectedSeason, setSelectedSeason] = useState<Record<string, number>>(
+    {}
+  );
   const [openId, setOpenId] = useState<string | null>(null);
 
   usePageMeta('Assignments');
 
-  const courses = useMemo(() => groupByCourse(assignments ?? []), [assignments]);
+  const courses = useMemo(
+    () => groupByCourse(assignments ?? []),
+    [assignments]
+  );
 
   useEffect(() => {
     if (courses.length === 0) return;
-    if (!selectedCourse || !courses.some(c => c.cohortType === selectedCourse)) {
+    if (
+      !selectedCourse ||
+      !courses.some(c => c.cohortType === selectedCourse)
+    ) {
       setSelectedCourse(courses[0].cohortType);
     }
   }, [courses, selectedCourse]);
 
-  const activeCourse = courses.find(c => c.cohortType === selectedCourse) ?? courses[0] ?? null;
+  const activeCourse =
+    courses.find(c => c.cohortType === selectedCourse) ?? courses[0] ?? null;
   const activeSeasonNumber =
     (activeCourse && selectedSeason[activeCourse.cohortType]) ??
     activeCourse?.seasons[0]?.season ??
@@ -198,9 +202,10 @@ export const MyAssignmentsPage = () => {
     activeCourse?.seasons.find(s => s.season === activeSeasonNumber) ??
     activeCourse?.seasons[0] ??
     null;
-  const upNext = activeCourse ? findUpNext(activeCourse) : null;
+  const upNext = findUpNext(activeSeason);
   const doneCount =
-    activeSeason?.assignments.filter(a => rowStateOf(a) === 'passed').length ?? 0;
+    activeSeason?.assignments.filter(a => rowStateOf(a) === 'passed').length ??
+    0;
 
   const selectCourse = (cohortType: string) => {
     setSelectedCourse(cohortType);
@@ -234,8 +239,15 @@ export const MyAssignmentsPage = () => {
   const total = Math.max(activeSeason?.assignments.length ?? 0, 1);
 
   return (
-    <ThemeProvider theme={fellowshipDarkTheme}>
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary', p: { xs: 2, md: 5 } }}>
+    <AssignmentTheme>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          p: { xs: 2, md: 5 },
+        }}
+      >
         <Typography variant="overline" color="text.secondary">
           Your courses
         </Typography>
@@ -252,12 +264,19 @@ export const MyAssignmentsPage = () => {
             sx={{ borderBottom: 1, borderColor: 'divider', mt: 1, mb: 3 }}
           >
             {courses.map(c => (
-              <Tab key={c.cohortType} value={c.cohortType} label={c.label} sx={{ textTransform: 'none', fontSize: 15 }} />
+              <Tab
+                key={c.cohortType}
+                value={c.cohortType}
+                label={c.label}
+                sx={{ textTransform: 'none', fontSize: 15 }}
+              />
             ))}
           </Tabs>
         )}
 
-        {courses.length === 0 && <Typography color="text.secondary">No assignments yet.</Typography>}
+        {courses.length === 0 && (
+          <Typography color="text.secondary">No assignments yet.</Typography>
+        )}
 
         {activeCourse && (
           <>
@@ -270,7 +289,7 @@ export const MyAssignmentsPage = () => {
                   gap: 2,
                   p: 2.5,
                   mb: 3,
-                  bgcolor: 'rgba(144, 202, 249, 0.08)',
+                  bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
                   borderColor: 'primary.main',
                 }}
               >
@@ -283,41 +302,68 @@ export const MyAssignmentsPage = () => {
                   </Typography>
                   {upNext.deadline && (
                     <Typography variant="body2" color="text.secondary">
-                      Due {new Date(upNext.deadline).toLocaleDateString()}
+                      Due {formatDate(upNext.deadline)}
                     </Typography>
                   )}
                 </Box>
-                <Button variant="contained" onClick={() => handleRowOpen(upNext)}>
+                <Button
+                  variant="contained"
+                  onClick={() => handleRowOpen(upNext)}
+                >
                   {VERB[rowStateOf(upNext)]}
                 </Button>
               </Paper>
             )}
 
             {activeCourse.seasons.length > 0 && (
-              <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+              <Stack
+                direction="row"
+                sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}
+              >
                 <ToggleButtonGroup
                   exclusive
                   size="small"
                   value={activeSeason?.season ?? null}
                   onChange={(_, v: number | null) =>
-                    v !== null && setSelectedSeason(prev => ({ ...prev, [activeCourse.cohortType]: v }))
+                    v !== null &&
+                    setSelectedSeason(prev => ({
+                      ...prev,
+                      [activeCourse.cohortType]: v,
+                    }))
                   }
                   aria-label="Season"
                 >
                   {activeCourse.seasons.map(season => (
-                    <ToggleButton key={season.cohortId} value={season.season} sx={{ textTransform: 'none', px: 2 }}>
+                    <ToggleButton
+                      key={season.cohortId}
+                      value={season.season}
+                      sx={{ textTransform: 'none', px: 2 }}
+                    >
                       Season {season.season}
                     </ToggleButton>
                   ))}
                 </ToggleButtonGroup>
                 {activeSeason && (
-                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flex: 1, minWidth: 160, maxWidth: 260 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{
+                      alignItems: 'center',
+                      flex: 1,
+                      minWidth: 160,
+                      maxWidth: 260,
+                    }}
+                  >
                     <LinearProgress
                       variant="determinate"
                       value={(doneCount / total) * 100}
                       sx={{ flex: 1, height: 6, borderRadius: 3 }}
                     />
-                    <Typography variant="body2" color="text.secondary" sx={mono}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontFamily: fontFamilyMono }}
+                    >
                       {doneCount} / {activeSeason.assignments.length}
                     </Typography>
                   </Stack>
@@ -338,39 +384,73 @@ export const MyAssignmentsPage = () => {
                         key={assignment.id}
                         hover={!isClosed}
                         selected={openId === assignment.id}
-                        onClick={() => (isClosed ? undefined : handleRowOpen(assignment))}
-                        sx={{ cursor: isClosed ? 'default' : 'pointer', opacity: isClosed ? 0.6 : 1 }}
+                        onClick={() =>
+                          isClosed ? undefined : handleRowOpen(assignment)
+                        }
+                        {...(isClosed
+                          ? {}
+                          : {
+                              tabIndex: 0,
+                              role: 'link',
+                              onKeyDown: (e: React.KeyboardEvent) => {
+                                if (e.target !== e.currentTarget) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleRowOpen(assignment);
+                                }
+                              },
+                            })}
+                        sx={{
+                          cursor: isClosed ? 'default' : 'pointer',
+                          opacity: isClosed ? 0.6 : 1,
+                        }}
                       >
                         <TableCell sx={{ width: 72 }}>
                           <Chip
                             size="small"
                             label={`W${assignment.weekNumber}`}
-                            color={state === 'passed' ? 'success' : upNext?.id === assignment.id ? 'primary' : 'default'}
-                            sx={mono}
+                            color={
+                              state === 'passed'
+                                ? 'success'
+                                : upNext?.id === assignment.id
+                                  ? 'primary'
+                                  : 'default'
+                            }
+                            sx={{ fontFamily: fontFamilyMono }}
                           />
                         </TableCell>
                         <TableCell>
                           <Typography sx={{ fontWeight: 600 }}>
-                            {assignment.title ?? `Week ${assignment.weekNumber} exercise`}
+                            {assignment.title ??
+                              `Week ${assignment.weekNumber} exercise`}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             {isClosed
                               ? 'Closed for submission'
                               : assignment.deadline
-                                ? `Due ${new Date(assignment.deadline).toLocaleDateString()}`
+                                ? `Due ${formatDate(assignment.deadline)}`
                                 : `Week ${assignment.weekNumber}`}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           {state !== 'available' && (
-                            <Chip size="small" label={badge.label} color={badge.color} variant="outlined" />
+                            <Chip
+                              size="small"
+                              label={badge.label}
+                              color={badge.color}
+                              variant="outlined"
+                            />
                           )}
                         </TableCell>
                         <TableCell align="right">
                           {verb && (
                             <Button
                               size="small"
-                              variant={state === 'available' || state === 'progress' ? 'contained' : 'outlined'}
+                              variant={
+                                state === 'available' || state === 'progress'
+                                  ? 'contained'
+                                  : 'outlined'
+                              }
                               disabled={state === 'setup'}
                               onClick={e => {
                                 e.stopPropagation();
@@ -391,8 +471,13 @@ export const MyAssignmentsPage = () => {
         )}
       </Box>
 
-      {openId && <AssignmentBrief assignmentId={openId} onClose={() => setOpenId(null)} />}
-    </ThemeProvider>
+      {openId && (
+        <AssignmentBrief
+          assignmentId={openId}
+          onClose={() => setOpenId(null)}
+        />
+      )}
+    </AssignmentTheme>
   );
 };
 
@@ -405,23 +490,17 @@ const AssignmentBrief = ({
 }) => {
   const navigate = useNavigate();
   const { data: assignment, isLoading } = useAssignment(assignmentId, {
-    refetchInterval: query => {
-      const status = query.state.data?.submission?.provisionStatus;
-      return status === ProvisionStatus.PENDING || status === ProvisionStatus.PROVISIONING
-        ? PROVISION_POLL_MS
-        : false;
-    },
+    refetchInterval: provisionRefetchInterval,
   });
   const acceptAssignment = useAcceptAssignment();
 
   const submission = assignment?.submission ?? null;
   const isReady = submission?.provisionStatus === ProvisionStatus.READY;
-  const isSettingUp =
-    submission?.provisionStatus === ProvisionStatus.PENDING ||
-    submission?.provisionStatus === ProvisionStatus.PROVISIONING;
+  const isSettingUp = isProvisioning(submission?.provisionStatus);
 
   useEffect(() => {
-    if (isReady) navigate(`/assignments/${assignmentId}/editor`, { replace: true });
+    if (isReady)
+      navigate(`/assignments/${assignmentId}/editor`, { replace: true });
   }, [isReady, assignmentId, navigate]);
 
   useEffect(() => {
@@ -438,7 +517,12 @@ const AssignmentBrief = ({
       slotProps={{ paper: { sx: { width: { xs: '100vw', sm: 460 } } } }}
     >
       <Stack spacing={2.5} sx={{ p: 3.5, minHeight: '100%' }}>
-        <IconButton onClick={onClose} aria-label="Close" size="small" sx={{ alignSelf: 'flex-end' }}>
+        <IconButton
+          onClick={onClose}
+          aria-label="Close"
+          size="small"
+          sx={{ alignSelf: 'flex-end' }}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
 
@@ -460,49 +544,71 @@ const AssignmentBrief = ({
                 size="small"
                 color="success"
                 variant="outlined"
-                label={`Due ${new Date(assignment.deadline).toLocaleString()}`}
+                label={`Due ${formatDateTime(assignment.deadline)}`}
                 sx={{ alignSelf: 'flex-start' }}
               />
             )}
 
             {assignment.exercise?.problem && (
-              <Typography color="text.secondary">{assignment.exercise.problem}</Typography>
+              <Typography color="text.secondary">
+                {assignment.exercise.problem}
+              </Typography>
             )}
 
-            {assignment.exercise && assignment.exercise.expectedOutput.length > 0 && (
-              <Box>
-                <Typography variant="overline" color="text.secondary">
-                  You're done when
-                </Typography>
-                <List dense disablePadding>
-                  {assignment.exercise.expectedOutput.map((line, i) => (
-                    <ListItem key={i} disableGutters>
-                      <ListItemIcon sx={{ minWidth: 32 }}>
-                        <RadioButtonUncheckedIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={line} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
+            {assignment.exercise &&
+              assignment.exercise.expectedOutput.length > 0 && (
+                <Box>
+                  <Typography variant="overline" color="text.secondary">
+                    You're done when
+                  </Typography>
+                  <List dense disablePadding>
+                    {assignment.exercise.expectedOutput.map((line, i) => (
+                      <ListItem key={i} disableGutters>
+                        <ListItemIcon sx={{ minWidth: 32 }}>
+                          <RadioButtonUncheckedIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={line} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
 
-            <Stack spacing={1} sx={{ mt: 'auto !important', pt: 2, borderTop: 1, borderColor: 'divider' }}>
+            <Stack
+              spacing={1}
+              sx={{
+                mt: 'auto !important',
+                pt: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+              }}
+            >
               {!submission && (
                 <>
                   <Button
                     variant="contained"
                     size="large"
-                    disabled={acceptAssignment.isPending || !assignment.isOpenForSubmission}
+                    disabled={
+                      acceptAssignment.isPending ||
+                      !assignment.isOpenForSubmission
+                    }
                     onClick={() => acceptAssignment.mutate(assignment.id)}
                   >
-                    {acceptAssignment.isPending ? 'Starting…' : 'Start assignment'}
+                    {acceptAssignment.isPending
+                      ? 'Starting…'
+                      : 'Start assignment'}
                   </Button>
-                  <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ textAlign: 'center' }}
+                  >
                     Starting creates your private workspace. Nothing to install.
                   </Typography>
                   {acceptAssignment.isError && (
-                    <Alert severity="error">{extractErrorMessage(acceptAssignment.error)}</Alert>
+                    <Alert severity="error">
+                      {extractErrorMessage(acceptAssignment.error)}
+                    </Alert>
                   )}
                 </>
               )}
@@ -519,10 +625,19 @@ const AssignmentBrief = ({
 
               {submission?.provisionStatus === ProvisionStatus.FAILED && (
                 <Alert severity="error">
-                  We could not create your workspace. Please contact an admin and mention this
-                  assignment.
+                  We could not create your workspace. Please contact an admin
+                  and mention this assignment.
                   {submission.provisionError && (
-                    <Box component="pre" sx={{ ...mono, fontSize: 12, whiteSpace: 'pre-wrap', m: 0, mt: 1 }}>
+                    <Box
+                      component="pre"
+                      sx={{
+                        fontFamily: fontFamilyMono,
+                        fontSize: 12,
+                        whiteSpace: 'pre-wrap',
+                        m: 0,
+                        mt: 1,
+                      }}
+                    >
                       {submission.provisionError}
                     </Box>
                   )}

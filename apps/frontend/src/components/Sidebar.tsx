@@ -16,26 +16,24 @@ import {
   Popper,
   Paper,
 } from '@mui/material';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  GraduationCap,
-  LayoutDashboard,
-  Users,
-  LogOut,
-  LogIn,
-  BookOpen,
-  BarChart3,
-  Award,
-  FileCheck,
-  FileText,
-  ClipboardList,
-  ListChecks,
-  MessageSquare,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import AssignmentOutlined from '@mui/icons-material/AssignmentOutlined';
+import BarChartOutlined from '@mui/icons-material/BarChartOutlined';
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
+import ChecklistOutlined from '@mui/icons-material/ChecklistOutlined';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined';
+import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import Login from '@mui/icons-material/Login';
+import Logout from '@mui/icons-material/Logout';
+import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined';
+import SchoolOutlined from '@mui/icons-material/SchoolOutlined';
+import WorkspacePremiumOutlined from '@mui/icons-material/WorkspacePremiumOutlined';
+import type { SvgIconComponent } from '@mui/icons-material';
 import { useMyFellowships } from '../hooks/fellowshipHooks';
 import { useUser } from '../hooks/userHooks';
 import { useAuth } from '../hooks/useAuth';
@@ -44,20 +42,20 @@ import { UserRole } from '@nonce/shared';
 interface NavItem {
   label: string;
   path: string;
-  icon: LucideIcon;
+  icon: SvgIconComponent;
 }
 
 const adminNavItems: NavItem[] = [
-  { label: 'Cohorts', path: '/select', icon: GraduationCap },
-  { label: 'Cohort Metrics', path: '/cohort-metrics', icon: BarChart3 },
-  { label: 'Assignments', path: '/admin/assignments', icon: ListChecks },
-  { label: 'Cohort Feedback', path: '/admin/feedback', icon: MessageSquare },
+  { label: 'Cohorts', path: '/select', icon: SchoolOutlined },
+  { label: 'Cohort Metrics', path: '/cohort-metrics', icon: BarChartOutlined },
+  { label: 'Assignments', path: '/admin/assignments', icon: ChecklistOutlined },
+  { label: 'Cohort Feedback', path: '/admin/feedback', icon: ChatBubbleOutlineOutlined },
 ];
 
 // Profile is reached from the button on the dashboard header, not from here.
 const studentNavItems: NavItem[] = [
-  { label: 'Dashboard', path: '/myDashboard', icon: LayoutDashboard },
-  { label: 'Assignments', path: '/assignments', icon: ListChecks },
+  { label: 'Dashboard', path: '/myDashboard', icon: DashboardOutlined },
+  { label: 'Assignments', path: '/assignments', icon: ChecklistOutlined },
 ];
 
 const instructionLinks = [
@@ -73,24 +71,24 @@ const instructionLinks = [
 // The apply form has no sidebar entry — it opens from the Apply button on
 // the My Applications page.
 const baseFellowshipStudentLinks: NavItem[] = [
-  { label: 'My Applications', path: '/fellowship/applications', icon: ClipboardList },
+  { label: 'My Applications', path: '/fellowship/applications', icon: AssignmentOutlined },
 ];
 
 // Shown only once an application is approved (i.e. a fellowship exists).
 const awardedFellowshipStudentLinks: NavItem[] = [
-  { label: 'My Fellowships', path: '/fellowship/me', icon: Award },
-  { label: 'My Reports', path: '/fellowship/reports', icon: FileCheck },
+  { label: 'My Fellowships', path: '/fellowship/me', icon: WorkspacePremiumOutlined },
+  { label: 'My Reports', path: '/fellowship/reports', icon: FactCheckOutlined },
 ];
 
 const adminFellowshipLinks = [
-  { label: 'Applications', path: '/admin/fellowships/applications', icon: FileText },
-  { label: 'Manage', path: '/admin/fellowships', icon: Award },
-  { label: 'Reports', path: '/admin/fellowships/reports', icon: ClipboardList },
+  { label: 'Applications', path: '/admin/fellowships/applications', icon: DescriptionOutlined },
+  { label: 'Manage', path: '/admin/fellowships', icon: WorkspacePremiumOutlined },
+  { label: 'Reports', path: '/admin/fellowships/reports', icon: AssignmentOutlined },
 ];
 
 // Admin-only top-level tools — TAs (who share the rest of the staff nav) don't see these.
 const adminOnlyNavItems: NavItem[] = [
-  { label: 'Users', path: '/admin/users', icon: Users },
+  { label: 'Users', path: '/admin/users', icon: GroupOutlined },
 ];
 
 const EXPANDED_WIDTH = 260;
@@ -110,24 +108,22 @@ const NavLabel = ({
   icon,
   label,
   collapsed,
-  weight = 500,
   trailing,
 }: {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
-  weight?: number;
   trailing?: React.ReactNode;
 }) => (
   <>
     <ListItemIcon sx={{ minWidth: 36, color: 'inherit', flexShrink: 0 }}>{icon}</ListItemIcon>
     <ListItemText
       primary={label}
-      primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: weight, noWrap: true }}
+      primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500, noWrap: true }}
       sx={{ m: 0, opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}
     />
     {trailing && (
-      <Box sx={{ display: 'flex', opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>{trailing}</Box>
+      <Box aria-hidden={collapsed || undefined} sx={{ display: 'flex', opacity: collapsed ? 0 : 1, transition: 'opacity 150ms ease' }}>{trailing}</Box>
     )}
   </>
 );
@@ -293,7 +289,7 @@ const Sidebar = () => {
           Bitshala
         </Typography>
         <IconButton onClick={toggleCollapse} size="small" sx={{ color: '#71717a', '&:hover': { color: '#d4d4d8', bgcolor: '#27272a' } }}>
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          {collapsed ? <ChevronRight sx={{ fontSize: 18 }} /> : <ChevronLeft sx={{ fontSize: 18 }} />}
         </IconButton>
       </Box>
 
@@ -317,7 +313,7 @@ const Sidebar = () => {
                   }}
                 >
                   <NavLabel
-                    icon={<Icon size={20} strokeWidth={active ? 2.2 : 1.8} />}
+                    icon={<Icon sx={{ fontSize: 20 }} />}
                     label={item.label}
                     collapsed={collapsed}
                   />
@@ -350,10 +346,10 @@ const Sidebar = () => {
               }}
             >
               <NavLabel
-                icon={<Award size={20} strokeWidth={fellowshipsSectionActive ? 2.2 : 1.8} />}
+                icon={<WorkspacePremiumOutlined sx={{ fontSize: 20 }} />}
                 label="Fellowships"
                 collapsed={collapsed}
-                trailing={fellowshipsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                trailing={fellowshipsOpen ? <ExpandLess sx={{ fontSize: 16 }} /> : <ExpandMore sx={{ fontSize: 16 }} />}
               />
             </ListItemButton>
           </Box>
@@ -396,7 +392,7 @@ const Sidebar = () => {
                           : { color: '#a1a1aa', '&:hover': { color: '#e4e4e7', bgcolor: 'rgba(255,255,255,0.04)' } }),
                       }}
                     >
-                      <Icon size={15} />
+                      <Icon sx={{ fontSize: 15 }} />
                       <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                         {link.label}
                       </Typography>
@@ -439,7 +435,7 @@ const Sidebar = () => {
                               : { color: '#a1a1aa', '&:hover': { color: '#e4e4e7', bgcolor: 'rgba(255,255,255,0.04)' } }),
                           }}
                         >
-                          <Icon size={15} />
+                          <Icon sx={{ fontSize: 15 }} />
                           <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                             {link.label}
                           </Typography>
@@ -547,10 +543,10 @@ const Sidebar = () => {
               }}
             >
               <NavLabel
-                icon={<BookOpen size={20} strokeWidth={instructionLinks.some(l => isActive(l.path)) ? 2.2 : 1.8} />}
+                icon={<MenuBookOutlined sx={{ fontSize: 20 }} />}
                 label="Instructions"
                 collapsed={collapsed}
-                trailing={instructionsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                trailing={instructionsOpen ? <ExpandLess sx={{ fontSize: 16 }} /> : <ExpandMore sx={{ fontSize: 16 }} />}
               />
             </ListItemButton>
           </Box>
@@ -694,9 +690,8 @@ const Sidebar = () => {
             }}
           >
             <NavLabel
-              icon={isAuthenticated ? <LogOut size={20} strokeWidth={1.8} /> : <LogIn size={20} strokeWidth={1.8} />}
+              icon={isAuthenticated ? <Logout sx={{ fontSize: 20 }} /> : <Login sx={{ fontSize: 20 }} />}
               label={isAuthenticated ? 'Logout' : 'Sign in'}
-              weight={isAuthenticated ? 500 : 600}
               collapsed={collapsed}
             />
           </ListItemButton>

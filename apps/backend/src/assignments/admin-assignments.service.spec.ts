@@ -111,12 +111,14 @@ describe('AdminAssignmentsService', () => {
                 sub('u5', { isPassingOverride: true }),
                 sub('staff', { bestRun: { id: 'r' } }),
             ]);
-            membershipRepository.find.mockResolvedValue(
-                ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
+            membershipRepository.find.mockResolvedValue([
+                ...['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
                     cohort,
-                    user: { id },
+                    user: { id, role: UserRole.STUDENT },
                 })),
-            );
+                // A TA enrolled in the cohort is neither counted nor tallied.
+                { cohort, user: { id: 'staff', role: UserRole.ADMIN } },
+            ]);
 
             const [row] = await service.listAssignments();
 

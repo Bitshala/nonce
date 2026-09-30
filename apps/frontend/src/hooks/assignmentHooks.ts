@@ -179,6 +179,7 @@ export const useRegradeAssignment = createUseMutation<RegradeResponse, string>(
   {
     queryInvalidation: async ({ variables: assignmentId }) => {
       await useAdminSubmissions.invalidate(assignmentId);
+      await invalidateAdmin();
     },
   }
 );

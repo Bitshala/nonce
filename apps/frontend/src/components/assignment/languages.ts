@@ -1,10 +1,11 @@
 import { isProtectedPath } from '@nonce/shared';
 import type { RepoTreeEntryResponse } from '@nonce/shared';
 
-/** Top-level folders that hold the grader or repo plumbing, never a student language. */
-const NOT_LANGUAGES = new Set(['test', 'tests', 'fixtures', 'grader', 'node_modules', 'docs']);
-
-const NAMES: Record<string, string> = {
+/**
+ * Display names, keyed by both language-folder names (`python/`) and Monaco
+ * language ids (`ini`), so the selector and the status bar share one table.
+ */
+const LABELS: Record<string, string> = {
   python: 'Python',
   rust: 'Rust',
   cpp: 'C++',
@@ -17,10 +18,88 @@ const NAMES: Record<string, string> = {
   ruby: 'Ruby',
   swift: 'Swift',
   csharp: 'C#',
+  bash: 'Bash',
+  php: 'PHP',
+  dart: 'Dart',
+  scala: 'Scala',
+  haskell: 'Haskell',
+  elixir: 'Elixir',
+  zig: 'Zig',
+  lua: 'Lua',
+  perl: 'Perl',
+  json: 'JSON',
+  markdown: 'Markdown',
+  yaml: 'YAML',
+  ini: 'TOML',
+  shell: 'Shell',
+  sql: 'SQL',
+  html: 'HTML',
+  css: 'CSS',
 };
 
+/** Top-level folders that count as a student language; anything else is plumbing. */
+const LANGUAGE_DIRS = new Set([
+  'python',
+  'rust',
+  'cpp',
+  'c',
+  'go',
+  'java',
+  'kotlin',
+  'typescript',
+  'javascript',
+  'ruby',
+  'swift',
+  'csharp',
+  'bash',
+  'php',
+  'dart',
+  'scala',
+  'haskell',
+  'elixir',
+  'zig',
+  'lua',
+  'perl',
+]);
+
 export const languageName = (dir: string) =>
-  NAMES[dir] ?? dir.charAt(0).toUpperCase() + dir.slice(1);
+  LABELS[dir] ?? dir.charAt(0).toUpperCase() + dir.slice(1);
+
+const BY_EXTENSION: Record<string, string> = {
+  rs: 'rust',
+  py: 'python',
+  cpp: 'cpp',
+  cc: 'cpp',
+  cxx: 'cpp',
+  h: 'cpp',
+  hpp: 'cpp',
+  c: 'c',
+  go: 'go',
+  java: 'java',
+  kt: 'kotlin',
+  ts: 'typescript',
+  tsx: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  json: 'json',
+  md: 'markdown',
+  yml: 'yaml',
+  yaml: 'yaml',
+  toml: 'ini',
+  sh: 'shell',
+  sql: 'sql',
+  html: 'html',
+  css: 'css',
+};
+
+/** Monaco needs a language id; the extension is the only hint we have. */
+export const languageOf = (path: string) =>
+  BY_EXTENSION[path.slice(path.lastIndexOf('.') + 1).toLowerCase()] ??
+  'plaintext';
+
+/** Display name for the status bar, from the active file. */
+export const languageLabel = (path: string | null) =>
+  (path && LABELS[languageOf(path)]) || 'Plain text';
 
 export const isBriefPath = (path: string) => /^readme(\.[a-z]+)?$/i.test(path);
 
@@ -39,7 +118,7 @@ export function detectLanguages(
     const slash = entry.path.indexOf('/');
     if (slash === -1) continue;
     const dir = entry.path.slice(0, slash);
-    if (dir.startsWith('.') || NOT_LANGUAGES.has(dir)) continue;
+    if (!LANGUAGE_DIRS.has(dir)) continue;
     if (!isProtectedPath(entry.path, protectedPaths)) dirs.add(dir);
   }
   return [...dirs].sort();
@@ -52,7 +131,10 @@ export const belongsToLanguage = (
   languages: string[]
 ) =>
   !language ||
-  !languages.some(other => other !== language && (path === other || path.startsWith(`${other}/`)));
+  !languages.some(
+    other =>
+      other !== language && (path === other || path.startsWith(`${other}/`))
+  );
 
 export type FileRole = 'answer' | 'provided' | 'other' | 'grader';
 
@@ -66,6 +148,6 @@ const basename = (path: string) => path.slice(path.lastIndexOf('/') + 1);
 export function fileRole(path: string, protectedPaths: string[]): FileRole {
   if (isProtectedPath(path, protectedPaths)) return 'grader';
   const name = basename(path);
-  if (/^(solution|answer|main)\.[a-z]+$/i.test(name)) return 'answer';
+  if (/^(solution|answer|main|lib|index)\.[a-z]+$/i.test(name)) return 'answer';
   return name.startsWith('.') ? 'other' : 'provided';
 }
