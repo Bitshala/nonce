@@ -20,6 +20,7 @@ import type {
     SubmissionResponse,
     SyncAssignmentsResponse,
 } from '@nonce/shared';
+import { submissionBucket } from '@nonce/shared/submission-bucket';
 import {
     AssignmentStatus,
     CIRunConclusion,
@@ -351,20 +352,15 @@ export class AdminAssignmentResponseDto
         enrolledCount: number,
     ) {
         super(assignment, null);
+        const counts = { passed: 0, setupFailed: 0, failing: 0, inProgress: 0 };
+        for (const s of submissions) counts[submissionBucket(s)]++;
+
         this.enrolledCount = enrolledCount;
         this.submissionCount = submissions.length;
-        this.passedCount = 0;
-        this.failingCount = 0;
-        this.inProgressCount = 0;
-        this.failedProvisionCount = 0;
-        // One bucket per submission, matching what the score writeback records.
-        for (const s of submissions) {
-            if (s.isPassingOverride ?? s.bestRun != null) this.passedCount++;
-            else if (s.provisionStatus === ProvisionStatus.FAILED)
-                this.failedProvisionCount++;
-            else if (s.latestRun) this.failingCount++;
-            else this.inProgressCount++;
-        }
+        this.passedCount = counts.passed;
+        this.failingCount = counts.failing;
+        this.inProgressCount = counts.inProgress;
+        this.failedProvisionCount = counts.setupFailed;
         this.notStartedCount = Math.max(0, enrolledCount - submissions.length);
     }
 }

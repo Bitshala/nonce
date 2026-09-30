@@ -125,12 +125,17 @@ export class AdminAssignmentsService {
         }
 
         if (toSave.length > 0) {
-            await this.assignmentRepository.save(toSave);
-            // applyAssignmentConfig cannot resolve a GRADUATION deadline — it
-            // sees one week, not the calendar.
-            await this.dbTransactionService.execute((manager) =>
-                this.cohortsService.syncAssignmentDeadlines(manager, cohortId),
-            );
+            // One transaction, so a failure cannot leave assignments saved
+            // with GRADUATION deadlines still unresolved.
+            await this.dbTransactionService.execute(async (manager) => {
+                await manager.save(toSave);
+                // applyAssignmentConfig cannot resolve a GRADUATION deadline —
+                // it sees one week, not the calendar.
+                await this.cohortsService.syncAssignmentDeadlines(
+                    manager,
+                    cohortId,
+                );
+            });
         }
 
         this.logger.log(
@@ -160,16 +165,14 @@ export class AdminAssignmentsService {
                 relations: { cohort: true, user: true },
             }),
         ]);
-        // Staff try assignments without enrolling; they are not students to count.
-        const enrolled = new Set(
-            memberships.map((m) => `${m.cohort.id}:${m.user.id}`),
-        );
-        const enrolledByCohort = new Map<string, number>();
+        // Only students are tallied. Staff can be cohort members too, and try
+        // assignments without being part of the cohort's progress.
+        const studentsByCohort = new Map<string, Set<string>>();
         for (const m of memberships) {
-            enrolledByCohort.set(
-                m.cohort.id,
-                (enrolledByCohort.get(m.cohort.id) ?? 0) + 1,
-            );
+            if (m.user.role !== UserRole.STUDENT) continue;
+            const students = studentsByCohort.get(m.cohort.id) ?? new Set();
+            students.add(m.user.id);
+            studentsByCohort.set(m.cohort.id, students);
         }
         const cohortOf = new Map(
             assignments.map((a) => [a.id, a.cohortWeek.cohort.id] as const),
@@ -177,7 +180,8 @@ export class AdminAssignmentsService {
         const byAssignment = new Map<string, AssignmentSubmission[]>();
         for (const submission of submissions) {
             const cohortId = cohortOf.get(submission.assignment.id);
-            if (!cohortId || !enrolled.has(`${cohortId}:${submission.user.id}`))
+            if (!cohortId) continue;
+            if (!studentsByCohort.get(cohortId)?.has(submission.user.id))
                 continue;
             const list = byAssignment.get(submission.assignment.id) ?? [];
             list.push(submission);
@@ -198,8 +202,8 @@ export class AdminAssignmentsService {
                     new AdminAssignmentResponseDto(
                         assignment,
                         byAssignment.get(assignment.id) ?? [],
-                        enrolledByCohort.get(assignment.cohortWeek.cohort.id) ??
-                            0,
+                        studentsByCohort.get(assignment.cohortWeek.cohort.id)
+                            ?.size ?? 0,
                     ),
             );
     }

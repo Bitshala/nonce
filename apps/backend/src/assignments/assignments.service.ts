@@ -5,7 +5,13 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+    EntityManager,
+    FindOptionsWhere,
+    In,
+    MoreThanOrEqual,
+    Repository,
+} from 'typeorm';
 import { QueryFailedError } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
@@ -61,7 +67,7 @@ export class AssignmentsService {
     ): Promise<AssignmentSummaryResponseDto[]> {
         // Staff work from the global pool, not from cohorts they belong to.
         const isStaff = isAtLeastRole(user.role, UserRole.TEACHING_ASSISTANT);
-        let cohortFilter = {};
+        let cohortFilter: FindOptionsWhere<Assignment> = {};
         if (!isStaff) {
             const memberships = await this.membershipRepository.find({
                 where: { user: { id: user.id } },
