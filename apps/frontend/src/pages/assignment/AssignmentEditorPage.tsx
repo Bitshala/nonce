@@ -4,13 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   CircularProgress,
-  CssBaseline,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
-  ThemeProvider,
   Button,
   Alert,
   Chip,
@@ -41,23 +39,25 @@ import Editor from '@monaco-editor/react';
 // Side-effect import: points Monaco at our bundle rather than a CDN.
 import '../../components/assignment/monacoSetup.ts';
 import { isAxiosError } from 'axios';
-import type {
-  CommitConflictResponse,
-  RepoFileResponse,
-} from '@nonce/shared';
-import { CIRunStatus } from '@nonce/shared';
+import type { CommitConflictResponse, RepoFileResponse } from '@nonce/shared';
+import { fontFamilyMono } from '../../components/fellowship/theme.ts';
+import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
 import {
-  fellowshipDarkTheme,
-  fontFamilyMono,
-} from '../../components/fellowship/theme.ts';
+  describeOutput,
+  isTerminal,
+} from '../../components/assignment/runStatus.ts';
+import { WORKSPACE } from '../../components/assignment/workspaceColors.ts';
+import { readStored, writeStored } from '../../utils/storage.ts';
 import { FileTree } from '../../components/assignment/FileTree.tsx';
-import { RunOutput, RunPanel, describeOutput } from '../../components/assignment/RunPanel.tsx';
+import { RunOutput, RunPanel } from '../../components/assignment/RunPanel.tsx';
 import {
   belongsToLanguage,
   detectLanguages,
   fileRole,
   isBriefPath,
+  languageLabel,
   languageName,
+  languageOf,
 } from '../../components/assignment/languages.ts';
 import assignmentService from '../../services/assignmentService.ts';
 import {
@@ -72,36 +72,10 @@ import {
 import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 
-/** Surface colours of the workspace: page/editor, side panels, cards, hairlines, accent. */
-const C = {
-  bg: '#0b0b0d',
-  panel: '#111114',
-  card: '#19191d',
-  line: '#2a2a30',
-  lineStrong: '#3b3b43',
-  muted: '#a3a3ad',
-  accent: '#f5873a',
-  accentInk: '#1c0f05',
-};
-
-const readStored = (key: string): string | null => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-const writeStored = (key: string, value: string) => {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // ignore: the choice just won't be remembered
-  }
-};
-
 /** Widths of the side panels: open, and the slim rail they collapse to. */
 const PANEL_OPEN = { files: 232, checks: 340 };
-const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+const isMac =
+  typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
 /** Debounce before an edit is mirrored to the server-side draft. */
 const DRAFT_DEBOUNCE_MS = 1500;
@@ -127,10 +101,11 @@ export const AssignmentEditorPage = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
   const navigate = useNavigate();
 
-  const { data: assignment, isError, error } = useAssignment(
-    assignmentId ?? '',
-    { enabled: !!assignmentId }
-  );
+  const {
+    data: assignment,
+    isError,
+    error,
+  } = useAssignment(assignmentId ?? '', { enabled: !!assignmentId });
   const submission = assignment?.submission ?? null;
 
   const [baseCommitSha, setBaseCommitSha] = useState<string | null>(null);
@@ -140,8 +115,12 @@ export const AssignmentEditorPage = () => {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
-  const [filesOpen, setFilesOpen] = useState(() => readStored('editor-files-open') !== 'false');
-  const [checksOpen, setChecksOpen] = useState(() => readStored('editor-checks-open') !== 'false');
+  const [filesOpen, setFilesOpen] = useState(
+    () => readStored('editor-files-open') !== 'false'
+  );
+  const [checksOpen, setChecksOpen] = useState(
+    () => readStored('editor-checks-open') !== 'false'
+  );
   const [languageChoice, setLanguageChoice] = useState<string | null>(() =>
     readStored('editor-language')
   );
@@ -241,11 +220,19 @@ export const AssignmentEditorPage = () => {
           ? 'python'
           : languages[0];
   const inView = useCallback(
-    (path: string) => isBriefPath(path) || belongsToLanguage(path, language, languages),
+    (path: string) =>
+      isBriefPath(path) || belongsToLanguage(path, language, languages),
     [language, languages]
   );
 
   const chooseLanguage = (next: string) => {
+    const hidden = [...dirtyPaths].some(
+      path => !isBriefPath(path) && !belongsToLanguage(path, next, languages)
+    );
+    if (hidden) {
+      setBanner('Save your changes before switching language.');
+      return;
+    }
     setLanguageChoice(next);
     writeStored('editor-language', next);
     // Drop focus so the landing effect opens the new language's starter file.
@@ -264,10 +251,13 @@ export const AssignmentEditorPage = () => {
       .filter(inView);
     // The answer file first, then anything the student can edit.
     const rank = (path: string) =>
-      ({ answer: 0, provided: 1, other: 2, grader: 3 })[fileRole(path, protectedPaths ?? [])];
-    const starter = files
-      .filter(path => !isBriefPath(path))
-      .sort((x, y) => rank(x) - rank(y) || x.localeCompare(y))[0] ?? files[0];
+      ({ answer: 0, provided: 1, other: 2, grader: 3 })[
+        fileRole(path, protectedPaths ?? [])
+      ];
+    const starter =
+      files
+        .filter(path => !isBriefPath(path))
+        .sort((x, y) => rank(x) - rank(y) || x.localeCompare(y))[0] ?? files[0];
     if (starter) void openFile(starter);
   }, [tree, openFile, inView, language, protectedPaths]);
 
@@ -331,7 +321,10 @@ export const AssignmentEditorPage = () => {
       setOpenFiles(previous => {
         const next = new Map(previous);
         for (const file of changed) {
-          next.set(file.path, { ...file, original: file.content });
+          // Keep `content`: keystrokes typed while the request was in flight.
+          const current = previous.get(file.path);
+          if (current)
+            next.set(file.path, { ...current, original: file.content });
         }
         return next;
       });
@@ -349,7 +342,9 @@ export const AssignmentEditorPage = () => {
 
   // Run always targets an explicit commit, so an unsaved editor saves first.
   const run_ = async () => {
-    if (!submission?.id) return;
+    if (!submission?.id || createRun.isPending) return;
+    if (run && !isTerminal(run.status)) return;
+    if (conflict || pendingClose) return;
     setOutputOpen(true);
     const sha = await save();
     if (!sha) return;
@@ -366,16 +361,18 @@ export const AssignmentEditorPage = () => {
   };
 
   // Cmd/Ctrl+Enter runs the checks from anywhere, including inside Monaco.
+  const runRef = useRef(run_);
+  runRef.current = run_;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
         event.preventDefault();
-        void run_();
+        void runRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  });
+  }, []);
 
   /** Discards local edits and reloads from the branch head. */
   const reloadFromServer = () => {
@@ -388,27 +385,26 @@ export const AssignmentEditorPage = () => {
 
   if (isError) {
     return (
-      <Shell>
+      <AssignmentTheme baseline>
         <Box sx={{ p: 3 }}>
           <Typography color="error">{extractErrorMessage(error)}</Typography>
         </Box>
-      </Shell>
+      </AssignmentTheme>
     );
   }
 
   if (!assignment || !submission) {
     return (
-      <Shell>
+      <AssignmentTheme baseline>
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
           <CircularProgress />
         </Box>
-      </Shell>
+      </AssignmentTheme>
     );
   }
 
   const isSaving = commit.isPending;
-  const isRunning =
-    createRun.isPending || (!!run && !isTerminal(run.status));
+  const isRunning = createRun.isPending || (!!run && !isTerminal(run.status));
   const statusChip = assignment.isPastDeadline
     ? { label: 'Past due', color: 'warning' as const }
     : assignment.isOpenForSubmission
@@ -420,15 +416,21 @@ export const AssignmentEditorPage = () => {
       ? 'Unsaved changes'
       : 'Saved';
   const tabs = [...openFiles.keys()].filter(inView);
-  const role = activePath ? fileRole(activePath, assignment.protectedPaths) : null;
+  const role = activePath
+    ? fileRole(activePath, assignment.protectedPaths)
+    : null;
   const crumbs = activePath
     ? (language && activePath.startsWith(`${language}/`)
         ? activePath.slice(language.length + 1)
         : activePath
       ).split('/')
     : [];
-  const brief = tree?.entries.find(entry => entry.type === 'blob' && isBriefPath(entry.path))?.path;
-  const activeLanguage = language ? languageName(language) : languageLabel(activePath);
+  const brief = tree?.entries.find(
+    entry => entry.type === 'blob' && isBriefPath(entry.path)
+  )?.path;
+  const activeLanguage = language
+    ? languageName(language)
+    : languageLabel(activePath);
   const rolePill: Record<string, string> = {
     answer: 'Your answer',
     provided: 'Provided helper',
@@ -437,18 +439,21 @@ export const AssignmentEditorPage = () => {
 
   const setPanel = (key: 'files' | 'checks', open: boolean) => {
     (key === 'files' ? setFilesOpen : setChecksOpen)(open);
-    writeStored(key === 'files' ? 'editor-files-open' : 'editor-checks-open', String(open));
+    writeStored(
+      key === 'files' ? 'editor-files-open' : 'editor-checks-open',
+      String(open)
+    );
   };
 
   return (
-    <Shell>
+    <AssignmentTheme baseline>
       <Box
         sx={{
           height: '100vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          bgcolor: C.bg,
+          bgcolor: WORKSPACE.bg,
         }}
       >
         {/* Top bar */}
@@ -461,56 +466,93 @@ export const AssignmentEditorPage = () => {
             gap: 1.5,
             pl: 1.5,
             pr: 1.75,
-            borderBottom: `1px solid ${C.line}`,
+            borderBottom: `1px solid ${WORKSPACE.line}`,
           }}
         >
           <Tooltip title="Back to assignments">
-            <IconButton aria-label="Back to assignments" onClick={() => navigate('/assignments')} sx={{ color: C.muted }}>
+            <IconButton
+              aria-label="Back to assignments"
+              onClick={() => navigate('/assignments')}
+              sx={{ color: WORKSPACE.muted }}
+            >
               <ChevronLeftIcon />
             </IconButton>
           </Tooltip>
           <Chip
             size="small"
             label={`W${assignment.weekNumber}`}
-            sx={{ fontFamily: fontFamilyMono, fontSize: 12, fontWeight: 500, height: 26, borderRadius: '6px', bgcolor: '#222227', color: C.muted }}
+            sx={{
+              fontFamily: fontFamilyMono,
+              fontSize: 12,
+              fontWeight: 500,
+              height: 26,
+              borderRadius: '6px',
+              bgcolor: WORKSPACE.chip,
+              color: WORKSPACE.muted,
+            }}
           />
-          <Typography noWrap sx={{ fontSize: 15, fontWeight: 700, minWidth: 0 }}>
+          <Typography
+            noWrap
+            sx={{ fontSize: 15, fontWeight: 700, minWidth: 0 }}
+          >
             {assignment.title ?? assignment.slug}
           </Typography>
           <Chip
             size="small"
             label={statusChip.label}
             sx={theme => {
-              const tone = statusChip.color === 'default' ? null : theme.palette[statusChip.color].main;
+              const tone =
+                statusChip.color === 'default'
+                  ? null
+                  : theme.palette[statusChip.color].main;
               return {
                 flexShrink: 0,
                 height: 22,
                 fontSize: 12,
                 fontWeight: 700,
-                bgcolor: tone ? alpha(tone, 0.14) : '#222227',
-                color: tone ?? C.muted,
+                bgcolor: tone ? alpha(tone, 0.14) : WORKSPACE.chip,
+                color: tone ?? WORKSPACE.muted,
               };
             }}
           />
 
           <Box sx={{ flex: 1 }} />
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: C.muted, mr: 0.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+              color: WORKSPACE.muted,
+              mr: 0.5,
+            }}
+          >
             <Box
               sx={{
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                bgcolor: dirtyPaths.size > 0 || isSaving ? 'warning.main' : 'success.main',
+                bgcolor:
+                  dirtyPaths.size > 0 || isSaving
+                    ? 'warning.main'
+                    : 'success.main',
               }}
             />
             <Typography sx={{ fontSize: 13 }}>{saveLabel}</Typography>
           </Box>
 
-          <IconButton aria-label="More actions" onClick={event => setMenuAnchor(event.currentTarget)} sx={{ color: C.muted }}>
+          <IconButton
+            aria-label="More actions"
+            onClick={event => setMenuAnchor(event.currentTarget)}
+            sx={{ color: WORKSPACE.muted }}
+          >
             <MoreHorizIcon fontSize="small" />
           </IconButton>
-          <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+          <Menu
+            anchorEl={menuAnchor}
+            open={!!menuAnchor}
+            onClose={() => setMenuAnchor(null)}
+          >
             <MenuItem
               disabled={isSaving || dirtyPaths.size === 0}
               onClick={() => {
@@ -523,7 +565,11 @@ export const AssignmentEditorPage = () => {
               </ListItemIcon>
               <ListItemText>{isSaving ? 'Saving…' : 'Save'}</ListItemText>
             </MenuItem>
-            <MenuItem component="a" href={assignmentService.downloadArchiveUrl(submission.id)} onClick={() => setMenuAnchor(null)}>
+            <MenuItem
+              component="a"
+              href={assignmentService.downloadArchiveUrl(submission.id)}
+              onClick={() => setMenuAnchor(null)}
+            >
               <ListItemIcon>
                 <DownloadIcon fontSize="small" />
               </ListItemIcon>
@@ -544,11 +590,14 @@ export const AssignmentEditorPage = () => {
               pr: 1.25,
               fontSize: 13.5,
               borderRadius: '8px',
-              bgcolor: C.accent,
-              color: C.accentInk,
+              bgcolor: WORKSPACE.accent,
+              color: WORKSPACE.accentInk,
               fontWeight: 700,
-              '&:hover': { bgcolor: '#f79556' },
-              '&.Mui-disabled': { bgcolor: alpha(C.accent, 0.4), color: alpha(C.accentInk, 0.7) },
+              '&:hover': { bgcolor: WORKSPACE.accentHover },
+              '&.Mui-disabled': {
+                bgcolor: alpha(WORKSPACE.accent, 0.4),
+                color: alpha(WORKSPACE.accentInk, 0.7),
+              },
             }}
           >
             {isRunning ? 'Running…' : 'Run checks'}
@@ -597,7 +646,7 @@ export const AssignmentEditorPage = () => {
               alignItems: 'center',
               gap: 0.5,
               pt: 1,
-              borderRight: `1px solid ${C.line}`,
+              borderRight: `1px solid ${WORKSPACE.line}`,
             }}
           >
             <RailButton
@@ -621,7 +670,14 @@ export const AssignmentEditorPage = () => {
             />
           </Box>
 
-          <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'hidden', borderRight: filesOpen ? `1px solid ${C.line}` : 'none' }}>
+          <Box
+            sx={{
+              minWidth: 0,
+              minHeight: 0,
+              overflow: 'hidden',
+              borderRight: filesOpen ? `1px solid ${WORKSPACE.line}` : 'none',
+            }}
+          >
             <Box sx={{ width: PANEL_OPEN.files, height: '100%' }}>
               <FileTree
                 entries={tree?.entries ?? []}
@@ -636,30 +692,53 @@ export const AssignmentEditorPage = () => {
           </Box>
 
           {/* Editor column */}
-          <Box sx={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box
+            sx={{
+              minWidth: 0,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
             {tabs.length > 0 && (
               <Tabs
-                value={activeFile && tabs.includes(activePath!) ? activePath : false}
+                value={
+                  activeFile && tabs.includes(activePath!) ? activePath : false
+                }
                 onChange={(_, path: string) => setActivePath(path)}
                 variant="scrollable"
                 scrollButtons={false}
                 slotProps={{
-                  indicator: { sx: { top: 0, bottom: 'auto', height: 2, bgcolor: C.accent } },
+                  indicator: {
+                    sx: {
+                      top: 0,
+                      bottom: 'auto',
+                      height: 2,
+                      bgcolor: WORKSPACE.accent,
+                    },
+                  },
                 }}
-                sx={{ minHeight: 38, flexShrink: 0, borderBottom: `1px solid ${C.line}` }}
+                sx={{
+                  minHeight: 38,
+                  flexShrink: 0,
+                  borderBottom: `1px solid ${WORKSPACE.line}`,
+                }}
               >
                 {tabs.map(path => (
                   <Tab
                     key={path}
                     value={path}
-                    label={path.slice(path.lastIndexOf('/') + 1) + (dirtyPaths.has(path) ? ' •' : '')}
+                    label={
+                      path.slice(path.lastIndexOf('/') + 1) +
+                      (dirtyPaths.has(path) ? ' •' : '')
+                    }
                     iconPosition="end"
                     // A span, not a button: a Tab is already one, and buttons can't nest.
                     icon={
                       <Box
                         component="span"
-                        role="button"
-                        aria-label={`Close ${path.slice(path.lastIndexOf('/') + 1)}`}
+                        aria-hidden
                         onClick={event => {
                           event.stopPropagation();
                           requestClose(path);
@@ -669,13 +748,22 @@ export const AssignmentEditorPage = () => {
                           p: '2px',
                           ml: 0.75,
                           borderRadius: '4px',
-                          color: C.muted,
-                          '&:hover': { bgcolor: 'action.hover', color: '#fff' },
+                          color: WORKSPACE.muted,
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            color: 'common.white',
+                          },
                         }}
                       >
                         <CloseIcon sx={{ fontSize: 13 }} />
                       </Box>
                     }
+                    onKeyDown={event => {
+                      if (event.key === 'Delete' || event.key === 'Backspace') {
+                        event.preventDefault();
+                        requestClose(path);
+                      }
+                    }}
                     // Middle-click closes, as in every editor.
                     onAuxClick={event => {
                       if (event.button === 1) requestClose(path);
@@ -688,9 +776,12 @@ export const AssignmentEditorPage = () => {
                       fontWeight: 500,
                       pl: 2,
                       pr: 1.25,
-                      color: C.muted,
-                      borderRight: `1px solid ${C.line}`,
-                      '&.Mui-selected': { color: '#fff', bgcolor: C.bg },
+                      color: WORKSPACE.muted,
+                      borderRight: `1px solid ${WORKSPACE.line}`,
+                      '&.Mui-selected': {
+                        color: 'common.white',
+                        bgcolor: WORKSPACE.bg,
+                      },
                     }}
                   />
                 ))}
@@ -708,28 +799,58 @@ export const AssignmentEditorPage = () => {
                   px: 2,
                   fontFamily: fontFamilyMono,
                   fontSize: 12,
-                  color: C.muted,
+                  color: WORKSPACE.muted,
                 }}
               >
                 {language && <span>{language}</span>}
                 {language && <ChevronRightIcon sx={{ fontSize: 14 }} />}
                 {crumbs.map((part, i) => (
-                  <Box component="span" key={i} sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: i === crumbs.length - 1 ? '#e4e4e7' : C.muted }}>
+                  <Box
+                    component="span"
+                    key={i}
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      color:
+                        i === crumbs.length - 1
+                          ? 'text.primary'
+                          : WORKSPACE.muted,
+                    }}
+                  >
                     {part}
-                    {i < crumbs.length - 1 && <ChevronRightIcon sx={{ fontSize: 14 }} />}
+                    {i < crumbs.length - 1 && (
+                      <ChevronRightIcon sx={{ fontSize: 14 }} />
+                    )}
                   </Box>
                 ))}
                 {role && rolePill[role] && (
                   <Chip
                     size="small"
                     label={rolePill[role]}
-                    sx={{ height: 20, fontSize: 11, fontWeight: 700, bgcolor: '#26262b', color: C.muted, fontFamily: 'Inter, sans-serif', ml: 0.5 }}
+                    sx={{
+                      height: 20,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      bgcolor: '#26262b',
+                      color: WORKSPACE.muted,
+                      fontFamily: 'Inter, sans-serif',
+                      ml: 0.5,
+                    }}
                   />
                 )}
               </Box>
             )}
 
-            <Box sx={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', bgcolor: C.bg }}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                minWidth: 0,
+                overflow: 'hidden',
+                bgcolor: WORKSPACE.bg,
+              }}
+            >
               {activeFile ? (
                 <Editor
                   height="100%"
@@ -749,8 +870,8 @@ export const AssignmentEditorPage = () => {
                         { token: 'comment.shebang', foreground: 'e6e6ea' },
                       ],
                       colors: {
-                        'editor.background': C.bg,
-                        'editorGutter.background': C.bg,
+                        'editor.background': WORKSPACE.bg,
+                        'editorGutter.background': WORKSPACE.bg,
                         'editorLineNumber.foreground': '#55555c',
                         'editorLineNumber.activeForeground': '#ffffff',
                         'editor.lineHighlightBackground': '#ffffff0d',
@@ -760,7 +881,10 @@ export const AssignmentEditorPage = () => {
                   }
                   onMount={editor => {
                     editor.onDidChangeCursorPosition(event =>
-                      setCursor({ line: event.position.lineNumber, col: event.position.column })
+                      setCursor({
+                        line: event.position.lineNumber,
+                        col: event.position.column,
+                      })
                     );
                     setTabSize(editor.getModel()?.getOptions().tabSize ?? 4);
                   }}
@@ -790,14 +914,30 @@ export const AssignmentEditorPage = () => {
                   }}
                 />
               ) : (
-                <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', fontSize: 13, color: 'text.secondary' }}>
-                  {tree?.entries.length ? 'Select a file to start editing.' : 'This repository is empty.'}
+                <Box
+                  sx={{
+                    height: '100%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 13,
+                    color: 'text.secondary',
+                  }}
+                >
+                  {tree?.entries.length
+                    ? 'Select a file to start editing.'
+                    : 'This repository is empty.'}
                 </Box>
               )}
             </Box>
 
             {/* Output */}
-            <Box sx={{ flexShrink: 0, borderTop: `1px solid ${C.line}`, bgcolor: C.bg }}>
+            <Box
+              sx={{
+                flexShrink: 0,
+                borderTop: `1px solid ${WORKSPACE.line}`,
+                bgcolor: WORKSPACE.bg,
+              }}
+            >
               <Box
                 role="button"
                 tabIndex={0}
@@ -809,27 +949,59 @@ export const AssignmentEditorPage = () => {
                     setOutputOpen(open => !open);
                   }
                 }}
-                sx={{ height: 36, display: 'flex', alignItems: 'center', gap: 1.5, px: 2, cursor: 'pointer' }}
+                sx={{
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  px: 2,
+                  cursor: 'pointer',
+                }}
               >
-                <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#a3a3ad' }}>
+                <Typography
+                  sx={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color: WORKSPACE.muted,
+                  }}
+                >
                   OUTPUT
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: C.muted, flex: 1 }}>
+                <Typography
+                  sx={{ fontSize: 12.5, color: WORKSPACE.muted, flex: 1 }}
+                >
                   {describeOutput(run, createRun.isPending)}
                 </Typography>
                 <ExpandLessIcon
-                  sx={{ fontSize: 18, color: C.muted, transition: 'transform .2s', transform: outputOpen ? 'rotate(180deg)' : 'none' }}
+                  sx={{
+                    fontSize: 18,
+                    color: WORKSPACE.muted,
+                    transition: 'transform .2s',
+                    transform: outputOpen ? 'rotate(180deg)' : 'none',
+                  }}
                 />
               </Box>
               <Collapse in={outputOpen} unmountOnExit>
                 <Box sx={{ maxHeight: 240, overflowY: 'auto' }}>
-                  <RunOutput run={run} logs={runLogs?.content} isDispatching={createRun.isPending} />
+                  <RunOutput
+                    run={run}
+                    logs={runLogs?.content}
+                    isDispatching={createRun.isPending}
+                  />
                 </Box>
               </Collapse>
             </Box>
           </Box>
 
-          <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'hidden', borderLeft: checksOpen ? `1px solid ${C.line}` : 'none' }}>
+          <Box
+            sx={{
+              minWidth: 0,
+              minHeight: 0,
+              overflow: 'hidden',
+              borderLeft: checksOpen ? `1px solid ${WORKSPACE.line}` : 'none',
+            }}
+          >
             <Box sx={{ width: PANEL_OPEN.checks, height: '100%' }}>
               <RunPanel
                 run={run}
@@ -849,13 +1021,20 @@ export const AssignmentEditorPage = () => {
             alignItems: 'center',
             gap: 2,
             px: 1.5,
-            borderTop: `1px solid ${C.line}`,
+            borderTop: `1px solid ${WORKSPACE.line}`,
             fontSize: 12,
-            color: C.muted,
+            color: WORKSPACE.muted,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'success.main' }} />
+            <Box
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: 'success.main',
+              }}
+            />
             Workspace ready
           </Box>
           <Tooltip title={languages.length > 1 ? 'Change language' : ''}>
@@ -870,14 +1049,19 @@ export const AssignmentEditorPage = () => {
                 alignItems: 'center',
                 gap: 0.25,
                 cursor: languages.length > 1 ? 'pointer' : 'default',
-                '&:hover': languages.length > 1 ? { color: '#fff' } : {},
+                '&:hover':
+                  languages.length > 1 ? { color: 'common.white' } : {},
               }}
             >
               {activeLanguage}
               {languages.length > 1 && <ExpandMoreIcon sx={{ fontSize: 14 }} />}
             </Box>
           </Tooltip>
-          <Menu anchorEl={langAnchor} open={!!langAnchor} onClose={() => setLangAnchor(null)}>
+          <Menu
+            anchorEl={langAnchor}
+            open={!!langAnchor}
+            onClose={() => setLangAnchor(null)}
+          >
             {languages.map(dir => (
               <MenuItem
                 key={dir}
@@ -892,8 +1076,17 @@ export const AssignmentEditorPage = () => {
             ))}
           </Menu>
           <Box sx={{ flex: 1 }} />
-          <Box sx={{ display: 'flex', gap: 2, fontFamily: fontFamilyMono, fontSize: 11.5 }}>
-            <span>Ln {cursor.line}, Col {cursor.col}</span>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              fontFamily: fontFamilyMono,
+              fontSize: 11.5,
+            }}
+          >
+            <span>
+              Ln {cursor.line}, Col {cursor.col}
+            </span>
             <span>Spaces: {tabSize}</span>
             <span>UTF-8</span>
           </Box>
@@ -904,8 +1097,8 @@ export const AssignmentEditorPage = () => {
         <DialogTitle>Close without saving?</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ fontSize: 13.5 }}>
-            {pendingClose?.slice(pendingClose.lastIndexOf('/') + 1)} has changes that are not
-            saved. Closing it discards them.
+            {pendingClose?.slice(pendingClose.lastIndexOf('/') + 1)} has changes
+            that are not saved. Closing it discards them.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -952,7 +1145,7 @@ export const AssignmentEditorPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Shell>
+    </AssignmentTheme>
   );
 };
 
@@ -981,10 +1174,10 @@ const RailButton = ({
           width: 36,
           height: 36,
           borderRadius: '8px',
-          color: active ? '#fff' : C.muted,
-          bgcolor: active ? '#222227' : 'transparent',
-          border: `1px solid ${active ? C.lineStrong : 'transparent'}`,
-          '&:hover': { bgcolor: '#222227' },
+          color: active ? 'common.white' : WORKSPACE.muted,
+          bgcolor: active ? WORKSPACE.chip : 'transparent',
+          border: `1px solid ${active ? WORKSPACE.lineStrong : 'transparent'}`,
+          '&:hover': { bgcolor: WORKSPACE.chip },
         }}
       >
         {icon}
@@ -992,70 +1185,5 @@ const RailButton = ({
     </span>
   </Tooltip>
 );
-
-/** Rendered outside the app Layout: the editor wants the whole viewport. */
-const Shell = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={fellowshipDarkTheme}>
-    <CssBaseline />
-    {children}
-  </ThemeProvider>
-);
-
-function isTerminal(status: CIRunStatus): boolean {
-  return (
-    status === CIRunStatus.COMPLETED || status === CIRunStatus.ORPHANED
-  );
-}
-
-/** Display name for the language selector, from the active file. */
-function languageLabel(path: string | null): string {
-  const id = path ? languageOf(path) : 'plaintext';
-  const names: Record<string, string> = {
-    python: 'Python',
-    rust: 'Rust',
-    cpp: 'C++',
-    c: 'C',
-    typescript: 'TypeScript',
-    javascript: 'JavaScript',
-    json: 'JSON',
-    markdown: 'Markdown',
-    yaml: 'YAML',
-    ini: 'TOML',
-    shell: 'Shell',
-    sql: 'SQL',
-    html: 'HTML',
-    css: 'CSS',
-  };
-  return names[id] ?? 'Plain text';
-}
-
-/** Monaco needs a language id; the extension is the only hint we have. */
-function languageOf(path: string): string {
-  const extension = path.slice(path.lastIndexOf('.') + 1).toLowerCase();
-  const byExtension: Record<string, string> = {
-    rs: 'rust',
-    py: 'python',
-    cpp: 'cpp',
-    cc: 'cpp',
-    cxx: 'cpp',
-    h: 'cpp',
-    hpp: 'cpp',
-    c: 'c',
-    ts: 'typescript',
-    tsx: 'typescript',
-    js: 'javascript',
-    jsx: 'javascript',
-    json: 'json',
-    md: 'markdown',
-    yml: 'yaml',
-    yaml: 'yaml',
-    toml: 'ini',
-    sh: 'shell',
-    sql: 'sql',
-    html: 'html',
-    css: 'css',
-  };
-  return byExtension[extension] ?? 'plaintext';
-}
 
 export default AssignmentEditorPage;

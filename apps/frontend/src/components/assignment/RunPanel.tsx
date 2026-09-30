@@ -4,8 +4,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import type { CIRunDetailResponse } from '@nonce/shared';
-import { CIRunConclusion, CIRunStatus } from '@nonce/shared';
+import { CIRunStatus } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
+import { describeRun, isTerminal } from './runStatus';
+import { WORKSPACE } from './workspaceColors';
 
 interface Props {
   run: CIRunDetailResponse | undefined;
@@ -33,7 +35,9 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
     rows = tests.map(test => ({
       name: test.name,
       state:
-        test.status === 'success' || test.status === 'passed' ? 'passed' : 'failed',
+        test.status === 'success' || test.status === 'passed'
+          ? 'passed'
+          : 'failed',
       message: test.message,
     }));
   } else {
@@ -42,13 +46,34 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
   }
 
   const passedCount = rows.filter(row => row.state === 'passed').length;
-  const summary = tests.length > 0 ? 'graded' : isDispatching || isLive ? 'running' : 'not run';
+  const summary =
+    tests.length > 0
+      ? 'graded'
+      : isDispatching || isLive
+        ? 'running'
+        : 'not run';
 
   return (
-    <Box sx={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', px: 2.5, py: 2.25 }}>
+    <Box
+      sx={{
+        height: '100%',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        px: 2.5,
+        py: 2.25,
+      }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1.5 }}>
-        <Typography sx={{ fontSize: 15, fontWeight: 700, flex: 1 }}>Checks</Typography>
-        <Typography sx={{ fontFamily: fontFamilyMono, fontSize: 12, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: 15, fontWeight: 700, flex: 1 }}>
+          Checks
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: fontFamilyMono,
+            fontSize: 12,
+            color: 'text.secondary',
+          }}
+        >
           {passedCount}/{rows.length} · {summary}
         </Typography>
       </Box>
@@ -57,17 +82,35 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
         {rows.map((row, index) => (
           <Box
             key={index}
-            sx={{ flex: 1, height: 4, borderRadius: 99, bgcolor: STATE_BAR[row.state] }}
+            sx={{
+              flex: 1,
+              height: 4,
+              borderRadius: 99,
+              bgcolor: STATE_BAR[row.state],
+            }}
           />
         ))}
       </Box>
 
       {rows.map((row, index) => (
-        <CheckItem key={`${index}-${row.name}`} row={row} index={index} last={index === rows.length - 1} />
+        <CheckItem
+          key={`${index}-${row.name}`}
+          row={row}
+          index={index}
+          last={index === rows.length - 1}
+        />
       ))}
 
-      <Typography sx={{ fontSize: 12.5, lineHeight: '18px', color: 'text.secondary', mt: 2 }}>
-        From the brief&rsquo;s &ldquo;You&rsquo;re done when&rdquo;. Checks run on your latest save.
+      <Typography
+        sx={{
+          fontSize: 12.5,
+          lineHeight: '18px',
+          color: 'text.secondary',
+          mt: 2,
+        }}
+      >
+        From the brief&rsquo;s &ldquo;You&rsquo;re done when&rdquo;. Checks run
+        on your latest save.
       </Typography>
     </Box>
   );
@@ -88,19 +131,27 @@ const STATE_COLOR = {
 } as const;
 
 const STATE_BAR = {
-  pending: '#2a2a30',
+  pending: WORKSPACE.line,
   running: '#60a5fa',
   passed: '#4ade80',
   failed: '#f87171',
 } as const;
 
-const CheckItem = ({ row, index, last }: { row: CheckRow; index: number; last: boolean }) => (
+const CheckItem = ({
+  row,
+  index,
+  last,
+}: {
+  row: CheckRow;
+  index: number;
+  last: boolean;
+}) => (
   <Box
     sx={{
       display: 'flex',
       gap: 1.5,
       py: 1.75,
-      borderBottom: last ? 'none' : '1px solid #2a2a30',
+      borderBottom: last ? 'none' : `1px solid ${WORKSPACE.line}`,
     }}
   >
     <Box
@@ -113,10 +164,12 @@ const CheckItem = ({ row, index, last }: { row: CheckRow; index: number; last: b
         display: 'grid',
         placeItems: 'center',
         border: '1px solid',
-        borderColor: row.state === 'pending' ? '#3b3b43' : STATE_BAR[row.state],
+        borderColor:
+          row.state === 'pending' ? WORKSPACE.lineStrong : STATE_BAR[row.state],
         fontFamily: fontFamilyMono,
         fontSize: 10.5,
-        color: row.state === 'pending' ? '#a3a3ad' : STATE_COLOR[row.state],
+        color:
+          row.state === 'pending' ? WORKSPACE.muted : STATE_COLOR[row.state],
       }}
     >
       {row.state === 'passed' ? (
@@ -128,10 +181,19 @@ const CheckItem = ({ row, index, last }: { row: CheckRow; index: number; last: b
       )}
     </Box>
     <Box sx={{ minWidth: 0, flex: 1 }}>
-      <Typography sx={{ fontSize: 14, lineHeight: '19px', fontWeight: 500, wordBreak: 'break-word' }}>
+      <Typography
+        sx={{
+          fontSize: 14,
+          lineHeight: '19px',
+          fontWeight: 500,
+          wordBreak: 'break-word',
+        }}
+      >
         {row.name}
       </Typography>
-      <Typography sx={{ fontSize: 12.5, mt: '2px', color: STATE_COLOR[row.state] }}>
+      <Typography
+        sx={{ fontSize: 12.5, mt: '2px', color: STATE_COLOR[row.state] }}
+      >
         {STATE_LABEL[row.state]}
       </Typography>
       {row.state === 'failed' && row.message && (
@@ -154,15 +216,6 @@ const CheckItem = ({ row, index, last }: { row: CheckRow; index: number; last: b
   </Box>
 );
 
-/** One line for the Output header, and the run detail shown when it is open. */
-export const describeOutput = (run: CIRunDetailResponse | undefined, isDispatching: boolean) => {
-  if (!run) return isDispatching ? 'Dispatching…' : 'No runs yet';
-  if (run.status === CIRunStatus.ORPHANED) return 'Lost track of this run — run again';
-  const { label } = describeRun(run);
-  const tests = run.testsTotal !== null ? ` · ${run.testsPassed}/${run.testsTotal} tests` : '';
-  return `${label[0].toUpperCase()}${label.slice(1)}${tests}`;
-};
-
 export const RunOutput = ({
   run,
   logs,
@@ -177,7 +230,9 @@ export const RunOutput = ({
       <Box sx={{ p: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
         {isDispatching && <CircularProgress size={16} />}
         <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-          {isDispatching ? 'Dispatching…' : 'Run checks to see the grader output here.'}
+          {isDispatching
+            ? 'Dispatching…'
+            : 'Run checks to see the grader output here.'}
         </Typography>
       </Box>
     );
@@ -206,7 +261,15 @@ const RunDetail = ({
   isLive: boolean;
 }) => (
   <Box>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        flexWrap: 'wrap',
+        mb: 1,
+      }}
+    >
       <StatusChip run={run} />
 
       {/* The org-wide concurrent job cap is shared, so a queued run is normal
@@ -219,7 +282,11 @@ const RunDetail = ({
 
       {run.testsTotal !== null && (
         <Typography
-          sx={{ fontFamily: fontFamilyMono, fontSize: 12, color: 'text.secondary' }}
+          sx={{
+            fontFamily: fontFamilyMono,
+            fontSize: 12,
+            color: 'text.secondary',
+          }}
         >
           {run.testsPassed}/{run.testsTotal} tests
         </Typography>
@@ -258,7 +325,13 @@ const RunDetail = ({
         {job.steps.map(step => (
           <Box
             key={`${job.id}-${step.number}`}
-            sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25, pl: 1 }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              py: 0.25,
+              pl: 1,
+            }}
           >
             <StepIcon status={step.status} conclusion={step.conclusion} />
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
@@ -280,7 +353,9 @@ const RunDetail = ({
 
     {logs && (
       <Box sx={{ mt: 1.5 }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 0.75 }}>Log</Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 600, mb: 0.75 }}>
+          Log
+        </Typography>
         <Box
           component="pre"
           sx={{
@@ -334,28 +409,7 @@ const StepIcon = ({
   if (conclusion === 'success' || conclusion === 'passed') {
     return <CheckIcon sx={{ fontSize: 13 }} color="success" />;
   }
-  if (conclusion === 'skipped') return <RemoveIcon sx={{ fontSize: 13, opacity: 0.5 }} />;
+  if (conclusion === 'skipped')
+    return <RemoveIcon sx={{ fontSize: 13, opacity: 0.5 }} />;
   return <CloseIcon sx={{ fontSize: 13 }} color="error" />;
 };
-
-function isTerminal(status: CIRunStatus): boolean {
-  return (
-    status === CIRunStatus.COMPLETED || status === CIRunStatus.ORPHANED
-  );
-}
-
-function describeRun(run: CIRunDetailResponse): {
-  label: string;
-  color: 'info.main' | 'success.main' | 'warning.main' | 'error.main';
-} {
-  if (run.status !== CIRunStatus.COMPLETED) {
-    return { label: run.status.replace('_', ' ').toLowerCase(), color: 'info.main' };
-  }
-  if (run.conclusion === CIRunConclusion.SUCCESS) {
-    return { label: 'passed', color: 'success.main' };
-  }
-  if (run.conclusion === CIRunConclusion.TIMED_OUT) {
-    return { label: 'timed out', color: 'warning.main' };
-  }
-  return { label: 'failed', color: 'error.main' };
-}

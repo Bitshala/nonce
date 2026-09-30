@@ -16,7 +16,7 @@ import { Cohort } from '@/entities/cohort.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
-import { ProvisionStatus } from '@/common/enum';
+import { ProvisionStatus, UserRole } from '@/common/enum';
 
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
@@ -111,12 +111,14 @@ describe('AdminAssignmentsService', () => {
                 sub('u5', { isPassingOverride: true }),
                 sub('staff', { bestRun: { id: 'r' } }),
             ]);
-            membershipRepository.find.mockResolvedValue(
-                ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
+            membershipRepository.find.mockResolvedValue([
+                ...['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
                     cohort,
-                    user: { id },
+                    user: { id, role: UserRole.STUDENT },
                 })),
-            );
+                // A TA enrolled in the cohort is neither counted nor tallied.
+                { cohort, user: { id: 'staff', role: UserRole.ADMIN } },
+            ]);
 
             const [row] = await service.listAssignments();
 
@@ -156,6 +158,21 @@ describe('AdminAssignmentsService', () => {
                 staff,
             );
             expect(result).toEqual({ dispatched: 1, skipped: 2 });
+        });
+
+        it('only considers students, so staff trial repos are not re-graded', async () => {
+            assignmentRepository.findOne.mockResolvedValue({ id: 'a' });
+            submissionRepository.find.mockResolvedValue([]);
+
+            await service.regrade('a', staff);
+
+            expect(submissionRepository.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        user: { role: UserRole.STUDENT },
+                    }),
+                }),
+            );
         });
 
         it('counts a failed dispatch as skipped rather than aborting the rest', async () => {

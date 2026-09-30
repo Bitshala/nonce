@@ -8,6 +8,14 @@ export const formatDateTime = (iso: string | null | undefined): string => {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
+// Date only, for deadlines and other places where the time is noise.
+export const formatDate = (iso: string | null | undefined): string => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+
 export const formatDateForInput = (isoDate: string | null | undefined): string => {
   if (!isoDate) return '';
   try {

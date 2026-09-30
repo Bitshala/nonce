@@ -205,8 +205,10 @@ export interface CreateRunRequest {
 // --- Admin -----------------------------------------------------------------
 
 /** One row of the staff assignment list: the summary, minus any one student's submission. */
-export interface AdminAssignmentResponse
-  extends Omit<AssignmentSummaryResponse, 'submission'> {
+export interface AdminAssignmentResponse extends Omit<
+  AssignmentSummaryResponse,
+  'submission'
+> {
   /** Students enrolled in the cohort; the denominator for the tallies below. */
   enrolledCount: number;
   /** Enrolled students who accepted. Staff trial runs are not counted. */

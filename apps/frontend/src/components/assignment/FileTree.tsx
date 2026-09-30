@@ -4,7 +4,13 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import type { RepoTreeEntryResponse } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
-import { belongsToLanguage, fileRole, isBriefPath, type FileRole } from './languages';
+import { WORKSPACE } from './workspaceColors';
+import {
+  belongsToLanguage,
+  fileRole,
+  isBriefPath,
+  type FileRole,
+} from './languages';
 
 interface Props {
   entries: RepoTreeEntryResponse[];
@@ -37,7 +43,7 @@ const Overline = ({ children }: { children: string }) => (
       fontSize: 11.5,
       letterSpacing: '0.08em',
       fontWeight: 700,
-      color: '#80808a',
+      color: WORKSPACE.faint,
     }}
   >
     {children}
@@ -66,14 +72,30 @@ export const FileTree = ({
 
   const { groups, grader } = useMemo(() => {
     const prefix = language ? `${language}/` : null;
-    const buckets: Record<FileRole, Item[]> = { answer: [], provided: [], other: [], grader: [] };
+    const buckets: Record<FileRole, Item[]> = {
+      answer: [],
+      provided: [],
+      other: [],
+      grader: [],
+    };
     for (const entry of entries) {
       if (entry.type === 'tree') continue;
-      if (isBriefPath(entry.path) || !belongsToLanguage(entry.path, language, languages)) continue;
-      const name = prefix && entry.path.startsWith(prefix) ? entry.path.slice(prefix.length) : entry.path;
-      buckets[fileRole(entry.path, protectedPaths)].push({ path: entry.path, name });
+      if (
+        isBriefPath(entry.path) ||
+        !belongsToLanguage(entry.path, language, languages)
+      )
+        continue;
+      const name =
+        prefix && entry.path.startsWith(prefix)
+          ? entry.path.slice(prefix.length)
+          : entry.path;
+      buckets[fileRole(entry.path, protectedPaths)].push({
+        path: entry.path,
+        name,
+      });
     }
-    for (const list of Object.values(buckets)) list.sort((a, b) => a.name.localeCompare(b.name));
+    for (const list of Object.values(buckets))
+      list.sort((a, b) => a.name.localeCompare(b.name));
     return { groups: buckets, grader: buckets.grader };
   }, [entries, protectedPaths, language, languages]);
 
@@ -101,21 +123,35 @@ export const FileTree = ({
           height: 30,
           cursor: 'pointer',
           borderRadius: '6px',
-          bgcolor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-          '&:hover': { bgcolor: isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)' },
+          bgcolor: isActive ? 'action.selected' : 'transparent',
+          '&:hover': { bgcolor: isActive ? 'action.selected' : 'action.hover' },
         }}
       >
         {role === 'answer' && (
-          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#f5873a', flexShrink: 0 }} />
+          <Box
+            sx={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              bgcolor: WORKSPACE.accent,
+              flexShrink: 0,
+            }}
+          />
         )}
-        {role === 'grader' && <LockOutlinedIcon sx={{ fontSize: 13, color: '#80808a' }} />}
+        {role === 'grader' && (
+          <LockOutlinedIcon sx={{ fontSize: 13, color: WORKSPACE.faint }} />
+        )}
         <Typography
           noWrap
           sx={{
             fontFamily: fontFamilyMono,
             fontSize: 13,
             fontWeight: isActive ? 700 : 500,
-            color: isActive ? '#fff' : role === 'grader' ? '#a3a3ad' : '#e4e4e7',
+            color: isActive
+              ? 'common.white'
+              : role === 'grader'
+                ? WORKSPACE.muted
+                : 'text.primary',
             flex: 1,
             minWidth: 0,
           }}
@@ -124,10 +160,20 @@ export const FileTree = ({
         </Typography>
         {/* Unsaved work is the one thing a student must never lose track of. */}
         {isDirty && (
-          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'warning.main', flexShrink: 0 }} />
+          <Box
+            sx={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              bgcolor: 'warning.main',
+              flexShrink: 0,
+            }}
+          />
         )}
         {role === 'answer' && !isDirty && (
-          <Typography sx={{ fontSize: 11.5, color: '#80808a' }}>edit</Typography>
+          <Typography sx={{ fontSize: 11.5, color: WORKSPACE.faint }}>
+            edit
+          </Typography>
         )}
       </Box>
     );
@@ -142,8 +188,17 @@ export const FileTree = ({
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+      }}
+    >
+      <Box
+        sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}
+      >
         {GROUPS.map(
           ({ role, title }) =>
             groups[role].length > 0 && (
@@ -156,7 +211,14 @@ export const FileTree = ({
       </Box>
 
       {grader.length > 0 && (
-        <Box sx={{ flexShrink: 0, borderTop: '1px solid #2a2a30', mx: 1, mb: 1 }}>
+        <Box
+          sx={{
+            flexShrink: 0,
+            borderTop: `1px solid ${WORKSPACE.line}`,
+            mx: 1,
+            mb: 1,
+          }}
+        >
           <Collapse in={graderOpen} unmountOnExit>
             <Box sx={{ maxHeight: 220, overflowY: 'auto', py: 0.5, mx: -1 }}>
               {grader.map(item => row(item, 'grader'))}
@@ -181,7 +243,7 @@ export const FileTree = ({
               height: 40,
               cursor: 'pointer',
               color: 'text.secondary',
-              '&:hover': { color: '#fff' },
+              '&:hover': { color: 'common.white' },
             }}
           >
             <LockOutlinedIcon sx={{ fontSize: 14 }} />
@@ -189,7 +251,11 @@ export const FileTree = ({
               {grader.length} grader files
             </Typography>
             <ChevronRightIcon
-              sx={{ fontSize: 16, transition: 'transform .2s', transform: graderOpen ? 'rotate(90deg)' : 'none' }}
+              sx={{
+                fontSize: 16,
+                transition: 'transform .2s',
+                transform: graderOpen ? 'rotate(90deg)' : 'none',
+              }}
             />
           </Box>
         </Box>
