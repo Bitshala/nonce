@@ -1,4 +1,5 @@
 import type {
+    AdminAssignmentResponse,
     AdminSubmissionResponse,
     AssignmentDetailResponse,
     AssignmentSummaryResponse,
@@ -327,5 +328,43 @@ export class ArchiveAssignmentResponseDto implements ArchiveAssignmentResponse {
     constructor(archived: number, failed: number) {
         this.archived = archived;
         this.failed = failed;
+    }
+}
+
+export class AdminAssignmentResponseDto
+    extends AssignmentSummaryResponseDto
+    implements AdminAssignmentResponse
+{
+    declare submission: null;
+    enrolledCount: number;
+    submissionCount: number;
+    passedCount: number;
+    failingCount: number;
+    inProgressCount: number;
+    notStartedCount: number;
+    failedProvisionCount: number;
+
+    /** `submissions` must already be limited to enrolled students. */
+    constructor(
+        assignment: Assignment,
+        submissions: AssignmentSubmission[],
+        enrolledCount: number,
+    ) {
+        super(assignment, null);
+        this.enrolledCount = enrolledCount;
+        this.submissionCount = submissions.length;
+        this.passedCount = 0;
+        this.failingCount = 0;
+        this.inProgressCount = 0;
+        this.failedProvisionCount = 0;
+        // One bucket per submission, matching what the score writeback records.
+        for (const s of submissions) {
+            if (s.isPassingOverride ?? s.bestRun != null) this.passedCount++;
+            else if (s.provisionStatus === ProvisionStatus.FAILED)
+                this.failedProvisionCount++;
+            else if (s.latestRun) this.failingCount++;
+            else this.inProgressCount++;
+        }
+        this.notStartedCount = Math.max(0, enrolledCount - submissions.length);
     }
 }

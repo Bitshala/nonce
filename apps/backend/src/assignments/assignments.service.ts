@@ -59,16 +59,25 @@ export class AssignmentsService {
     async listMyAssignments(
         user: User,
     ): Promise<AssignmentSummaryResponseDto[]> {
-        const memberships = await this.membershipRepository.find({
-            where: { user: { id: user.id } },
-            relations: { cohort: true },
-        });
-        const cohortIds = memberships.map((m) => m.cohort.id);
-        if (cohortIds.length === 0) return [];
+        // Staff work from the global pool, not from cohorts they belong to.
+        const isStaff = isAtLeastRole(user.role, UserRole.TEACHING_ASSISTANT);
+        let cohortFilter = {};
+        if (!isStaff) {
+            const memberships = await this.membershipRepository.find({
+                where: { user: { id: user.id } },
+                relations: { cohort: true },
+            });
+            if (memberships.length === 0) return [];
+            cohortFilter = {
+                cohortWeek: {
+                    cohort: { id: In(memberships.map((m) => m.cohort.id)) },
+                },
+            };
+        }
 
         const assignments = await this.assignmentRepository.find({
             where: {
-                cohortWeek: { cohort: { id: In(cohortIds) } },
+                ...cohortFilter,
                 status: In(STUDENT_VISIBLE_STATUSES),
             },
             relations: { cohortWeek: { cohort: true } },
