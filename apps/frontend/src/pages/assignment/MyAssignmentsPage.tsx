@@ -34,7 +34,10 @@ import {
   submissionBucket,
 } from '@nonce/shared';
 import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
-import type { ChipColor } from '../../components/assignment/chips.ts';
+import {
+  BUCKET_META,
+  type ChipColor,
+} from '../../components/assignment/chips.ts';
 import {
   isProvisioning,
   provisionRefetchInterval,
@@ -75,10 +78,10 @@ const BADGE: Record<RowState, { label: string; color: ChipColor }> = {
   available: { label: 'Available', color: 'success' },
   closed: { label: 'Closed', color: 'default' },
   setup: { label: 'Setting up', color: 'info' },
-  failed: { label: 'Setup failed', color: 'warning' },
-  progress: { label: 'In progress', color: 'info' },
+  failed: BUCKET_META.setupFailed,
+  progress: BUCKET_META.inProgress,
   needs: { label: 'Needs work', color: 'warning' },
-  passed: { label: 'Passed', color: 'success' },
+  passed: BUCKET_META.passed,
 };
 
 const VERB: Record<RowState, string | null> = {
