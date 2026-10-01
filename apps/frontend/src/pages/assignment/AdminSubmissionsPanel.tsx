@@ -20,17 +20,19 @@ import {
   type AdminAssignmentResponse,
   type AdminSubmissionResponse,
   ProvisionStatus,
-  type SubmissionBucket,
   submissionBucket,
 } from '@nonce/shared';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import SearchIcon from '@mui/icons-material/Search';
+import { BUCKET_COUNT_KEY } from '../../components/assignment/assignmentTally.ts';
 import {
   ASSIGNMENT_STATUS_CHIP,
+  BUCKET_META,
   PROVISION_CHIP,
-  type ChipColor,
+  chipPaletteColor,
+  type BucketKey,
 } from '../../components/assignment/chips.ts';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers.ts';
@@ -107,17 +109,7 @@ const OverrideCard = ({
   </Paper>
 );
 
-type Filter = SubmissionBucket | 'all' | 'notstarted';
-
-const BUCKET_CHIP: Record<
-  SubmissionBucket,
-  { label: string; color: ChipColor }
-> = {
-  inProgress: { label: 'In progress', color: 'info' },
-  failing: { label: 'Failing', color: 'error' },
-  passed: { label: 'Passed', color: 'success' },
-  setupFailed: { label: 'Setup failed', color: 'warning' },
-};
+type Filter = BucketKey | 'all';
 
 const StudentCard = ({
   s,
@@ -136,7 +128,7 @@ const StudentCard = ({
   onRetry: () => void;
   retrying: boolean;
 }) => {
-  const bucket = BUCKET_CHIP[submissionBucket(s)];
+  const bucket = BUCKET_META[submissionBucket(s)];
   const name = s.userName ?? s.userId;
   const run = s.latestRun;
   const summary = [
@@ -378,6 +370,12 @@ export const SubmissionsPanel = ({
       (!q || (s.userName ?? s.userId).toLowerCase().includes(q))
   );
 
+  const bucketChip = (key: BucketKey) => ({
+    key,
+    label: BUCKET_META[key].label,
+    count: assignment[BUCKET_COUNT_KEY[key]],
+    color: chipPaletteColor(BUCKET_META[key].color),
+  });
   const chips: { key: Filter; label: string; count: number; color: string }[] =
     [
       {
@@ -386,44 +384,17 @@ export const SubmissionsPanel = ({
         count: assignment.enrolledCount,
         color: 'text.secondary',
       },
-      {
-        key: 'inProgress',
-        label: 'In progress',
-        count: assignment.inProgressCount,
-        color: 'info.main',
-      },
-      {
-        key: 'failing',
-        label: 'Failing',
-        count: assignment.failingCount,
-        color: 'error.main',
-      },
-      {
-        key: 'passed',
-        label: 'Passed',
-        count: assignment.passedCount,
-        color: 'success.main',
-      },
+      bucketChip('inProgress'),
+      bucketChip('failing'),
+      bucketChip('passed'),
       ...(assignment.failedProvisionCount > 0
-        ? [
-            {
-              key: 'setupFailed' as Filter,
-              label: 'Setup failed',
-              count: assignment.failedProvisionCount,
-              color: 'warning.main',
-            },
-          ]
+        ? [bucketChip('setupFailed')]
         : []),
-      {
-        key: 'notstarted',
-        label: 'Not started',
-        count: assignment.notStartedCount,
-        color: 'action.disabled',
-      },
+      bucketChip('notStarted'),
     ];
   const showNotStarted =
     assignment.notStartedCount > 0 &&
-    (filter === 'all' || filter === 'notstarted');
+    (filter === 'all' || filter === 'notStarted');
   const unpassed = assignment.failingCount + assignment.inProgressCount;
   const status = ASSIGNMENT_STATUS_CHIP[assignment.status];
 
@@ -583,7 +554,7 @@ export const SubmissionsPanel = ({
             retrying={reprovision.isPending}
           />
         ))}
-        {submissions && visible.length === 0 && filter !== 'notstarted' && (
+        {submissions && visible.length === 0 && filter !== 'notStarted' && (
           <Typography color="text.secondary">
             {submissions.length === 0
               ? 'No students have started this assignment.'
