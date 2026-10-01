@@ -83,3 +83,5 @@ apps/backend/config/dev.config.yaml
 apps/backend/config/e2e.config.yaml
 apps/backend/snapshots/
 apps/backend/e2e/.logs
+/CLAUDE.md
+/skills-lock.json
