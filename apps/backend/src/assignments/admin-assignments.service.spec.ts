@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { CohortsService } from '@/cohorts/cohorts.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
@@ -14,12 +16,13 @@ import { Cohort } from '@/entities/cohort.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
-import { ProvisionStatus } from '@/common/enum';
+import { ProvisionStatus, UserRole } from '@/common/enum';
 
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
 
-    const assignmentRepository = { findOne: jest.fn() };
+    const assignmentRepository = { findOne: jest.fn(), find: jest.fn() };
+    const membershipRepository = { find: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn() };
@@ -52,6 +55,11 @@ describe('AdminAssignmentsService', () => {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
                 },
+                {
+                    provide: getRepositoryToken(CohortMembership),
+                    useValue: membershipRepository,
+                },
+                { provide: CohortsService, useValue: {} },
                 { provide: CohortsConfigService, useValue: {} },
                 { provide: GitHubAppClient, useValue: {} },
                 { provide: RunsService, useValue: runsService },
@@ -74,6 +82,76 @@ describe('AdminAssignmentsService', () => {
         dbTransactionService.execute.mockImplementation(
             async (cb: (m: unknown) => unknown) => cb(manager),
         );
+    });
+
+    describe('listAssignments', () => {
+        it('buckets each enrolled submission once and ignores staff trial runs', async () => {
+            const cohort = { id: 'c1', type: 'x', season: 1 };
+            const assignment = {
+                id: 'a1',
+                cohortWeek: { week: 1, cohort },
+                isPastDeadline: () => false,
+                isOpenForSubmission: () => true,
+            };
+            const sub = (userId: string, o: object) => ({
+                assignment: { id: 'a1' },
+                user: { id: userId },
+                bestRun: null,
+                latestRun: null,
+                isPassingOverride: null,
+                provisionStatus: ProvisionStatus.READY,
+                ...o,
+            });
+            assignmentRepository.find.mockResolvedValue([assignment]);
+            submissionRepository.find.mockResolvedValue([
+                sub('u1', { bestRun: { id: 'r' } }),
+                sub('u2', { latestRun: { id: 'r' } }),
+                sub('u3', {}),
+                sub('u4', { provisionStatus: ProvisionStatus.FAILED }),
+                sub('u5', { isPassingOverride: true }),
+                sub('staff', { bestRun: { id: 'r' } }),
+            ]);
+            membershipRepository.find.mockResolvedValue([
+                ...['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
+                    cohort,
+                    user: { id, role: UserRole.STUDENT },
+                })),
+                // A TA enrolled in the cohort is neither counted nor tallied.
+                { cohort, user: { id: 'staff', role: UserRole.ADMIN } },
+            ]);
+
+            const [row] = await service.listAssignments();
+
+            expect(row).toMatchObject({
+                enrolledCount: 6,
+                submissionCount: 5,
+                passedCount: 2,
+                failingCount: 1,
+                inProgressCount: 1,
+                failedProvisionCount: 1,
+                notStartedCount: 1,
+            });
+        });
+    });
+
+    describe('listSubmissions', () => {
+        it('only lists students, matching what the tallies count', async () => {
+            assignmentRepository.findOne.mockResolvedValue({
+                id: 'a',
+                cohortWeek: { id: 'w', cohort: { id: 'c' } },
+            });
+            submissionRepository.find.mockResolvedValue([]);
+
+            await service.listSubmissions('a');
+
+            expect(submissionRepository.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        user: { role: UserRole.STUDENT },
+                    }),
+                }),
+            );
+        });
     });
 
     describe('regrade', () => {
@@ -100,6 +178,21 @@ describe('AdminAssignmentsService', () => {
                 staff,
             );
             expect(result).toEqual({ dispatched: 1, skipped: 2 });
+        });
+
+        it('only considers students, so staff trial repos are not re-graded', async () => {
+            assignmentRepository.findOne.mockResolvedValue({ id: 'a' });
+            submissionRepository.find.mockResolvedValue([]);
+
+            await service.regrade('a', staff);
+
+            expect(submissionRepository.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        user: { role: UserRole.STUDENT },
+                    }),
+                }),
+            );
         });
 
         it('counts a failed dispatch as skipped rather than aborting the rest', async () => {

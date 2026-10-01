@@ -1,4 +1,5 @@
 import type {
+    AdminAssignmentResponse,
     AdminSubmissionResponse,
     AssignmentDetailResponse,
     AssignmentSummaryResponse,
@@ -19,6 +20,7 @@ import type {
     SubmissionResponse,
     SyncAssignmentsResponse,
 } from '@nonce/shared';
+import { submissionBucket } from '@nonce/shared/submission-bucket';
 import {
     AssignmentStatus,
     CIRunConclusion,
@@ -104,6 +106,7 @@ export class SubmissionResponseDto implements SubmissionResponse {
     hasStudentCommits: boolean;
     latestRun: CIRunSummaryResponse | null;
     bestRun: CIRunSummaryResponse | null;
+    isPassingOverride: boolean | null;
     runsToday: number;
 
     constructor(
@@ -127,6 +130,7 @@ export class SubmissionResponseDto implements SubmissionResponse {
         this.bestRun = submission.bestRun
             ? new CIRunSummaryResponseDto(submission.bestRun)
             : null;
+        this.isPassingOverride = submission.isPassingOverride;
         this.runsToday = runsToday;
     }
 }
@@ -141,7 +145,6 @@ export class AdminSubmissionResponseDto
     isSubmitted: boolean;
     isPassing: boolean;
     isSubmittedOverride: boolean | null;
-    isPassingOverride: boolean | null;
 
     constructor(
         submission: AssignmentSubmission,
@@ -155,7 +158,6 @@ export class AdminSubmissionResponseDto
         this.isSubmitted = score?.isSubmitted ?? false;
         this.isPassing = score?.isPassing ?? false;
         this.isSubmittedOverride = submission.isSubmittedOverride;
-        this.isPassingOverride = submission.isPassingOverride;
     }
 }
 
@@ -330,5 +332,38 @@ export class ArchiveAssignmentResponseDto implements ArchiveAssignmentResponse {
     constructor(archived: number, failed: number) {
         this.archived = archived;
         this.failed = failed;
+    }
+}
+
+export class AdminAssignmentResponseDto
+    extends AssignmentSummaryResponseDto
+    implements AdminAssignmentResponse
+{
+    declare submission: null;
+    enrolledCount: number;
+    submissionCount: number;
+    passedCount: number;
+    failingCount: number;
+    inProgressCount: number;
+    notStartedCount: number;
+    failedProvisionCount: number;
+
+    /** `submissions` must already be limited to enrolled students. */
+    constructor(
+        assignment: Assignment,
+        submissions: AssignmentSubmission[],
+        enrolledCount: number,
+    ) {
+        super(assignment, null);
+        const counts = { passed: 0, setupFailed: 0, failing: 0, inProgress: 0 };
+        for (const s of submissions) counts[submissionBucket(s)]++;
+
+        this.enrolledCount = enrolledCount;
+        this.submissionCount = submissions.length;
+        this.passedCount = counts.passed;
+        this.failingCount = counts.failing;
+        this.inProgressCount = counts.inProgress;
+        this.failedProvisionCount = counts.setupFailed;
+        this.notStartedCount = Math.max(0, enrolledCount - submissions.length);
     }
 }

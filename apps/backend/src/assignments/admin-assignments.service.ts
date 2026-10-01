@@ -10,18 +10,21 @@ import { In, Repository } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
+import { CohortsService } from '@/cohorts/cohorts.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
-import { AssignmentBackend, ProvisionStatus } from '@/common/enum';
+import { AssignmentBackend, ProvisionStatus, UserRole } from '@/common/enum';
 import {
+    AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
     ArchiveAssignmentResponseDto,
     RegradeResponseDto,
@@ -34,6 +37,13 @@ import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.reque
  * Provisioning takes seconds; this only has to outlast a slow GitHub.
  */
 const PROVISIONING_LEASE_MS = 10 * 60 * 1000;
+
+/**
+ * Staff can try assignments and be cohort members without being part of a
+ * cohort's progress, so every cohort-facing view of submissions is limited to
+ * students: the tallies, the per-student list, and re-grading.
+ */
+const STUDENT_SUBMISSIONS = { user: { role: UserRole.STUDENT } } as const;
 
 /**
  * Staff operations on assignments: repairing provisioning, re-grading, manual
@@ -55,9 +65,12 @@ export class AdminAssignmentsService {
         private readonly submissionRepository: Repository<AssignmentSubmission>,
         @InjectRepository(Cohort)
         private readonly cohortRepository: Repository<Cohort>,
+        @InjectRepository(CohortMembership)
+        private readonly membershipRepository: Repository<CohortMembership>,
         @InjectRepository(ExerciseScore)
         private readonly exerciseScoreRepository: Repository<ExerciseScore>,
         private readonly cohortsConfigService: CohortsConfigService,
+        private readonly cohortsService: CohortsService,
         private readonly gitHubAppClient: GitHubAppClient,
         private readonly runsService: RunsService,
         private readonly scoreWriteback: ExerciseScoreWritebackService,
@@ -118,12 +131,87 @@ export class AdminAssignmentsService {
             );
         }
 
-        if (toSave.length > 0) await this.assignmentRepository.save(toSave);
+        if (toSave.length > 0) {
+            // One transaction, so a failure cannot leave assignments saved
+            // with GRADUATION deadlines still unresolved.
+            await this.dbTransactionService.execute(async (manager) => {
+                await manager.save(toSave);
+                // applyAssignmentConfig cannot resolve a GRADUATION deadline —
+                // it sees one week, not the calendar.
+                await this.cohortsService.syncAssignmentDeadlines(
+                    manager,
+                    cohortId,
+                );
+            });
+        }
 
         this.logger.log(
             `Synced assignments for cohort ${cohortId}: ${created} created, ${updated} updated`,
         );
         return new SyncAssignmentsResponseDto(created, updated);
+    }
+
+    /** Every assignment in every cohort, drafts included, with submission tallies. */
+    async listAssignments(): Promise<AdminAssignmentResponseDto[]> {
+        const assignments = await this.assignmentRepository.find({
+            relations: { cohortWeek: { cohort: true } },
+        });
+        if (assignments.length === 0) return [];
+
+        // ponytail: loads every submission to tally in memory; switch to a GROUP BY if this grows past a few thousand.
+        const [submissions, memberships] = await Promise.all([
+            this.submissionRepository.find({
+                relations: {
+                    assignment: true,
+                    user: true,
+                    bestRun: true,
+                    latestRun: true,
+                },
+            }),
+            this.membershipRepository.find({
+                relations: { cohort: true, user: true },
+            }),
+        ]);
+        // Only students are tallied (see STUDENT_SUBMISSIONS).
+        const studentsByCohort = new Map<string, Set<string>>();
+        for (const m of memberships) {
+            if (m.user.role !== UserRole.STUDENT) continue;
+            const students = studentsByCohort.get(m.cohort.id) ?? new Set();
+            students.add(m.user.id);
+            studentsByCohort.set(m.cohort.id, students);
+        }
+        const cohortOf = new Map(
+            assignments.map((a) => [a.id, a.cohortWeek.cohort.id] as const),
+        );
+        const byAssignment = new Map<string, AssignmentSubmission[]>();
+        for (const submission of submissions) {
+            const cohortId = cohortOf.get(submission.assignment.id);
+            if (!cohortId) continue;
+            if (!studentsByCohort.get(cohortId)?.has(submission.user.id))
+                continue;
+            const list = byAssignment.get(submission.assignment.id) ?? [];
+            list.push(submission);
+            byAssignment.set(submission.assignment.id, list);
+        }
+
+        return assignments
+            .sort(
+                (a, b) =>
+                    b.cohortWeek.cohort.season - a.cohortWeek.cohort.season ||
+                    a.cohortWeek.cohort.type.localeCompare(
+                        b.cohortWeek.cohort.type,
+                    ) ||
+                    a.cohortWeek.week - b.cohortWeek.week,
+            )
+            .map(
+                (assignment) =>
+                    new AdminAssignmentResponseDto(
+                        assignment,
+                        byAssignment.get(assignment.id) ?? [],
+                        studentsByCohort.get(assignment.cohortWeek.cohort.id)
+                            ?.size ?? 0,
+                    ),
+            );
     }
 
     async listSubmissions(
@@ -132,7 +220,7 @@ export class AdminAssignmentsService {
         const assignment = await this.loadAssignment(assignmentId);
 
         const submissions = await this.submissionRepository.find({
-            where: { assignment: { id: assignmentId } },
+            where: { assignment: { id: assignmentId }, ...STUDENT_SUBMISSIONS },
             relations: { user: true, latestRun: true, bestRun: true },
         });
         if (submissions.length === 0) return [];
@@ -226,6 +314,7 @@ export class AdminAssignmentsService {
             where: {
                 assignment: { id: assignmentId },
                 provisionStatus: ProvisionStatus.READY,
+                ...STUDENT_SUBMISSIONS,
             },
             relations: { user: true, bestRun: true },
         });
