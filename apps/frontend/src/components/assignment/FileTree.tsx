@@ -4,7 +4,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import type { RepoTreeEntryResponse } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
-import { WORKSPACE } from './workspaceColors';
+import { workspaceBorder } from './workspaceTheme';
 import {
   belongsToLanguage,
   fileRole,
@@ -43,7 +43,7 @@ const Overline = ({ children }: { children: string }) => (
       fontSize: 11.5,
       letterSpacing: '0.08em',
       fontWeight: 700,
-      color: WORKSPACE.faint,
+      color: 'workspace.faint',
     }}
   >
     {children}
@@ -133,13 +133,13 @@ export const FileTree = ({
               width: 6,
               height: 6,
               borderRadius: '50%',
-              bgcolor: WORKSPACE.accent,
+              bgcolor: 'workspace.accent',
               flexShrink: 0,
             }}
           />
         )}
         {role === 'grader' && (
-          <LockOutlinedIcon sx={{ fontSize: 13, color: WORKSPACE.faint }} />
+          <LockOutlinedIcon sx={{ fontSize: 13, color: 'workspace.faint' }} />
         )}
         <Typography
           noWrap
@@ -150,7 +150,7 @@ export const FileTree = ({
             color: isActive
               ? 'common.white'
               : role === 'grader'
-                ? WORKSPACE.muted
+                ? 'workspace.muted'
                 : 'text.primary',
             flex: 1,
             minWidth: 0,
@@ -171,7 +171,7 @@ export const FileTree = ({
           />
         )}
         {role === 'answer' && !isDirty && (
-          <Typography sx={{ fontSize: 11.5, color: WORKSPACE.faint }}>
+          <Typography sx={{ fontSize: 11.5, color: 'workspace.faint' }}>
             edit
           </Typography>
         )}
@@ -214,7 +214,7 @@ export const FileTree = ({
         <Box
           sx={{
             flexShrink: 0,
-            borderTop: `1px solid ${WORKSPACE.line}`,
+            borderTop: workspaceBorder('line'),
             mx: 1,
             mb: 1,
           }}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { alpha } from '@mui/material/styles';
+import { alpha, type Theme } from '@mui/material/styles';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -47,7 +47,10 @@ import {
   isTerminal,
 } from '../../components/assignment/runStatus.ts';
 import { RailButton } from '../../components/assignment/RailButton.tsx';
-import { WORKSPACE } from '../../components/assignment/workspaceColors.ts';
+import {
+  workspaceBorder,
+  workspacePalette,
+} from '../../components/assignment/workspaceTheme.ts';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { FileTree } from '../../components/assignment/FileTree.tsx';
 import { RunOutput, RunPanel } from '../../components/assignment/RunPanel.tsx';
@@ -463,7 +466,7 @@ export const AssignmentEditorPage = () => {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          bgcolor: WORKSPACE.bg,
+          bgcolor: 'workspace.bg',
         }}
       >
         {/* Top bar */}
@@ -476,14 +479,14 @@ export const AssignmentEditorPage = () => {
             gap: 1.5,
             pl: 1.5,
             pr: 1.75,
-            borderBottom: `1px solid ${WORKSPACE.line}`,
+            borderBottom: workspaceBorder('line'),
           }}
         >
           <Tooltip title="Back to assignments">
             <IconButton
               aria-label="Back to assignments"
               onClick={() => navigate('/assignments')}
-              sx={{ color: WORKSPACE.muted }}
+              sx={{ color: 'workspace.muted' }}
             >
               <ChevronLeftIcon />
             </IconButton>
@@ -497,8 +500,8 @@ export const AssignmentEditorPage = () => {
               fontWeight: 500,
               height: 26,
               borderRadius: '6px',
-              bgcolor: WORKSPACE.chip,
-              color: WORKSPACE.muted,
+              bgcolor: 'workspace.chip',
+              color: 'workspace.muted',
             }}
           />
           <Typography
@@ -520,8 +523,8 @@ export const AssignmentEditorPage = () => {
                 height: 22,
                 fontSize: 12,
                 fontWeight: 700,
-                bgcolor: tone ? alpha(tone, 0.14) : WORKSPACE.chip,
-                color: tone ?? WORKSPACE.muted,
+                bgcolor: tone ? alpha(tone, 0.14) : 'workspace.chip',
+                color: tone ?? 'workspace.muted',
               };
             }}
           />
@@ -533,7 +536,7 @@ export const AssignmentEditorPage = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 0.75,
-              color: WORKSPACE.muted,
+              color: 'workspace.muted',
               mr: 0.5,
             }}
           >
@@ -554,7 +557,7 @@ export const AssignmentEditorPage = () => {
           <IconButton
             aria-label="More actions"
             onClick={event => setMenuAnchor(event.currentTarget)}
-            sx={{ color: WORKSPACE.muted }}
+            sx={{ color: 'workspace.muted' }}
           >
             <MoreHorizIcon fontSize="small" />
           </IconButton>
@@ -600,13 +603,15 @@ export const AssignmentEditorPage = () => {
               pr: 1.25,
               fontSize: 13.5,
               borderRadius: '8px',
-              bgcolor: WORKSPACE.accent,
-              color: WORKSPACE.accentInk,
+              bgcolor: 'workspace.accent',
+              color: 'workspace.accentInk',
               fontWeight: 700,
-              '&:hover': { bgcolor: WORKSPACE.accentHover },
+              '&:hover': { bgcolor: 'workspace.accentHover' },
               '&.Mui-disabled': {
-                bgcolor: alpha(WORKSPACE.accent, 0.4),
-                color: alpha(WORKSPACE.accentInk, 0.7),
+                bgcolor: (theme: Theme) =>
+                  alpha(theme.palette.workspace.accent, 0.4),
+                color: (theme: Theme) =>
+                  alpha(theme.palette.workspace.accentInk, 0.7),
               },
             }}
           >
@@ -656,7 +661,7 @@ export const AssignmentEditorPage = () => {
               alignItems: 'center',
               gap: 0.5,
               pt: 1,
-              borderRight: `1px solid ${WORKSPACE.line}`,
+              borderRight: workspaceBorder('line'),
             }}
           >
             <RailButton
@@ -685,7 +690,7 @@ export const AssignmentEditorPage = () => {
               minWidth: 0,
               minHeight: 0,
               overflow: 'hidden',
-              borderRight: filesOpen ? `1px solid ${WORKSPACE.line}` : 'none',
+              borderRight: filesOpen ? workspaceBorder('line') : 'none',
             }}
           >
             <Box sx={{ width: PANEL_OPEN.files, height: '100%' }}>
@@ -725,14 +730,14 @@ export const AssignmentEditorPage = () => {
                       top: 0,
                       bottom: 'auto',
                       height: 2,
-                      bgcolor: WORKSPACE.accent,
+                      bgcolor: 'workspace.accent',
                     },
                   },
                 }}
                 sx={{
                   minHeight: 38,
                   flexShrink: 0,
-                  borderBottom: `1px solid ${WORKSPACE.line}`,
+                  borderBottom: workspaceBorder('line'),
                 }}
               >
                 {tabs.map(path => (
@@ -758,7 +763,7 @@ export const AssignmentEditorPage = () => {
                           p: '2px',
                           ml: 0.75,
                           borderRadius: '4px',
-                          color: WORKSPACE.muted,
+                          color: 'workspace.muted',
                           '&:hover': {
                             bgcolor: 'action.hover',
                             color: 'common.white',
@@ -786,11 +791,11 @@ export const AssignmentEditorPage = () => {
                       fontWeight: 500,
                       pl: 2,
                       pr: 1.25,
-                      color: WORKSPACE.muted,
-                      borderRight: `1px solid ${WORKSPACE.line}`,
+                      color: 'workspace.muted',
+                      borderRight: workspaceBorder('line'),
                       '&.Mui-selected': {
                         color: 'common.white',
-                        bgcolor: WORKSPACE.bg,
+                        bgcolor: 'workspace.bg',
                       },
                     }}
                   />
@@ -809,7 +814,7 @@ export const AssignmentEditorPage = () => {
                   px: 2,
                   fontFamily: fontFamilyMono,
                   fontSize: 12,
-                  color: WORKSPACE.muted,
+                  color: 'workspace.muted',
                 }}
               >
                 {language && <span>{language}</span>}
@@ -825,7 +830,7 @@ export const AssignmentEditorPage = () => {
                       color:
                         i === crumbs.length - 1
                           ? 'text.primary'
-                          : WORKSPACE.muted,
+                          : 'workspace.muted',
                     }}
                   >
                     {part}
@@ -843,7 +848,7 @@ export const AssignmentEditorPage = () => {
                       fontSize: 11,
                       fontWeight: 700,
                       bgcolor: '#26262b',
-                      color: WORKSPACE.muted,
+                      color: 'workspace.muted',
                       fontFamily: 'Inter, sans-serif',
                       ml: 0.5,
                     }}
@@ -858,7 +863,7 @@ export const AssignmentEditorPage = () => {
                 minHeight: 0,
                 minWidth: 0,
                 overflow: 'hidden',
-                bgcolor: WORKSPACE.bg,
+                bgcolor: 'workspace.bg',
               }}
             >
               {activeFile ? (
@@ -880,8 +885,8 @@ export const AssignmentEditorPage = () => {
                         { token: 'comment.shebang', foreground: 'e6e6ea' },
                       ],
                       colors: {
-                        'editor.background': WORKSPACE.bg,
-                        'editorGutter.background': WORKSPACE.bg,
+                        'editor.background': workspacePalette.bg,
+                        'editorGutter.background': workspacePalette.bg,
                         'editorLineNumber.foreground': '#55555c',
                         'editorLineNumber.activeForeground': '#ffffff',
                         'editor.lineHighlightBackground': '#ffffff0d',
@@ -944,8 +949,8 @@ export const AssignmentEditorPage = () => {
             <Box
               sx={{
                 flexShrink: 0,
-                borderTop: `1px solid ${WORKSPACE.line}`,
-                bgcolor: WORKSPACE.bg,
+                borderTop: workspaceBorder('line'),
+                bgcolor: 'workspace.bg',
               }}
             >
               <Box
@@ -973,20 +978,20 @@ export const AssignmentEditorPage = () => {
                     fontSize: 11.5,
                     fontWeight: 700,
                     letterSpacing: '0.08em',
-                    color: WORKSPACE.muted,
+                    color: 'workspace.muted',
                   }}
                 >
                   OUTPUT
                 </Typography>
                 <Typography
-                  sx={{ fontSize: 12.5, color: WORKSPACE.muted, flex: 1 }}
+                  sx={{ fontSize: 12.5, color: 'workspace.muted', flex: 1 }}
                 >
                   {describeOutput(run, createRun.isPending)}
                 </Typography>
                 <ExpandLessIcon
                   sx={{
                     fontSize: 18,
-                    color: WORKSPACE.muted,
+                    color: 'workspace.muted',
                     transition: 'transform .2s',
                     transform: outputOpen ? 'rotate(180deg)' : 'none',
                   }}
@@ -1009,7 +1014,7 @@ export const AssignmentEditorPage = () => {
               minWidth: 0,
               minHeight: 0,
               overflow: 'hidden',
-              borderLeft: checksOpen ? `1px solid ${WORKSPACE.line}` : 'none',
+              borderLeft: checksOpen ? workspaceBorder('line') : 'none',
             }}
           >
             <Box sx={{ width: PANEL_OPEN.checks, height: '100%' }}>
@@ -1031,9 +1036,9 @@ export const AssignmentEditorPage = () => {
             alignItems: 'center',
             gap: 2,
             px: 1.5,
-            borderTop: `1px solid ${WORKSPACE.line}`,
+            borderTop: workspaceBorder('line'),
             fontSize: 12,
-            color: WORKSPACE.muted,
+            color: 'workspace.muted',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
