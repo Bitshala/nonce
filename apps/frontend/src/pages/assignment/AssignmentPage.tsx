@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { ProvisionStatus } from '@nonce/shared';
-import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
+import { AssignmentScreen } from '../../components/assignment/AssignmentTheme.tsx';
 import {
   isProvisioning,
   provisionRefetchInterval,
@@ -72,18 +72,18 @@ export const AssignmentPage = () => {
 
   if (isLoading || isError || !assignment) {
     return (
-      <Themed center>
+      <AssignmentScreen center>
         {isLoading ? (
           <CircularProgress aria-label="Loading assignment" />
         ) : (
           <Alert severity="error">{extractErrorMessage(error)}</Alert>
         )}
-      </Themed>
+      </AssignmentScreen>
     );
   }
 
   return (
-    <Themed>
+    <AssignmentScreen narrow>
       <Paper
         variant="outlined"
         sx={{ width: '100%', maxWidth: 560, p: 3.5, alignSelf: 'flex-start' }}
@@ -213,33 +213,9 @@ export const AssignmentPage = () => {
           </Stack>
         </Stack>
       </Paper>
-    </Themed>
+    </AssignmentScreen>
   );
 };
-
-const Themed = ({
-  children,
-  center,
-}: {
-  children: React.ReactNode;
-  center?: boolean;
-}) => (
-  <AssignmentTheme>
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        color: 'text.primary',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: center ? 'center' : 'flex-start',
-        p: { xs: 2, md: 6 },
-      }}
-    >
-      {children}
-    </Box>
-  </AssignmentTheme>
-);
 
 const Section = ({ title, body }: { title: string; body: string }) => (
   <Box>
