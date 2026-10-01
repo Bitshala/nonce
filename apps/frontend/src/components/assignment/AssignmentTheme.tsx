@@ -1,5 +1,6 @@
-import { Box, CssBaseline, ThemeProvider } from '@mui/material';
-import { fellowshipDarkTheme } from '../fellowship/theme';
+import { Box } from '@mui/material';
+import { FellowshipTheme } from '../fellowship/FellowshipTheme';
+import { assignmentTheme } from './workspaceTheme';
 
 /**
  * The dark Material UI theme every assignment screen renders in. The editor
@@ -13,10 +14,9 @@ export const AssignmentTheme = ({
   children: React.ReactNode;
   baseline?: boolean;
 }) => (
-  <ThemeProvider theme={fellowshipDarkTheme}>
-    {baseline && <CssBaseline />}
+  <FellowshipTheme theme={assignmentTheme} baseline={baseline}>
     {children}
-  </ThemeProvider>
+  </FellowshipTheme>
 );
 
 /**

@@ -1,6 +1,4 @@
 import { IconButton, Tooltip } from '@mui/material';
-import { WORKSPACE } from './workspaceColors.ts';
-
 /** One toggle on the icon rail. */
 export const RailButton = ({
   label,
@@ -26,10 +24,11 @@ export const RailButton = ({
           width: 36,
           height: 36,
           borderRadius: '8px',
-          color: active ? 'common.white' : WORKSPACE.muted,
-          bgcolor: active ? WORKSPACE.chip : 'transparent',
-          border: `1px solid ${active ? WORKSPACE.lineStrong : 'transparent'}`,
-          '&:hover': { bgcolor: WORKSPACE.chip },
+          color: active ? 'common.white' : 'workspace.muted',
+          bgcolor: active ? 'workspace.chip' : 'transparent',
+          border: 1,
+          borderColor: active ? 'workspace.lineStrong' : 'transparent',
+          '&:hover': { bgcolor: 'workspace.chip' },
         }}
       >
         {icon}

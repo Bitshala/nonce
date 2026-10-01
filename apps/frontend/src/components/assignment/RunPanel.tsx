@@ -7,7 +7,7 @@ import type { CIRunDetailResponse } from '@nonce/shared';
 import { CIRunStatus } from '@nonce/shared';
 import { fontFamilyMono } from '../fellowship/theme';
 import { describeRun, isTerminal } from './runStatus';
-import { WORKSPACE } from './workspaceColors';
+import { workspaceBorder } from './workspaceTheme';
 
 interface Props {
   run: CIRunDetailResponse | undefined;
@@ -120,7 +120,7 @@ const CHECK_STATE = {
   pending: {
     label: 'Not run yet',
     color: 'text.secondary',
-    bar: WORKSPACE.line,
+    bar: 'workspace.line',
   },
   running: { label: 'Running…', color: 'info.main', bar: '#60a5fa' },
   passed: { label: 'Passed', color: 'success.main', bar: '#4ade80' },
@@ -141,7 +141,7 @@ const CheckItem = ({
       display: 'flex',
       gap: 1.5,
       py: 1.75,
-      borderBottom: last ? 'none' : `1px solid ${WORKSPACE.line}`,
+      borderBottom: last ? 'none' : workspaceBorder('line'),
     }}
   >
     <Box
@@ -156,13 +156,13 @@ const CheckItem = ({
         border: '1px solid',
         borderColor:
           row.state === 'pending'
-            ? WORKSPACE.lineStrong
+            ? 'workspace.lineStrong'
             : CHECK_STATE[row.state].bar,
         fontFamily: fontFamilyMono,
         fontSize: 10.5,
         color:
           row.state === 'pending'
-            ? WORKSPACE.muted
+            ? 'workspace.muted'
             : CHECK_STATE[row.state].color,
       }}
     >
