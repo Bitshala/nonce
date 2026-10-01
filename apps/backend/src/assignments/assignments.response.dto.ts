@@ -103,6 +103,7 @@ export class SubmissionResponseDto implements SubmissionResponse {
     hasStudentCommits: boolean;
     latestRun: CIRunSummaryResponse | null;
     bestRun: CIRunSummaryResponse | null;
+    isPassingOverride: boolean | null;
     runsToday: number;
 
     constructor(
@@ -126,6 +127,7 @@ export class SubmissionResponseDto implements SubmissionResponse {
         this.bestRun = submission.bestRun
             ? new CIRunSummaryResponseDto(submission.bestRun)
             : null;
+        this.isPassingOverride = submission.isPassingOverride;
         this.runsToday = runsToday;
     }
 }
@@ -140,7 +142,6 @@ export class AdminSubmissionResponseDto
     isSubmitted: boolean;
     isPassing: boolean;
     isSubmittedOverride: boolean | null;
-    isPassingOverride: boolean | null;
 
     constructor(
         submission: AssignmentSubmission,
@@ -154,7 +155,6 @@ export class AdminSubmissionResponseDto
         this.isSubmitted = score?.isSubmitted ?? false;
         this.isPassing = score?.isPassing ?? false;
         this.isSubmittedOverride = submission.isSubmittedOverride;
-        this.isPassingOverride = submission.isPassingOverride;
     }
 }
 

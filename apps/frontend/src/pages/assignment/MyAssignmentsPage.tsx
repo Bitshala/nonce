@@ -30,8 +30,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import {
   type AssignmentSummaryResponse,
-  CIRunConclusion,
   ProvisionStatus,
+  submissionBucket,
 } from '@nonce/shared';
 import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
 import type { ChipColor } from '../../components/assignment/chips.ts';
@@ -59,14 +59,16 @@ const rowStateOf = (assignment: AssignmentSummaryResponse): RowState => {
   if (!submission) {
     return assignment.isOpenForSubmission ? 'available' : 'closed';
   }
-  if (submission.provisionStatus === ProvisionStatus.FAILED) return 'failed';
-  if (isProvisioning(submission.provisionStatus)) return 'setup';
-  if (submission.bestRun) {
-    return submission.bestRun.conclusion === CIRunConclusion.SUCCESS
-      ? 'passed'
-      : 'needs';
+  switch (submissionBucket(submission)) {
+    case 'passed':
+      return 'passed';
+    case 'setupFailed':
+      return 'failed';
+    case 'failing':
+      return 'needs';
+    case 'inProgress':
+      return isProvisioning(submission.provisionStatus) ? 'setup' : 'progress';
   }
-  return 'progress';
 };
 
 const BADGE: Record<RowState, { label: string; color: ChipColor }> = {
