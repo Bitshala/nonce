@@ -7,13 +7,7 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Drawer,
-  IconButton,
   LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Paper,
   Stack,
   Tab,
@@ -26,8 +20,6 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import {
   type AssignmentSummaryResponse,
   ProvisionStatus,
@@ -38,20 +30,14 @@ import {
   BUCKET_META,
   type ChipColor,
 } from '../../components/assignment/chips.ts';
-import {
-  isProvisioning,
-  provisionRefetchInterval,
-} from '../../components/assignment/provision.ts';
+import { isProvisioning } from '../../components/assignment/provision.ts';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
-import { formatDate, formatDateTime } from '../../utils/dateUtils.ts';
+import { formatDate } from '../../utils/dateUtils.ts';
 import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
+import { AssignmentBriefDrawer } from './AssignmentBriefDrawer.tsx';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers.ts';
-import {
-  useAcceptAssignment,
-  useAssignment,
-  useMyAssignments,
-} from '../../hooks/assignmentHooks.ts';
+import { useMyAssignments } from '../../hooks/assignmentHooks.ts';
 import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 
@@ -433,182 +419,12 @@ export const MyAssignmentsPage = () => {
         </>
       )}
       {openId && (
-        <AssignmentBrief
+        <AssignmentBriefDrawer
           assignmentId={openId}
           onClose={() => setOpenId(null)}
         />
       )}
     </AssignmentScreen>
-  );
-};
-
-const AssignmentBrief = ({
-  assignmentId,
-  onClose,
-}: {
-  assignmentId: string;
-  onClose: () => void;
-}) => {
-  const navigate = useNavigate();
-  const { data: assignment, isLoading } = useAssignment(assignmentId, {
-    refetchInterval: provisionRefetchInterval,
-  });
-  const acceptAssignment = useAcceptAssignment();
-
-  const submission = assignment?.submission ?? null;
-  const isReady = submission?.provisionStatus === ProvisionStatus.READY;
-  const isSettingUp = isProvisioning(submission?.provisionStatus);
-
-  useEffect(() => {
-    if (isReady)
-      navigate(`/assignments/${assignmentId}/editor`, { replace: true });
-  }, [isReady, assignmentId, navigate]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <Drawer
-      anchor="right"
-      open
-      onClose={onClose}
-      slotProps={{ paper: { sx: { width: { xs: '100vw', sm: 460 } } } }}
-    >
-      <Stack spacing={2.5} sx={{ p: 3.5, minHeight: '100%' }}>
-        <IconButton
-          onClick={onClose}
-          aria-label="Close"
-          size="small"
-          sx={{ alignSelf: 'flex-end' }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-
-        {isLoading || !assignment ? (
-          <CircularProgress size={24} aria-label="Loading assignment" />
-        ) : (
-          <>
-            <Box>
-              <Typography variant="overline" color="text.secondary">
-                Week {assignment.weekNumber} · Season {assignment.cohortSeason}
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {assignment.title ?? `Week ${assignment.weekNumber} exercise`}
-              </Typography>
-            </Box>
-
-            {assignment.deadline && (
-              <Chip
-                size="small"
-                color="success"
-                variant="outlined"
-                label={`Due ${formatDateTime(assignment.deadline)}`}
-                sx={{ alignSelf: 'flex-start' }}
-              />
-            )}
-
-            {assignment.exercise?.problem && (
-              <Typography color="text.secondary">
-                {assignment.exercise.problem}
-              </Typography>
-            )}
-
-            {assignment.exercise &&
-              assignment.exercise.expectedOutput.length > 0 && (
-                <Box>
-                  <Typography variant="overline" color="text.secondary">
-                    You're done when
-                  </Typography>
-                  <List dense disablePadding>
-                    {assignment.exercise.expectedOutput.map((line, i) => (
-                      <ListItem key={i} disableGutters>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <RadioButtonUncheckedIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={line} />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              )}
-
-            <Stack
-              spacing={1}
-              sx={{
-                mt: 'auto !important',
-                pt: 2,
-                borderTop: 1,
-                borderColor: 'divider',
-              }}
-            >
-              {!submission && (
-                <>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    disabled={
-                      acceptAssignment.isPending ||
-                      !assignment.isOpenForSubmission
-                    }
-                    onClick={() => acceptAssignment.mutate(assignment.id)}
-                  >
-                    {acceptAssignment.isPending
-                      ? 'Starting…'
-                      : 'Start assignment'}
-                  </Button>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ textAlign: 'center' }}
-                  >
-                    Starting creates your private workspace. Nothing to install.
-                  </Typography>
-                  {acceptAssignment.isError && (
-                    <Alert severity="error">
-                      {extractErrorMessage(acceptAssignment.error)}
-                    </Alert>
-                  )}
-                </>
-              )}
-
-              {isSettingUp && (
-                <>
-                  <Typography sx={{ fontWeight: 600 }}>Setting up</Typography>
-                  <LinearProgress />
-                  <Typography variant="caption" color="text.secondary">
-                    Opens automatically — you can close this and keep browsing.
-                  </Typography>
-                </>
-              )}
-
-              {submission?.provisionStatus === ProvisionStatus.FAILED && (
-                <Alert severity="error">
-                  We could not create your workspace. Please contact an admin
-                  and mention this assignment.
-                  {submission.provisionError && (
-                    <Box
-                      component="pre"
-                      sx={{
-                        fontFamily: fontFamilyMono,
-                        fontSize: 12,
-                        whiteSpace: 'pre-wrap',
-                        m: 0,
-                        mt: 1,
-                      }}
-                    >
-                      {submission.provisionError}
-                    </Box>
-                  )}
-                </Alert>
-              )}
-            </Stack>
-          </>
-        )}
-      </Stack>
-    </Drawer>
   );
 };
 
