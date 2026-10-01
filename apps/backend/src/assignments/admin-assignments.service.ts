@@ -39,6 +39,13 @@ import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.reque
 const PROVISIONING_LEASE_MS = 10 * 60 * 1000;
 
 /**
+ * Staff can try assignments and be cohort members without being part of a
+ * cohort's progress, so every cohort-facing view of submissions is limited to
+ * students: the tallies, the per-student list, and re-grading.
+ */
+const STUDENT_SUBMISSIONS = { user: { role: UserRole.STUDENT } } as const;
+
+/**
  * Staff operations on assignments: repairing provisioning, re-grading, manual
  * score overrides, and end-of-cohort archival.
  *
@@ -165,8 +172,7 @@ export class AdminAssignmentsService {
                 relations: { cohort: true, user: true },
             }),
         ]);
-        // Only students are tallied. Staff can be cohort members too, and try
-        // assignments without being part of the cohort's progress.
+        // Only students are tallied (see STUDENT_SUBMISSIONS).
         const studentsByCohort = new Map<string, Set<string>>();
         for (const m of memberships) {
             if (m.user.role !== UserRole.STUDENT) continue;
@@ -214,7 +220,7 @@ export class AdminAssignmentsService {
         const assignment = await this.loadAssignment(assignmentId);
 
         const submissions = await this.submissionRepository.find({
-            where: { assignment: { id: assignmentId } },
+            where: { assignment: { id: assignmentId }, ...STUDENT_SUBMISSIONS },
             relations: { user: true, latestRun: true, bestRun: true },
         });
         if (submissions.length === 0) return [];
@@ -308,8 +314,7 @@ export class AdminAssignmentsService {
             where: {
                 assignment: { id: assignmentId },
                 provisionStatus: ProvisionStatus.READY,
-                // Staff trial repos are not part of a cohort's grading.
-                user: { role: UserRole.STUDENT },
+                ...STUDENT_SUBMISSIONS,
             },
             relations: { user: true, bestRun: true },
         });

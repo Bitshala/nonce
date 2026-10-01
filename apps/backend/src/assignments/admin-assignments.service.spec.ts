@@ -134,6 +134,26 @@ describe('AdminAssignmentsService', () => {
         });
     });
 
+    describe('listSubmissions', () => {
+        it('only lists students, matching what the tallies count', async () => {
+            assignmentRepository.findOne.mockResolvedValue({
+                id: 'a',
+                cohortWeek: { id: 'w', cohort: { id: 'c' } },
+            });
+            submissionRepository.find.mockResolvedValue([]);
+
+            await service.listSubmissions('a');
+
+            expect(submissionRepository.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        user: { role: UserRole.STUDENT },
+                    }),
+                }),
+            );
+        });
+    });
+
     describe('regrade', () => {
         it('re-grades only submissions that have not passed, against the assignment it loaded', async () => {
             const assignment = { id: 'assignment-1' } as Assignment;
