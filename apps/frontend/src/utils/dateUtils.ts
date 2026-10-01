@@ -1,20 +1,21 @@
 export const getTodayDate = (): string => new Date().toISOString().split('T')[0];
 
-// Exact date/time for admin review screens — no "time ago" strings, see issue #25.
-export const formatDateTime = (iso: string | null | undefined): string => {
+const formatIso = (
+  iso: string | null | undefined,
+  format: (d: Date) => string
+): string => {
   if (!iso) return '—';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return Number.isNaN(d.getTime()) ? '—' : format(d);
 };
 
+// Exact date/time for admin review screens — no "time ago" strings, see issue #25.
+export const formatDateTime = (iso: string | null | undefined): string =>
+  formatIso(iso, d => d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }));
+
 // Date only, for deadlines and other places where the time is noise.
-export const formatDate = (iso: string | null | undefined): string => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' });
-};
+export const formatDate = (iso: string | null | undefined): string =>
+  formatIso(iso, d => d.toLocaleDateString(undefined, { dateStyle: 'medium' }));
 
 export const formatDateForInput = (isoDate: string | null | undefined): string => {
   if (!isoDate) return '';
