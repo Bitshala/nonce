@@ -86,7 +86,7 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
               flex: 1,
               height: 4,
               borderRadius: 99,
-              bgcolor: STATE_BAR[row.state],
+              bgcolor: CHECK_STATE[row.state].bar,
             }}
           />
         ))}
@@ -116,25 +116,15 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
   );
 };
 
-const STATE_LABEL = {
-  pending: 'Not run yet',
-  running: 'Running…',
-  passed: 'Passed',
-  failed: 'Failed',
-} as const;
-
-const STATE_COLOR = {
-  pending: 'text.secondary',
-  running: 'info.main',
-  passed: 'success.main',
-  failed: 'error.main',
-} as const;
-
-const STATE_BAR = {
-  pending: WORKSPACE.line,
-  running: '#60a5fa',
-  passed: '#4ade80',
-  failed: '#f87171',
+const CHECK_STATE = {
+  pending: {
+    label: 'Not run yet',
+    color: 'text.secondary',
+    bar: WORKSPACE.line,
+  },
+  running: { label: 'Running…', color: 'info.main', bar: '#60a5fa' },
+  passed: { label: 'Passed', color: 'success.main', bar: '#4ade80' },
+  failed: { label: 'Failed', color: 'error.main', bar: '#f87171' },
 } as const;
 
 const CheckItem = ({
@@ -165,11 +155,15 @@ const CheckItem = ({
         placeItems: 'center',
         border: '1px solid',
         borderColor:
-          row.state === 'pending' ? WORKSPACE.lineStrong : STATE_BAR[row.state],
+          row.state === 'pending'
+            ? WORKSPACE.lineStrong
+            : CHECK_STATE[row.state].bar,
         fontFamily: fontFamilyMono,
         fontSize: 10.5,
         color:
-          row.state === 'pending' ? WORKSPACE.muted : STATE_COLOR[row.state],
+          row.state === 'pending'
+            ? WORKSPACE.muted
+            : CHECK_STATE[row.state].color,
       }}
     >
       {row.state === 'passed' ? (
@@ -192,9 +186,9 @@ const CheckItem = ({
         {row.name}
       </Typography>
       <Typography
-        sx={{ fontSize: 12.5, mt: '2px', color: STATE_COLOR[row.state] }}
+        sx={{ fontSize: 12.5, mt: '2px', color: CHECK_STATE[row.state].color }}
       >
-        {STATE_LABEL[row.state]}
+        {CHECK_STATE[row.state].label}
       </Typography>
       {row.state === 'failed' && row.message && (
         <Box
