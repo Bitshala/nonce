@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Box, Chip, CssBaseline, ThemeProvider, Typography } from '@mui/material';
+import { Box, Chip, Typography } from '@mui/material';
 import { Award } from 'lucide-react';
-import { fellowshipDarkTheme } from './theme';
+import { FellowshipTheme } from './FellowshipTheme';
 
 interface Props {
   children: ReactNode;
@@ -13,8 +13,7 @@ interface Props {
 
 export const FellowshipPageLayout = ({ children, title, subtitle, badge, hideIcon }: Props) => {
   return (
-    <ThemeProvider theme={fellowshipDarkTheme}>
-      <CssBaseline />
+    <FellowshipTheme baseline>
       <Box
         sx={{
           minHeight: '100vh',
@@ -90,7 +89,7 @@ export const FellowshipPageLayout = ({ children, title, subtitle, badge, hideIco
         )}
         {children}
       </Box>
-    </ThemeProvider>
+    </FellowshipTheme>
   );
 };
 
