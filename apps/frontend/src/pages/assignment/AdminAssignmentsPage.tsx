@@ -34,6 +34,7 @@ import {
 } from '@nonce/shared';
 import SearchIcon from '@mui/icons-material/Search';
 import { AssignmentScreen } from '../../components/assignment/AssignmentTheme.tsx';
+import { WIDE } from '../../components/assignment/layout.ts';
 import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
 import { sumTallies } from '../../components/assignment/assignmentTally.ts';
 import { ASSIGNMENT_STATUS_CHIP } from '../../components/assignment/chips.ts';
@@ -49,6 +50,7 @@ import { useUser } from '../../hooks/userHooks.ts';
 import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 import { formatDate, formatDateTime } from '../../utils/dateUtils.ts';
+import { AttentionItem, StatCard } from './AdminDashboardCards.tsx';
 import { Legend, StackedBar } from './AssignmentBars.tsx';
 import { type Confirm, SubmissionsPanel } from './AdminSubmissionsPanel.tsx';
 
@@ -68,93 +70,6 @@ const groupByCohort = (assignments: AdminAssignmentResponse[]): CohortGroup[] =>
   }));
 
 const DAY_MS = 86_400_000;
-/** The page is laid out by its own width, not the viewport's: the app sidebar eats ~280px when open. */
-const WIDE = '@container (min-width: 1200px)';
-
-const StatCard = ({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  color?: string;
-}) => (
-  <Paper variant="outlined" sx={{ p: 2.5 }}>
-    <Typography variant="body2" color="text.secondary">
-      {label}
-    </Typography>
-    <Typography variant="h4" sx={{ fontWeight: 700, my: 0.5, color }}>
-      {value}
-    </Typography>
-    <Typography variant="body2" color="text.secondary">
-      {sub}
-    </Typography>
-  </Paper>
-);
-
-const AttentionItem = ({
-  dot,
-  text,
-  sub,
-  action,
-  onAction,
-  hideWide,
-}: {
-  dot: string;
-  text: string;
-  sub?: string;
-  action?: string;
-  onAction: () => void;
-  /** Config warnings live inside the Course config card when there is room for it. */
-  hideWide?: boolean;
-}) => (
-  <Stack
-    direction="row"
-    spacing={1.5}
-    sx={{
-      alignItems: 'center',
-      bgcolor: 'action.hover',
-      borderRadius: 1,
-      px: 1.5,
-      py: 1.25,
-      ...(hideWide && { [WIDE]: { display: 'none' } }),
-    }}
-  >
-    <Box
-      sx={{
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        bgcolor: dot,
-        flexShrink: 0,
-      }}
-    />
-    <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {text}
-      </Typography>
-      {sub && (
-        <Typography variant="caption" color="text.secondary">
-          {sub}
-        </Typography>
-      )}
-    </Box>
-    {action && (
-      <Button
-        size="small"
-        variant="outlined"
-        sx={{ flexShrink: 0 }}
-        onClick={onAction}
-      >
-        {action}
-      </Button>
-    )}
-  </Stack>
-);
-
 export const AdminAssignmentsPage = () => {
   const { isAuthenticated } = useAuth();
   const { data: user } = useUser(undefined, { enabled: isAuthenticated });

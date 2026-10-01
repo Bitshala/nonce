@@ -46,6 +46,7 @@ import {
   describeOutput,
   isTerminal,
 } from '../../components/assignment/runStatus.ts';
+import { RailButton } from '../../components/assignment/RailButton.tsx';
 import { WORKSPACE } from '../../components/assignment/workspaceColors.ts';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { FileTree } from '../../components/assignment/FileTree.tsx';
@@ -1157,43 +1158,6 @@ export const AssignmentEditorPage = () => {
     </AssignmentTheme>
   );
 };
-
-/** One toggle on the icon rail. */
-const RailButton = ({
-  label,
-  icon,
-  active,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  active: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) => (
-  <Tooltip title={label} placement="right">
-    <span>
-      <IconButton
-        aria-label={label}
-        aria-pressed={active}
-        disabled={disabled}
-        onClick={onClick}
-        sx={{
-          width: 36,
-          height: 36,
-          borderRadius: '8px',
-          color: active ? 'common.white' : WORKSPACE.muted,
-          bgcolor: active ? WORKSPACE.chip : 'transparent',
-          border: `1px solid ${active ? WORKSPACE.lineStrong : 'transparent'}`,
-          '&:hover': { bgcolor: WORKSPACE.chip },
-        }}
-      >
-        {icon}
-      </IconButton>
-    </span>
-  </Tooltip>
-);
 
 export default AssignmentEditorPage;
 
