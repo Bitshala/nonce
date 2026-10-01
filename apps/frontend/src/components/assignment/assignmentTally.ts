@@ -33,10 +33,12 @@ export const SEGMENTS = SEGMENT_ORDER.map(bucket => ({
   color: chipPaletteColor(BUCKET_META[bucket].color),
 }));
 
-export const sumTallies = (rows: Tally[]): Tally => ({
-  passedCount: rows.reduce((n, r) => n + r.passedCount, 0),
-  failingCount: rows.reduce((n, r) => n + r.failingCount, 0),
-  inProgressCount: rows.reduce((n, r) => n + r.inProgressCount, 0),
-  failedProvisionCount: rows.reduce((n, r) => n + r.failedProvisionCount, 0),
-  notStartedCount: rows.reduce((n, r) => n + r.notStartedCount, 0),
-});
+export const sumTallies = (rows: Tally[]): Tally => {
+  const total = Object.fromEntries(
+    SEGMENTS.map(({ key }) => [key, 0])
+  ) as Tally;
+  for (const row of rows) {
+    for (const { key } of SEGMENTS) total[key] += row[key];
+  }
+  return total;
+};
