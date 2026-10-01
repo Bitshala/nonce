@@ -88,7 +88,10 @@ export interface SubmissionResponse {
   /** Whether anything has been committed beyond the template's initial commit. */
   hasStudentCommits: boolean;
   latestRun: CIRunSummaryResponse | null;
+  /** The first score-eligible run that passed. */
   bestRun: CIRunSummaryResponse | null;
+  /** A staff pin on "passing"; null follows grading (`bestRun`). */
+  isPassingOverride: boolean | null;
   runsToday: number;
 }
 
@@ -230,7 +233,6 @@ export interface AdminSubmissionResponse extends SubmissionResponse {
   isPassing: boolean;
   /** Staff pins on the score. Null means that field follows grading. */
   isSubmittedOverride: boolean | null;
-  isPassingOverride: boolean | null;
 }
 
 /**
