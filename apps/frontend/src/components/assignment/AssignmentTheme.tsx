@@ -1,4 +1,4 @@
-import { CssBaseline, ThemeProvider } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider } from '@mui/material';
 import { fellowshipDarkTheme } from '../fellowship/theme';
 
 /**
@@ -17,4 +17,39 @@ export const AssignmentTheme = ({
     {baseline && <CssBaseline />}
     {children}
   </ThemeProvider>
+);
+
+/**
+ * A full-height page in the assignment theme. `narrow` lays the content out as
+ * a centred column (single-assignment views); `center` also centres it
+ * vertically (loading and error states).
+ */
+export const AssignmentScreen = ({
+  children,
+  narrow = false,
+  center = false,
+}: {
+  children: React.ReactNode;
+  narrow?: boolean;
+  center?: boolean;
+}) => (
+  <AssignmentTheme>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        ...(narrow || center
+          ? {
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: center ? 'center' : 'flex-start',
+              p: { xs: 2, md: 6 },
+            }
+          : { p: { xs: 2, md: 5 } }),
+      }}
+    >
+      {children}
+    </Box>
+  </AssignmentTheme>
 );
