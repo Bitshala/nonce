@@ -33,7 +33,7 @@ import {
   ProvisionStatus,
   submissionBucket,
 } from '@nonce/shared';
-import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
+import { AssignmentScreen } from '../../components/assignment/AssignmentTheme.tsx';
 import {
   BUCKET_META,
   type ChipColor,
@@ -154,21 +154,6 @@ const findUpNext = (
   return available ?? null;
 };
 
-const Themed = ({ children }: { children: React.ReactNode }) => (
-  <AssignmentTheme>
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        color: 'text.primary',
-        p: { xs: 2, md: 5 },
-      }}
-    >
-      {children}
-    </Box>
-  </AssignmentTheme>
-);
-
 export const MyAssignmentsPage = () => {
   const navigate = useNavigate();
   const { data: assignments, isLoading, isError, error } = useMyAssignments();
@@ -227,262 +212,249 @@ export const MyAssignmentsPage = () => {
 
   if (isLoading) {
     return (
-      <Themed>
+      <AssignmentScreen>
         <CircularProgress aria-label="Loading assignments" />
-      </Themed>
+      </AssignmentScreen>
     );
   }
 
   if (isError) {
     return (
-      <Themed>
+      <AssignmentScreen>
         <Alert severity="error">{extractErrorMessage(error)}</Alert>
-      </Themed>
+      </AssignmentScreen>
     );
   }
 
   const total = Math.max(activeSeason?.assignments.length ?? 0, 1);
 
   return (
-    <AssignmentTheme>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          bgcolor: 'background.default',
-          color: 'text.primary',
-          p: { xs: 2, md: 5 },
-        }}
-      >
-        <Typography variant="overline" color="text.secondary">
-          Your courses
-        </Typography>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-          Assignments
-        </Typography>
+    <AssignmentScreen>
+      <Typography variant="overline" color="text.secondary">
+        Your courses
+      </Typography>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+        Assignments
+      </Typography>
 
-        {courses.length > 0 && (
-          <Tabs
-            value={activeCourse?.cohortType ?? false}
-            onChange={(_, v: string) => selectCourse(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ borderBottom: 1, borderColor: 'divider', mt: 1, mb: 3 }}
-          >
-            {courses.map(c => (
-              <Tab
-                key={c.cohortType}
-                value={c.cohortType}
-                label={c.label}
-                sx={{ textTransform: 'none', fontSize: 15 }}
-              />
-            ))}
-          </Tabs>
-        )}
+      {courses.length > 0 && (
+        <Tabs
+          value={activeCourse?.cohortType ?? false}
+          onChange={(_, v: string) => selectCourse(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider', mt: 1, mb: 3 }}
+        >
+          {courses.map(c => (
+            <Tab
+              key={c.cohortType}
+              value={c.cohortType}
+              label={c.label}
+              sx={{ textTransform: 'none', fontSize: 15 }}
+            />
+          ))}
+        </Tabs>
+      )}
 
-        {courses.length === 0 && (
-          <Typography color="text.secondary">No assignments yet.</Typography>
-        )}
+      {courses.length === 0 && (
+        <Typography color="text.secondary">No assignments yet.</Typography>
+      )}
 
-        {activeCourse && (
-          <>
-            {upNext && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  p: 2.5,
-                  mb: 3,
-                  bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
-                  borderColor: 'primary.main',
-                }}
-              >
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="overline" color="primary">
-                    Up next · Week {upNext.weekNumber}
+      {activeCourse && (
+        <>
+          {upNext && (
+            <Paper
+              variant="outlined"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                p: 2.5,
+                mb: 3,
+                bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
+                borderColor: 'primary.main',
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="overline" color="primary">
+                  Up next · Week {upNext.weekNumber}
+                </Typography>
+                <Typography sx={{ fontWeight: 600 }}>
+                  {upNext.title ?? `Week ${upNext.weekNumber} exercise`}
+                </Typography>
+                {upNext.deadline && (
+                  <Typography variant="body2" color="text.secondary">
+                    Due {formatDate(upNext.deadline)}
                   </Typography>
-                  <Typography sx={{ fontWeight: 600 }}>
-                    {upNext.title ?? `Week ${upNext.weekNumber} exercise`}
-                  </Typography>
-                  {upNext.deadline && (
-                    <Typography variant="body2" color="text.secondary">
-                      Due {formatDate(upNext.deadline)}
-                    </Typography>
-                  )}
-                </Box>
-                <Button
-                  variant="contained"
-                  onClick={() => handleRowOpen(upNext)}
-                >
-                  {VERB[rowStateOf(upNext)]}
-                </Button>
-              </Paper>
-            )}
-
-            {activeCourse.seasons.length > 0 && (
-              <Stack
-                direction="row"
-                sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}
-              >
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={activeSeason?.season ?? null}
-                  onChange={(_, v: number | null) =>
-                    v !== null &&
-                    setSelectedSeason(prev => ({
-                      ...prev,
-                      [activeCourse.cohortType]: v,
-                    }))
-                  }
-                  aria-label="Season"
-                >
-                  {activeCourse.seasons.map(season => (
-                    <ToggleButton
-                      key={season.cohortId}
-                      value={season.season}
-                      sx={{ textTransform: 'none', px: 2 }}
-                    >
-                      Season {season.season}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-                {activeSeason && (
-                  <Stack
-                    direction="row"
-                    spacing={1.5}
-                    sx={{
-                      alignItems: 'center',
-                      flex: 1,
-                      minWidth: 160,
-                      maxWidth: 260,
-                    }}
-                  >
-                    <LinearProgress
-                      variant="determinate"
-                      value={(doneCount / total) * 100}
-                      sx={{ flex: 1, height: 6, borderRadius: 3 }}
-                    />
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontFamily: fontFamilyMono }}
-                    >
-                      {doneCount} / {activeSeason.assignments.length}
-                    </Typography>
-                  </Stack>
                 )}
-              </Stack>
-            )}
+              </Box>
+              <Button variant="contained" onClick={() => handleRowOpen(upNext)}>
+                {VERB[rowStateOf(upNext)]}
+              </Button>
+            </Paper>
+          )}
 
-            <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
-              <Table>
-                <TableBody>
-                  {activeSeason?.assignments.map(assignment => {
-                    const state = rowStateOf(assignment);
-                    const badge = BADGE[state];
-                    const verb = VERB[state];
-                    const isClosed = state === 'closed';
-                    return (
-                      <TableRow
-                        key={assignment.id}
-                        hover={!isClosed}
-                        selected={openId === assignment.id}
-                        onClick={() =>
-                          isClosed ? undefined : handleRowOpen(assignment)
-                        }
-                        {...(isClosed
-                          ? {}
-                          : {
-                              tabIndex: 0,
-                              role: 'link',
-                              onKeyDown: (e: React.KeyboardEvent) => {
-                                if (e.target !== e.currentTarget) return;
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  handleRowOpen(assignment);
-                                }
-                              },
-                            })}
-                        sx={{
-                          cursor: isClosed ? 'default' : 'pointer',
-                          opacity: isClosed ? 0.6 : 1,
-                        }}
-                      >
-                        <TableCell sx={{ width: 72 }}>
+          {activeCourse.seasons.length > 0 && (
+            <Stack
+              direction="row"
+              sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}
+            >
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={activeSeason?.season ?? null}
+                onChange={(_, v: number | null) =>
+                  v !== null &&
+                  setSelectedSeason(prev => ({
+                    ...prev,
+                    [activeCourse.cohortType]: v,
+                  }))
+                }
+                aria-label="Season"
+              >
+                {activeCourse.seasons.map(season => (
+                  <ToggleButton
+                    key={season.cohortId}
+                    value={season.season}
+                    sx={{ textTransform: 'none', px: 2 }}
+                  >
+                    Season {season.season}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+              {activeSeason && (
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    alignItems: 'center',
+                    flex: 1,
+                    minWidth: 160,
+                    maxWidth: 260,
+                  }}
+                >
+                  <LinearProgress
+                    variant="determinate"
+                    value={(doneCount / total) * 100}
+                    sx={{ flex: 1, height: 6, borderRadius: 3 }}
+                  />
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontFamily: fontFamilyMono }}
+                  >
+                    {doneCount} / {activeSeason.assignments.length}
+                  </Typography>
+                </Stack>
+              )}
+            </Stack>
+          )}
+
+          <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
+            <Table>
+              <TableBody>
+                {activeSeason?.assignments.map(assignment => {
+                  const state = rowStateOf(assignment);
+                  const badge = BADGE[state];
+                  const verb = VERB[state];
+                  const isClosed = state === 'closed';
+                  return (
+                    <TableRow
+                      key={assignment.id}
+                      hover={!isClosed}
+                      selected={openId === assignment.id}
+                      onClick={() =>
+                        isClosed ? undefined : handleRowOpen(assignment)
+                      }
+                      {...(isClosed
+                        ? {}
+                        : {
+                            tabIndex: 0,
+                            role: 'link',
+                            onKeyDown: (e: React.KeyboardEvent) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleRowOpen(assignment);
+                              }
+                            },
+                          })}
+                      sx={{
+                        cursor: isClosed ? 'default' : 'pointer',
+                        opacity: isClosed ? 0.6 : 1,
+                      }}
+                    >
+                      <TableCell sx={{ width: 72 }}>
+                        <Chip
+                          size="small"
+                          label={`W${assignment.weekNumber}`}
+                          color={
+                            state === 'passed'
+                              ? 'success'
+                              : upNext?.id === assignment.id
+                                ? 'primary'
+                                : 'default'
+                          }
+                          sx={{ fontFamily: fontFamilyMono }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          {assignment.title ??
+                            `Week ${assignment.weekNumber} exercise`}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {isClosed
+                            ? 'Closed for submission'
+                            : assignment.deadline
+                              ? `Due ${formatDate(assignment.deadline)}`
+                              : `Week ${assignment.weekNumber}`}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {state !== 'available' && (
                           <Chip
                             size="small"
-                            label={`W${assignment.weekNumber}`}
-                            color={
-                              state === 'passed'
-                                ? 'success'
-                                : upNext?.id === assignment.id
-                                  ? 'primary'
-                                  : 'default'
-                            }
-                            sx={{ fontFamily: fontFamilyMono }}
+                            label={badge.label}
+                            color={badge.color}
+                            variant="outlined"
                           />
-                        </TableCell>
-                        <TableCell>
-                          <Typography sx={{ fontWeight: 600 }}>
-                            {assignment.title ??
-                              `Week ${assignment.weekNumber} exercise`}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {isClosed
-                              ? 'Closed for submission'
-                              : assignment.deadline
-                                ? `Due ${formatDate(assignment.deadline)}`
-                                : `Week ${assignment.weekNumber}`}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {state !== 'available' && (
-                            <Chip
-                              size="small"
-                              label={badge.label}
-                              color={badge.color}
-                              variant="outlined"
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell align="right">
-                          {verb && (
-                            <Button
-                              size="small"
-                              variant={
-                                state === 'available' || state === 'progress'
-                                  ? 'contained'
-                                  : 'outlined'
-                              }
-                              disabled={state === 'setup'}
-                              onClick={e => {
-                                e.stopPropagation();
-                                handleRowOpen(assignment);
-                              }}
-                            >
-                              {verb}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Paper>
-          </>
-        )}
-      </Box>
-
+                        )}
+                      </TableCell>
+                      <TableCell align="right">
+                        {verb && (
+                          <Button
+                            size="small"
+                            variant={
+                              state === 'available' || state === 'progress'
+                                ? 'contained'
+                                : 'outlined'
+                            }
+                            disabled={state === 'setup'}
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleRowOpen(assignment);
+                            }}
+                          >
+                            {verb}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Paper>
+        </>
+      )}
       {openId && (
         <AssignmentBrief
           assignmentId={openId}
           onClose={() => setOpenId(null)}
         />
       )}
-    </AssignmentTheme>
+    </AssignmentScreen>
   );
 };
 
