@@ -165,8 +165,7 @@ export class AdminAssignmentsService {
                 relations: { cohort: true, user: true },
             }),
         ]);
-        // Only students are tallied. Staff can be cohort members too, and try
-        // assignments without being part of the cohort's progress.
+        // Only current students are tallied (see currentStudentIds).
         const studentsByCohort = new Map<string, Set<string>>();
         for (const m of memberships) {
             if (m.user.role !== UserRole.STUDENT) continue;
