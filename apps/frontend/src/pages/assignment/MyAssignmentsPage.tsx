@@ -44,6 +44,7 @@ import {
 } from '../../components/assignment/provision.ts';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
 import { formatDate, formatDateTime } from '../../utils/dateUtils.ts';
+import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers.ts';
 import {
@@ -111,37 +112,20 @@ interface CourseGroup {
 
 const groupByCourse = (
   assignments: AssignmentSummaryResponse[]
-): CourseGroup[] => {
-  const courses = new Map<string, CourseGroup>();
-  for (const assignment of assignments) {
-    let course = courses.get(assignment.cohortType);
-    if (!course) {
-      course = {
-        cohortType: assignment.cohortType,
-        label: cohortTypeToName(assignment.cohortType),
-        seasons: [],
-      };
-      courses.set(assignment.cohortType, course);
-    }
-    let season = course.seasons.find(s => s.cohortId === assignment.cohortId);
-    if (!season) {
-      season = {
-        season: assignment.cohortSeason,
-        cohortId: assignment.cohortId,
-        assignments: [],
-      };
-      course.seasons.push(season);
-    }
-    season.assignments.push(assignment);
-  }
-  for (const course of courses.values()) {
-    course.seasons.sort((a, b) => b.season - a.season);
-    for (const season of course.seasons) {
-      season.assignments.sort((a, b) => a.weekNumber - b.weekNumber);
-    }
-  }
-  return [...courses.values()].sort((a, b) => a.label.localeCompare(b.label));
-};
+): CourseGroup[] =>
+  [...groupBy(assignments, a => a.cohortType)]
+    .map(([cohortType, inCourse]) => ({
+      cohortType,
+      label: cohortTypeToName(cohortType),
+      seasons: [...groupBy(inCourse, a => a.cohortId).values()]
+        .map(inSeason => ({
+          season: inSeason[0].cohortSeason,
+          cohortId: inSeason[0].cohortId,
+          assignments: [...inSeason].sort(byWeek),
+        }))
+        .sort((a, b) => b.season - a.season),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
 /** The single most useful thing to do next in a course: something in progress, else the next available week. */
 const findUpNext = (

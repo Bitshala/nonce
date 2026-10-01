@@ -34,6 +34,7 @@ import {
 } from '@nonce/shared';
 import SearchIcon from '@mui/icons-material/Search';
 import { AssignmentScreen } from '../../components/assignment/AssignmentTheme.tsx';
+import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
 import { sumTallies } from '../../components/assignment/assignmentTally.ts';
 import { ASSIGNMENT_STATUS_CHIP } from '../../components/assignment/chips.ts';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
@@ -58,27 +59,13 @@ interface CohortGroup {
   assignments: AdminAssignmentResponse[];
 }
 
-const groupByCohort = (
-  assignments: AdminAssignmentResponse[]
-): CohortGroup[] => {
-  const groups = new Map<string, CohortGroup>();
-  for (const a of assignments) {
-    let group = groups.get(a.cohortId);
-    if (!group) {
-      group = {
-        cohortId: a.cohortId,
-        cohortType: a.cohortType,
-        season: a.cohortSeason,
-        assignments: [],
-      };
-      groups.set(a.cohortId, group);
-    }
-    group.assignments.push(a);
-  }
-  for (const g of groups.values())
-    g.assignments.sort((a, b) => a.weekNumber - b.weekNumber);
-  return [...groups.values()];
-};
+const groupByCohort = (assignments: AdminAssignmentResponse[]): CohortGroup[] =>
+  [...groupBy(assignments, a => a.cohortId).values()].map(inCohort => ({
+    cohortId: inCohort[0].cohortId,
+    cohortType: inCohort[0].cohortType,
+    season: inCohort[0].cohortSeason,
+    assignments: [...inCohort].sort(byWeek),
+  }));
 
 const DAY_MS = 86_400_000;
 /** The page is laid out by its own width, not the viewport's: the app sidebar eats ~280px when open. */
