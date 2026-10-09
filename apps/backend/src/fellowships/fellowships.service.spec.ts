@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { FellowshipsService } from '@/fellowships/fellowships.service';
+import { FellowshipResponseDto } from '@/fellowships/fellowships.response.dto';
 import { Fellowship } from '@/entities/fellowship.entity';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import {
@@ -204,5 +205,58 @@ describe('FellowshipsService — listPublicFellows', () => {
             type: fellowship.type,
             kind: fellowship.kind,
         });
+    });
+});
+
+// The admin/fellow pages show the project title from this payload instead of
+// fetching each fellowship's full proposal, so proposalTitle must mirror the
+// application's proposal title.
+describe('FellowshipResponseDto.fromEntity — proposalTitle', () => {
+    const buildFellowship = (
+        title: string | null,
+        projectName: string | null,
+    ) =>
+        ({
+            id: 'fellowship-1',
+            type: FellowshipType.DEVELOPER,
+            kind: FellowshipKind.FELLOWSHIP,
+            status: FellowshipStatus.ACTIVE,
+            startDate: null,
+            endDate: null,
+            amountUsd: null,
+            createdAt: new Date('2026-01-01'),
+            updatedAt: new Date('2026-01-01'),
+            user: {
+                id: 'user-1',
+                displayName: 'Alice',
+                email: 'alice@example.com',
+                location: 'Remote',
+            },
+            application: { id: 'app-1', title, projectName },
+        }) as unknown as Fellowship;
+
+    it('exposes the application proposal title', () => {
+        const dto = FellowshipResponseDto.fromEntity(
+            buildFellowship('Lightning wallet', null),
+        );
+
+        expect(dto.proposalTitle).toBe('Lightning wallet');
+    });
+
+    it('keeps proposalTitle separate from projectName', () => {
+        const dto = FellowshipResponseDto.fromEntity(
+            buildFellowship('Lightning wallet', 'Onboarding project'),
+        );
+
+        expect(dto.proposalTitle).toBe('Lightning wallet');
+        expect(dto.projectName).toBe('Onboarding project');
+    });
+
+    it('passes a missing proposal title through as null', () => {
+        const dto = FellowshipResponseDto.fromEntity(
+            buildFellowship(null, null),
+        );
+
+        expect(dto.proposalTitle).toBeNull();
     });
 });

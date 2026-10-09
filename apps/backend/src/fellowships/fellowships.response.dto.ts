@@ -40,6 +40,9 @@ export class FellowshipResponseDto {
     userName!: string | null;
     userEmail!: string | null;
     applicationId!: string;
+    // The linked application's proposal title. Many fellowships have no
+    // onboarding projectName, so clients fall back to this for display.
+    proposalTitle!: string | null;
     createdAt!: string;
     updatedAt!: string;
 
@@ -76,6 +79,7 @@ export class FellowshipResponseDto {
         this.userName = obj.userName;
         this.userEmail = obj.userEmail;
         this.applicationId = obj.applicationId;
+        this.proposalTitle = obj.proposalTitle;
         this.createdAt = obj.createdAt;
         this.updatedAt = obj.updatedAt;
     }
@@ -118,6 +122,7 @@ export class FellowshipResponseDto {
             userName: fellowship.user.displayName,
             userEmail: fellowship.user.email,
             applicationId: application.id,
+            proposalTitle: application.title,
             createdAt: fellowship.createdAt.toISOString(),
             updatedAt: fellowship.updatedAt.toISOString(),
         });

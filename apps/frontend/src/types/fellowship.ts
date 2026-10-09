@@ -285,6 +285,8 @@ export interface GetFellowshipResponseDto extends FellowshipOnboardingDto {
   userEmail: string | null;
   // The application this fellowship was created from — links back to the proposal.
   applicationId: string;
+  // That proposal's title — the display fallback when projectName is empty.
+  proposalTitle: string | null;
   type: FellowshipType;
   kind: FellowshipKind;
   status: FellowshipStatus;

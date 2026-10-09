@@ -1,15 +1,10 @@
 import type { GetFellowshipResponseDto } from '../types/fellowship';
-import { useApplicationProposal } from './fellowshipHooks';
 
 // Fellowships often have no onboarding projectName — the project title lives
-// in the application proposal. Fall back to the proposal's title field.
+// in the application proposal. The fellowship payload already carries that
+// title as proposalTitle, so there is no per-row proposal fetch.
 export const useFellowshipProjectTitle = (
   fellowship: GetFellowshipResponseDto | null | undefined,
-): string => {
-  const proposalQuery = useApplicationProposal(fellowship?.applicationId ?? '', {
-    enabled: Boolean(fellowship?.applicationId) && !fellowship?.projectName,
-  });
-  return fellowship?.projectName || proposalQuery.data?.title || '';
-};
+): string => fellowship?.projectName || fellowship?.proposalTitle || '';
 
 export default useFellowshipProjectTitle;
