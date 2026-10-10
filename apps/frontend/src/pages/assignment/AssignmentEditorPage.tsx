@@ -203,8 +203,17 @@ export const AssignmentEditorPage = () => {
       void refetchTree();
       return result.commitSha;
     } catch (saveError) {
-      if (isAxiosError(saveError) && saveError.response?.status === 409) {
-        setConflict(saveError.response.data as CommitConflictResponse);
+      // 409 also means "repository not ready", so only a body that is a
+      // commit conflict opens the conflict dialog.
+      const body: unknown = isAxiosError(saveError)
+        ? saveError.response?.data
+        : undefined;
+      if (
+        isAxiosError(saveError) &&
+        saveError.response?.status === 409 &&
+        isCommitConflict(body)
+      ) {
+        setConflict(body);
       } else {
         setBanner(extractErrorMessage(saveError));
       }
@@ -492,3 +501,11 @@ function languageOf(path: string): string {
 }
 
 export default AssignmentEditorPage;
+
+function isCommitConflict(body: unknown): body is CommitConflictResponse {
+  const candidate = body as Partial<CommitConflictResponse> | null;
+  return (
+    typeof candidate?.currentCommitSha === 'string' &&
+    Array.isArray(candidate.changedPaths)
+  );
+}
