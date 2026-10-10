@@ -67,14 +67,11 @@ export class CIRunDetailResponseDto
     githubRunUrl: string | null;
     hasLogs: boolean;
 
-    constructor(run: CIRun, repoFullName: string | null, hasLogs: boolean) {
+    constructor(run: CIRun, githubRunUrl: string | null, hasLogs: boolean) {
         super(run);
         this.jobs = run.jobs ?? [];
         this.report = run.report;
-        this.githubRunUrl =
-            run.githubRunId && repoFullName
-                ? `https://github.com/${repoFullName}/actions/runs/${run.githubRunId}`
-                : null;
+        this.githubRunUrl = githubRunUrl;
         this.hasLogs = hasLogs;
     }
 }

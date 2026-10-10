@@ -30,7 +30,8 @@ import { AssignmentsService } from '@/assignments/assignments.service';
 import { SubmissionsService } from '@/assignments/submissions.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
-import { CIRunConclusion, CIRunStatus } from '@/common/enum';
+import { CIRunConclusion, CIRunStatus, UserRole } from '@/common/enum';
+import { isAtLeastRole } from '@/cohorts/cohort-access.util';
 import {
     CIRunDetailResponseDto,
     CIRunLogResponseDto,
@@ -145,7 +146,7 @@ export class RunsService {
                 dailyQuota: assignment.maxRunsPerDay,
             },
         );
-        return this.toDetail(run, submission);
+        return this.toDetail(run, user);
     }
 
     /**
@@ -229,7 +230,7 @@ export class RunsService {
         const hasLogs = await this.ciRunLogRepository.exist({
             where: { ciRun: { id: run.id } },
         });
-        return this.toDetail(run, run.submission, hasLogs);
+        return this.toDetail(run, user, hasLogs);
     }
 
     async getLogs(runId: string, user: User): Promise<CIRunLogResponseDto> {
@@ -838,14 +839,17 @@ export class RunsService {
 
     private toDetail(
         run: CIRun,
-        submission: AssignmentSubmission | undefined,
+        viewer: User,
         hasLogs = false,
     ): CIRunDetailResponseDto {
-        return new CIRunDetailResponseDto(
-            run,
-            submission?.repoFullName ?? null,
-            hasLogs,
-        );
+        // Runs live in the grader repo, not the student's. It is private, so
+        // the link only goes to staff; a student would get GitHub's 404.
+        const githubRunUrl =
+            run.githubRunId &&
+            isAtLeastRole(viewer.role, UserRole.TEACHING_ASSISTANT)
+                ? `https://github.com/${this.graderOwner}/${this.graderRepo}/actions/runs/${run.githubRunId}`
+                : null;
+        return new CIRunDetailResponseDto(run, githubRunUrl, hasLogs);
     }
 }
 

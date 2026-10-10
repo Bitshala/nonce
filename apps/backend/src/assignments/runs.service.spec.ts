@@ -16,7 +16,12 @@ import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CIRunLog } from '@/entities/ci-run-log.entity';
 import { User } from '@/entities/user.entity';
-import { AssignmentStatus, CIRunConclusion, CIRunStatus } from '@/common/enum';
+import {
+    AssignmentStatus,
+    CIRunConclusion,
+    CIRunStatus,
+    UserRole,
+} from '@/common/enum';
 
 /**
  * Enough of `UPDATE … WHERE` to tell a claimed row from a lost one. The races
@@ -848,6 +853,50 @@ describe('RunsService — correlating a dispatch', () => {
         ).resolves.toBeNull();
         expect(gitHubAppClient.listRecentDispatchRuns).toHaveBeenCalledTimes(
             10,
+        );
+    });
+});
+
+describe('RunsService — the GitHub link on a run', () => {
+    const finished = Object.assign(new CIRun(), {
+        id: 'run-1',
+        status: CIRunStatus.COMPLETED,
+        githubRunId: '42',
+        jobs: [],
+        report: null,
+        dispatchedAt: new Date(),
+        startedAt: null,
+        completedAt: new Date(),
+        submission: Object.assign(new AssignmentSubmission(), {
+            id: 'submission-1',
+            repoOwner: 'org',
+            repoName: 'student',
+        }),
+    });
+
+    const viewRun = async (role: UserRole) => {
+        const service = await compileRunsService({
+            ciRunRepository: { findOne: jest.fn(async () => finished) },
+            ciRunLogRepository: { exist: jest.fn(async () => false) },
+            assignmentsService: {
+                resolveSubmissionForViewer: jest.fn(async () => ({})),
+            },
+            config: { 'githubApp.graderRepo': 'org/grader' },
+        });
+        return service.getRun('run-1', { id: 'viewer', role } as User);
+    };
+
+    it('points staff at the grader repo, where the run actually is', async () => {
+        await expect(viewRun(UserRole.TEACHING_ASSISTANT)).resolves.toEqual(
+            expect.objectContaining({
+                githubRunUrl: 'https://github.com/org/grader/actions/runs/42',
+            }),
+        );
+    });
+
+    it('gives a student no link to a private repo they cannot open', async () => {
+        await expect(viewRun(UserRole.STUDENT)).resolves.toEqual(
+            expect.objectContaining({ githubRunUrl: null }),
         );
     });
 });
