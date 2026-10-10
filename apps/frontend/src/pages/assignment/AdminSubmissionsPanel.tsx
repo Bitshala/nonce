@@ -68,12 +68,15 @@ const OverrideCard = ({
   hint,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   computed: boolean;
   hint: string;
   value: boolean | null;
   onChange: (value: boolean | null) => void;
+  /** An override for this submission is in flight; another would race it. */
+  disabled: boolean;
 }) => (
   <Paper variant="outlined" sx={{ p: 1.5, flex: 1 }}>
     <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}>
@@ -91,6 +94,7 @@ const OverrideCard = ({
       exclusive
       fullWidth
       size="small"
+      disabled={disabled}
       value={toPin(value)}
       onChange={(_, p: Pin | null) => p && onChange(fromPin(p))}
       aria-label={`${label} override`}
@@ -117,10 +121,12 @@ const StudentCard = ({
   open,
   onToggle,
   onPin,
+  pinning,
   onRetry,
   retrying,
 }: {
   s: AdminSubmissionResponse;
+  pinning: boolean;
   isAdmin: boolean;
   open: boolean;
   onToggle: () => void;
@@ -268,6 +274,7 @@ const StudentCard = ({
                 hint="Auto turns Yes once the student commits their own changes."
                 value={s.isSubmittedOverride}
                 onChange={v => onPin('isSubmitted', v)}
+                disabled={pinning}
               />
               <OverrideCard
                 label="Passing"
@@ -275,6 +282,7 @@ const StudentCard = ({
                 hint="Auto turns Yes once a graded run passes."
                 value={s.isPassingOverride}
                 onChange={v => onPin('isPassing', v)}
+                disabled={pinning}
               />
             </Stack>
           ) : (
@@ -547,6 +555,9 @@ export const SubmissionsPanel = ({
             open={expanded.has(s.id)}
             onToggle={() => toggle(s.id)}
             onPin={(field, v) => setPin(s, field, v)}
+            pinning={
+              override.isPending && override.variables?.submissionId === s.id
+            }
             onRetry={() =>
               reprovision.mutate(
                 { submissionId: s.id, assignmentId },
