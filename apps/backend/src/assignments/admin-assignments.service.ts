@@ -22,6 +22,7 @@ import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
+import { isRegradeCandidate } from '@nonce/shared/submission-bucket';
 import { AssignmentBackend, ProvisionStatus, UserRole } from '@/common/enum';
 import {
     AdminAssignmentResponseDto,
@@ -288,8 +289,8 @@ export class AdminAssignmentsService {
     }
 
     /**
-     * Re-grades every submission that has not passed — for when a grader bug
-     * is fixed after students have already run. `RunsService.dispatchRegrade`
+     * Re-grades every submission whose score grading could still change — for
+     * when a grader bug is fixed after students have already run. `RunsService.dispatchRegrade`
      * decides which commit is graded; this only picks who gets one.
      */
     async regrade(
@@ -315,9 +316,8 @@ export class AdminAssignmentsService {
         let skipped = 0;
 
         for (const submission of submissions) {
-            // A pass is never replaced, so re-running one would only spend
-            // Actions minutes.
-            if (submission.bestRun) {
+            // The same rule as the count on the admin's re-grade button.
+            if (!isRegradeCandidate(submission)) {
                 skipped++;
                 continue;
             }

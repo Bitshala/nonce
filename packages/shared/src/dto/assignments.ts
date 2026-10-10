@@ -223,6 +223,8 @@ export interface AdminAssignmentResponse extends Omit<
   inProgressCount: number;
   notStartedCount: number;
   failedProvisionCount: number;
+  /** Submissions a re-grade would dispatch for; see isRegradeCandidate. */
+  regradableCount: number;
 }
 
 export interface AdminSubmissionResponse extends SubmissionResponse {

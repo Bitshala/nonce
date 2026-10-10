@@ -20,7 +20,10 @@ import type {
     SubmissionResponse,
     SyncAssignmentsResponse,
 } from '@nonce/shared';
-import { submissionBucket } from '@nonce/shared/submission-bucket';
+import {
+    isRegradeCandidate,
+    submissionBucket,
+} from '@nonce/shared/submission-bucket';
 import {
     AssignmentStatus,
     CIRunConclusion,
@@ -344,6 +347,7 @@ export class AdminAssignmentResponseDto
     inProgressCount: number;
     notStartedCount: number;
     failedProvisionCount: number;
+    regradableCount: number;
 
     /** `submissions` must already be limited to enrolled students. */
     constructor(
@@ -362,5 +366,6 @@ export class AdminAssignmentResponseDto
         this.inProgressCount = counts.inProgress;
         this.failedProvisionCount = counts.setupFailed;
         this.notStartedCount = Math.max(0, enrolledCount - submissions.length);
+        this.regradableCount = submissions.filter(isRegradeCandidate).length;
     }
 }
