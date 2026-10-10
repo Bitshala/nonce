@@ -289,9 +289,20 @@ class AssignmentService {
     });
   };
 
-  /** The export path — students have no GitHub access, so this is how they keep their work. */
-  public downloadArchiveUrl = (submissionId: string): string =>
-    `${API_BASE_URL}/submissions/${submissionId}/archive`;
+  /**
+   * The export path — students have no GitHub access, so this is how they
+   * keep their work. Fetched rather than linked: a plain link sends no
+   * session header, and the API refuses it.
+   */
+  public downloadArchive = async (submissionId: string): Promise<Blob> => {
+    const { data } = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/submissions/${submissionId}/archive`,
+      responseType: 'blob',
+    });
+    return data;
+  };
 }
 
 const assignmentService = new AssignmentService();
