@@ -644,7 +644,9 @@ export const AdminAssignmentsPage = () => {
                                   block: 'center',
                                 })
                             }
-                            hideWide
+                            // Only admins have the Course config card that
+                            // repeats these on wide screens.
+                            hideWide={isAdmin}
                           />
                         ))}
                       </Box>
