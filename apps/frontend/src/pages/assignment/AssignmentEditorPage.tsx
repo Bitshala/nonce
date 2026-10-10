@@ -298,7 +298,23 @@ export const AssignmentEditorPage = () => {
     );
   };
 
-  const save = useCallback(async (): Promise<string | null> => {
+  // Synchronous guards: `isPending` only updates on the next render, so a held
+  // Cmd+Enter fires several saves before it does, all on the same base, and
+  // every one after the first comes back as a spurious conflict.
+  const pendingSave = useRef<Promise<string | null> | null>(null);
+  const runStarting = useRef(false);
+
+  /** One save at a time; a call while one is in flight shares its result. */
+  const save = (): Promise<string | null> => {
+    if (pendingSave.current) return pendingSave.current;
+    const attempt = saveOnce().finally(() => {
+      pendingSave.current = null;
+    });
+    pendingSave.current = attempt;
+    return attempt;
+  };
+
+  const saveOnce = async (): Promise<string | null> => {
     if (!submission?.id || !baseCommitSha) return null;
 
     const changed = [...openFiles.values()].filter(
@@ -351,18 +367,19 @@ export const AssignmentEditorPage = () => {
       }
       return null;
     }
-  }, [submission?.id, baseCommitSha, openFiles, commit, refetchTree]);
+  };
 
   // Run always targets an explicit commit, so an unsaved editor saves first.
   const run_ = async () => {
-    if (!submission?.id || createRun.isPending) return;
+    if (!submission?.id || createRun.isPending || runStarting.current) return;
     if (run && !isTerminal(run.status)) return;
     if (conflict || pendingClose) return;
-    setOutputOpen(true);
-    const sha = await save();
-    if (!sha) return;
-
+    runStarting.current = true;
     try {
+      setOutputOpen(true);
+      const sha = await save();
+      if (!sha) return;
+
       const dispatched = await createRun.mutateAsync({
         submissionId: submission.id,
         commitSha: sha,
@@ -370,6 +387,8 @@ export const AssignmentEditorPage = () => {
       setActiveRunId(dispatched.id);
     } catch (runError) {
       setBanner(extractErrorMessage(runError));
+    } finally {
+      runStarting.current = false;
     }
   };
 
