@@ -137,8 +137,13 @@ describe('RunsService — completing a run', () => {
     const ciRunLogRepository = { exist: jest.fn(async () => true) };
     const gitHubAppClient = {
         listRunJobs: jest.fn(async () => []),
-        listRunArtifacts: jest.fn(async (): Promise<object[]> => []),
-        downloadArtifact: jest.fn(),
+        // A run that graded leaves a report; by default, a passing one.
+        listRunArtifacts: jest.fn(async (): Promise<object[]> => [
+            { id: 7, name: 'grade-report', expired: false },
+        ]),
+        downloadArtifact: jest.fn(async () =>
+            reportZip({ schemaVersion: 1, passed: true, tests: [] }),
+        ),
         listRecentDispatchRuns: jest.fn(async () => []),
         getWorkflowRun: jest.fn(),
     };
@@ -298,6 +303,27 @@ describe('RunsService — completing a run', () => {
         );
         expect(runRow.testsPassed).toBe(1);
         expect(runRow.testsTotal).toBe(2);
+    });
+
+    it('does not pass a green run that left no report', async () => {
+        // Exit 0 only says the workflow finished; nothing says it graded.
+        gitHubAppClient.listRunArtifacts.mockResolvedValueOnce([]);
+
+        await service.completeRun('run-1', CIRunConclusion.SUCCESS);
+
+        expect(runRow.conclusion).toBe(CIRunConclusion.FAILURE);
+        expect(submissionRow.bestRun).toBeNull();
+    });
+
+    it('goes by the report when it says the tests failed', async () => {
+        gitHubAppClient.downloadArtifact.mockResolvedValueOnce(
+            reportZip({ schemaVersion: 1, passed: false, tests: [] }),
+        );
+
+        await service.completeRun('run-1', CIRunConclusion.SUCCESS);
+
+        expect(runRow.conclusion).toBe(CIRunConclusion.FAILURE);
+        expect(submissionRow.bestRun).toBeNull();
     });
 
     it('never reopens a finished run on a late refresh', async () => {

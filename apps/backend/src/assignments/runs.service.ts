@@ -427,13 +427,15 @@ export class RunsService {
             await this.captureLogs(run);
         }
 
-        // The report is more precise than the run conclusion, but a missing or
-        // malformed artifact must not lose a result — fall back to the
-        // conclusion alone.
-        const passed =
-            report != null
-                ? report.passed
-                : conclusion === CIRunConclusion.SUCCESS;
+        // Only the report can pass a run. A green conclusion alone says the
+        // workflow exited 0, which any run that never reached the grader can
+        // also do; without the report there is nothing that says it passed.
+        const passed = report?.passed ?? false;
+        if (!report && conclusion === CIRunConclusion.SUCCESS) {
+            this.logger.warn(
+                `Run ${run.id} succeeded without a readable report; recording it as failed`,
+            );
+        }
         const effective = passed
             ? CIRunConclusion.SUCCESS
             : conclusion === CIRunConclusion.SUCCESS

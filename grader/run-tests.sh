@@ -11,8 +11,8 @@
 #   GRADE_NETWORK   'full' or 'none', from the assignment manifest
 #
 # Contract with the backend: write report.json matching report.schema.json and
-# exit non-zero when the tests did not pass. The backend prefers the report and
-# falls back to the exit status, so both must agree.
+# exit non-zero when the tests did not pass. Only the report can pass a run in
+# the backend: a run that finishes without one is recorded as failed.
 #
 # Per-assignment work goes in TEST_DIR/grade.sh, which this dispatches to. That
 # keeps language choice a property of the assignment rather than of the platform.
