@@ -199,7 +199,8 @@ export class AssignmentsService {
 
     /**
      * Loads a submission and authorizes the viewer. The only two ways in are
-     * owning it or being staff; there is no GitHub-side path around this.
+     * owning it while still enrolled in its cohort, or being staff; there is
+     * no GitHub-side path around this.
      */
     async resolveSubmissionForViewer(
         submissionId: string,
@@ -223,6 +224,9 @@ export class AssignmentsService {
                 'You do not have access to this submission',
             );
         }
+        // Removal from a cohort keeps the submission row, so ownership alone
+        // would let a withdrawn student keep committing and running.
+        await this.assertCohortMember(submission.assignment, viewer);
 
         return submission;
     }
