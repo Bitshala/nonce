@@ -10,6 +10,7 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MAX_FILE_BYTES } from '@/assignments/path.util';
 import type {
     CommitFileRequest,
     CreateCommitRequest,
@@ -69,7 +70,10 @@ export class SaveDraftRequestDto implements SaveDraftRequest {
     @MaxLength(500)
     path!: string;
 
+    // A cheap first cut in characters; the service enforces the real limit
+    // in bytes.
     @IsString()
+    @MaxLength(MAX_FILE_BYTES)
     content!: string;
 }
 

@@ -6,6 +6,7 @@ import {
     Injectable,
     Logger,
     NotFoundException,
+    PayloadTooLargeException,
     UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -28,6 +29,8 @@ import {
 } from '@/assignments/assignments.response.dto';
 import { CreateCommitRequestDto } from '@/assignments/assignments.request.dto';
 import {
+    MAX_FILE_BYTES,
+    MAX_TOTAL_BYTES,
     isProtectedPath,
     normalizeRepoPath,
     validateCommitPaths,
@@ -48,10 +51,20 @@ const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 /** Blob creation fan-out. Bounded so one save cannot monopolise the rate limit. */
 const BLOB_CONCURRENCY = 8;
 
+/**
+ * What one submission's drafts may hold in Redis, all files together: as much
+ * as one save may carry. Drafts share that Redis with sessions, webhook dedupe
+ * and the throttler, so they must not be able to grow without bound.
+ */
+const MAX_DRAFT_BYTES = MAX_TOTAL_BYTES;
+
 interface DraftEnvelope {
     content: string;
     savedAt: string;
 }
+
+/** Size and expiry of each live draft of one submission, by path. */
+type DraftIndex = Record<string, { bytes: number; expiresAt: number }>;
 
 /**
  * Reading and writing the files of one submission.
@@ -317,12 +330,59 @@ export class SubmissionsService {
             );
         }
 
-        const savedAt = new Date().toISOString();
-        await this.cacheManager.set(
-            draftKey(submission.id, normalized.path),
-            { content, savedAt } satisfies DraftEnvelope,
-            DRAFT_TTL_MS,
-        );
+        const bytes = Buffer.byteLength(content, 'utf8');
+        if (bytes > MAX_FILE_BYTES) {
+            throw new PayloadTooLargeException(
+                `A draft may be at most ${MAX_FILE_BYTES} bytes`,
+            );
+        }
+
+        const now = Date.now();
+        const savedAt = new Date(now).toISOString();
+        await this.dbTransactionService.execute(async (manager) => {
+            // One draft write per submission at a time, so the index is never
+            // read by two requests at once and the budget cannot be raced
+            // past by firing saves in parallel.
+            await manager.findOne(AssignmentSubmission, {
+                where: { id: submission.id },
+                lock: { mode: 'pessimistic_write' },
+            });
+
+            const stored =
+                (await this.cacheManager.get<DraftIndex>(
+                    draftIndexKey(submission.id),
+                )) ?? {};
+            // Drafts expire on their own; their index entries go with them.
+            const index: DraftIndex = Object.fromEntries(
+                Object.entries(stored).filter(
+                    ([, entry]) => entry.expiresAt > now,
+                ),
+            );
+            index[normalized.path] = { bytes, expiresAt: now + DRAFT_TTL_MS };
+
+            const total = Object.values(index).reduce(
+                (sum, entry) => sum + entry.bytes,
+                0,
+            );
+            if (total > MAX_DRAFT_BYTES) {
+                throw new PayloadTooLargeException(
+                    `Unsaved drafts for this assignment are limited to ${MAX_DRAFT_BYTES} bytes in total`,
+                );
+            }
+
+            // Index first: if the draft write then fails, the index only
+            // over-counts, which errs on the side of the budget.
+            await this.cacheManager.set(
+                draftIndexKey(submission.id),
+                index,
+                DRAFT_TTL_MS,
+            );
+            await this.cacheManager.set(
+                draftKey(submission.id, normalized.path),
+                { content, savedAt } satisfies DraftEnvelope,
+                DRAFT_TTL_MS,
+            );
+        });
 
         return new DraftResponseDto(normalized.path, content, savedAt);
     }
@@ -578,6 +638,11 @@ export class SubmissionsService {
 
 function draftKey(submissionId: string, path: string): string {
     return `draft:${submissionId}:${path}`;
+}
+
+// Not under `draft:${submissionId}:`, where it could collide with a path.
+function draftIndexKey(submissionId: string): string {
+    return `draft-index:${submissionId}`;
 }
 
 /**
