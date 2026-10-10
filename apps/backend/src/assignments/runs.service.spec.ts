@@ -168,6 +168,7 @@ describe('RunsService — completing a run', () => {
                     partial,
                 ),
         ),
+        save: jest.fn(async () => undefined),
     };
     const dbTransactionService = {
         execute: jest.fn(async (cb: (m: unknown) => unknown) => cb(manager)),
@@ -363,6 +364,36 @@ describe('RunsService — completing a run', () => {
             await service.refresh(stale);
 
             expect(runRow.status).toBe(CIRunStatus.COMPLETED);
+        });
+    });
+
+    describe('a run that was orphaned', () => {
+        it('comes back into play when its token turns up', async () => {
+            runRow.githubRunId = null;
+            runRow.status = CIRunStatus.ORPHANED;
+            runRow.completedAt = new Date();
+
+            await expect(service.reviveOrphan('run-1', 42)).resolves.toBe(true);
+
+            expect(runRow).toEqual(
+                expect.objectContaining({
+                    status: CIRunStatus.QUEUED,
+                    githubRunId: '42',
+                    completedAt: null,
+                }),
+            );
+            // The sweep that gave up on it is restarted.
+            expect(manager.save).toHaveBeenCalledTimes(1);
+        });
+
+        it('cannot reopen a run that finished', async () => {
+            runRow.status = CIRunStatus.COMPLETED;
+
+            await expect(service.reviveOrphan('run-1', 42)).resolves.toBe(
+                false,
+            );
+            expect(runRow.status).toBe(CIRunStatus.COMPLETED);
+            expect(manager.save).not.toHaveBeenCalled();
         });
     });
 
@@ -678,5 +709,67 @@ describe('RunsService — isGraderRepo', () => {
         const service = await compileRunsService({});
 
         expect(service.isGraderRepo('/')).toBe(false);
+    });
+});
+
+// workflow_dispatch returns no run id, so the token in the run name is the only
+// way back to our row. Missing it orphans the run, which loses its result.
+describe('RunsService — correlating a dispatch', () => {
+    const page = (titles: string[]) =>
+        titles.map((displayTitle, i) => ({ id: i, displayTitle }));
+    const filler = (n: number) =>
+        page(Array.from({ length: n }, (_, i) => `grade-other-${i}`));
+
+    const gitHubAppClient = { listRecentDispatchRuns: jest.fn() };
+    let service: RunsService;
+
+    beforeEach(async () => {
+        service = await compileRunsService({ gitHubAppClient });
+    });
+
+    afterEach(() => jest.resetAllMocks());
+
+    it('finds a run that later dispatches pushed off the first page', async () => {
+        gitHubAppClient.listRecentDispatchRuns
+            .mockResolvedValueOnce(filler(100))
+            .mockResolvedValueOnce([...filler(40), ...page(['grade-mine'])]);
+
+        const match = await service.findRunByToken(
+            'mine',
+            new Date('2026-10-10T10:00:00.123Z'),
+        );
+
+        expect(match?.displayTitle).toBe('grade-mine');
+        expect(gitHubAppClient.listRecentDispatchRuns).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({
+                page: 2,
+                perPage: 100,
+                // Around the dispatch, in GitHub's search syntax.
+                created: '2026-10-10T09:55:00Z..2026-10-10T10:06:00Z',
+            }),
+        );
+    });
+
+    it('stops at the last page instead of asking for empty ones', async () => {
+        gitHubAppClient.listRecentDispatchRuns.mockResolvedValueOnce(
+            filler(30),
+        );
+
+        await expect(
+            service.findRunByToken('mine', new Date()),
+        ).resolves.toBeNull();
+        expect(gitHubAppClient.listRecentDispatchRuns).toHaveBeenCalledTimes(1);
+    });
+
+    it('gives up after a bounded number of pages', async () => {
+        gitHubAppClient.listRecentDispatchRuns.mockResolvedValue(filler(100));
+
+        await expect(
+            service.findRunByToken('mine', new Date()),
+        ).resolves.toBeNull();
+        expect(gitHubAppClient.listRecentDispatchRuns).toHaveBeenCalledTimes(
+            10,
+        );
     });
 });

@@ -44,6 +44,21 @@ import {
  */
 const CORRELATION_WINDOW_MS = 60_000;
 
+/**
+ * How far either side of our dispatch time to search GitHub's run list, for
+ * clock skew between us and GitHub.
+ */
+const CORRELATION_SEARCH_MARGIN_MS = 5 * 60_000;
+
+/** GitHub's largest page. */
+const CORRELATION_PAGE_SIZE = 100;
+
+/**
+ * A regrade dispatches a whole cohort inside one search window, so the run can
+ * be several pages deep. This many pages cover any cohort we run.
+ */
+const MAX_CORRELATION_PAGES = 10;
+
 /** Slack on top of the assignment's own timeout before force-completing. */
 const TIMEOUT_GRACE_MS = 5 * 60_000;
 
@@ -269,7 +284,10 @@ export class RunsService {
         const age = now - run.dispatchedAt.getTime();
 
         if (!run.githubRunId) {
-            const matched = await this.findRunByToken(run.correlationToken);
+            const matched = await this.findRunByToken(
+                run.correlationToken,
+                run.dispatchedAt,
+            );
             if (matched) {
                 await this.ciRunRepository.update(
                     { id: run.id },
@@ -361,15 +379,71 @@ export class RunsService {
         }
     }
 
-    /** Finds the GitHub run whose `run-name` carries our correlation token. */
-    async findRunByToken(token: string): Promise<WorkflowRunSummary | null> {
+    /**
+     * Finds the GitHub run whose `run-name` carries our correlation token.
+     *
+     * Searches the runs created around our dispatch, every page of them. Only
+     * the newest page would miss a run that a burst of later dispatches — a
+     * regrade — pushed off it, and it would then be orphaned for good.
+     */
+    async findRunByToken(
+        token: string,
+        dispatchedAt: Date,
+    ): Promise<WorkflowRunSummary | null> {
         const expected = `grade-${token}`;
-        const runs = await this.gitHubAppClient.listRecentDispatchRuns({
-            owner: this.graderOwner,
-            repo: this.graderRepo,
-            workflowFile: this.graderWorkflowFile,
+        const from = dispatchedAt.getTime() - CORRELATION_SEARCH_MARGIN_MS;
+        const to =
+            dispatchedAt.getTime() +
+            CORRELATION_WINDOW_MS +
+            CORRELATION_SEARCH_MARGIN_MS;
+        const created = `${searchDate(from)}..${searchDate(to)}`;
+
+        for (let page = 1; page <= MAX_CORRELATION_PAGES; page++) {
+            const runs = await this.gitHubAppClient.listRecentDispatchRuns({
+                owner: this.graderOwner,
+                repo: this.graderRepo,
+                workflowFile: this.graderWorkflowFile,
+                perPage: CORRELATION_PAGE_SIZE,
+                page,
+                created,
+            });
+            const match = runs.find((run) => run.displayTitle === expected);
+            if (match) return match;
+            if (runs.length < CORRELATION_PAGE_SIZE) return null;
+        }
+        return null;
+    }
+
+    /**
+     * ORPHANED means we stopped looking for a run, not that GitHub finished
+     * it. When the run's own token turns up after all, it goes back into play
+     * — dropping it could drop a pass. False if it is no longer orphaned.
+     */
+    async reviveOrphan(runId: string, githubRunId: number): Promise<boolean> {
+        return this.dbTransactionService.execute(async (manager) => {
+            const revived = await manager.update(
+                CIRun,
+                { id: runId, status: CIRunStatus.ORPHANED },
+                {
+                    status: CIRunStatus.QUEUED,
+                    githubRunId: String(githubRunId),
+                    completedAt: null,
+                },
+            );
+            if (!revived.affected) return false;
+
+            // The sweep stopped when the run was orphaned; restart it, so the
+            // run finishes even if no further webhook arrives.
+            await manager.save(
+                this.buildReconcileTask(
+                    runId,
+                    0,
+                    new APITask<TaskType.RECONCILE_CI_RUN>(),
+                ),
+            );
+            this.logger.log(`Run ${runId} correlated after being orphaned`);
+            return true;
         });
-        return runs.find((run) => run.displayTitle === expected) ?? null;
     }
 
     /** Whether `owner/repo` names the repo grading runs execute in. */
@@ -757,6 +831,11 @@ interface DispatchOptions {
     reuseInFlight: 'any' | 'scoring';
     /** The student's runs-per-day limit; absent for staff, who have none. */
     dailyQuota?: number;
+}
+
+/** A timestamp as GitHub's search syntax takes it: ISO 8601, no milliseconds. */
+function searchDate(epochMs: number): string {
+    return new Date(epochMs).toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 /** GitHub's run statuses collapse to the three the UI distinguishes. */

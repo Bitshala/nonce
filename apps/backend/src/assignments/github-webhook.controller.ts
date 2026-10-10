@@ -17,6 +17,7 @@ import { Public } from '@/auth/public-route.decorator';
 import { GitHubWebhookGuard } from '@/assignments/github-webhook.guard';
 import { RunsService } from '@/assignments/runs.service';
 import { CIRunJob } from '@/entities/ci-run.entity';
+import { CIRunStatus } from '@/common/enum';
 
 /** Long enough to cover GitHub's redelivery window. */
 const DELIVERY_DEDUPE_TTL_MS = 10 * 60 * 1000;
@@ -149,7 +150,19 @@ export class GitHubWebhookController {
         const run = token
             ? await this.runsService.findRunByCorrelationToken(token)
             : await this.runsService.findRunByGithubRunId(remote.id);
-        if (!run || run.isTerminal) return;
+        if (!run) return;
+
+        // A run reconcile gave up on, now matched by its own token: the
+        // result is real and may be a pass, so it is not dropped.
+        if (token && run.status === CIRunStatus.ORPHANED) {
+            if (!(await this.runsService.reviveOrphan(run.id, remote.id))) {
+                return;
+            }
+            run.status = CIRunStatus.QUEUED;
+            run.githubRunId = String(remote.id);
+        } else if (run.isTerminal) {
+            return;
+        }
 
         await this.runsService.applyRunState(run, {
             id: remote.id,

@@ -2,6 +2,7 @@ import type { Cache } from 'cache-manager';
 import { GitHubWebhookController } from '@/assignments/github-webhook.controller';
 import { RunsService } from '@/assignments/runs.service';
 import { CIRun } from '@/entities/ci-run.entity';
+import { CIRunStatus } from '@/common/enum';
 
 // Webhooks are how most runs finish, so a delivery that is dropped, or one
 // that is believed when it should not be, decides a student's score.
@@ -9,6 +10,7 @@ describe('GitHubWebhookController', () => {
     let cache: Map<string, unknown>;
     let runsService: {
         isGraderRepo: jest.Mock;
+        reviveOrphan: jest.Mock;
         findRunByCorrelationToken: jest.Mock;
         findRunByGithubRunId: jest.Mock;
         applyRunState: jest.Mock;
@@ -44,6 +46,7 @@ describe('GitHubWebhookController', () => {
         cache = new Map();
         runsService = {
             isGraderRepo: jest.fn((name: string) => name === 'org/grader'),
+            reviveOrphan: jest.fn(async () => true),
             findRunByCorrelationToken: jest.fn(async () => live),
             findRunByGithubRunId: jest.fn(async () => live),
             applyRunState: jest.fn(async () => undefined),
@@ -108,6 +111,57 @@ describe('GitHubWebhookController', () => {
             await settle();
 
             expect(runsService.findRunByGithubRunId).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('a run reconcile gave up on', () => {
+        const orphan = () =>
+            Object.assign(new CIRun(), {
+                id: 'run-1',
+                status: CIRunStatus.ORPHANED,
+                githubRunId: null,
+            });
+
+        it('is finished by the webhook carrying its token', async () => {
+            runsService.findRunByCorrelationToken.mockResolvedValueOnce(
+                orphan(),
+            );
+
+            await deliver('delivery-1');
+
+            expect(runsService.reviveOrphan).toHaveBeenCalledWith('run-1', 42);
+            expect(runsService.applyRunState).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    status: CIRunStatus.QUEUED,
+                    githubRunId: '42',
+                }),
+                expect.objectContaining({ conclusion: 'success' }),
+            );
+        });
+
+        it('is left alone if something else got to it first', async () => {
+            runsService.findRunByCorrelationToken.mockResolvedValueOnce(
+                orphan(),
+            );
+            runsService.reviveOrphan.mockResolvedValueOnce(false);
+
+            await deliver('delivery-1');
+
+            expect(runsService.applyRunState).not.toHaveBeenCalled();
+        });
+
+        it('does not reopen a run that completed', async () => {
+            runsService.findRunByCorrelationToken.mockResolvedValueOnce(
+                Object.assign(new CIRun(), {
+                    id: 'run-1',
+                    status: CIRunStatus.COMPLETED,
+                }),
+            );
+
+            await deliver('delivery-1');
+
+            expect(runsService.reviveOrphan).not.toHaveBeenCalled();
+            expect(runsService.applyRunState).not.toHaveBeenCalled();
         });
     });
 });

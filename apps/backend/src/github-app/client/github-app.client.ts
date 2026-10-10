@@ -324,6 +324,9 @@ export class GitHubAppClient {
         repo: string;
         workflowFile: string;
         perPage?: number;
+        page?: number;
+        /** A date-time range in GitHub search syntax, e.g. `a..b`. */
+        created?: string;
     }): Promise<WorkflowRunSummary[]> {
         const res = await this.octokit.rest.actions.listWorkflowRuns({
             owner: params.owner,
@@ -331,6 +334,8 @@ export class GitHubAppClient {
             workflow_id: params.workflowFile,
             event: 'workflow_dispatch',
             per_page: params.perPage ?? 50,
+            page: params.page,
+            created: params.created,
         });
         return res.data.workflow_runs.map((run) => this.toRunSummary(run));
     }
