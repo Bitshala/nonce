@@ -92,6 +92,8 @@ interface OpenFile {
   original: string;
   content: string;
   editable: boolean;
+  /** Why the API sent no content for this file, when it did not. */
+  notShown: string | null;
 }
 
 /**
@@ -137,7 +139,12 @@ export const AssignmentEditorPage = () => {
   // leaves the editor empty instead of reopening the starter.
   const landedFor = useRef<string | null>(null);
 
-  const { data: tree, refetch: refetchTree } = useSubmissionTree(
+  const {
+    data: tree,
+    refetch: refetchTree,
+    isError: isTreeError,
+    error: treeError,
+  } = useSubmissionTree(
     { submissionId: submission?.id ?? '' },
     { enabled: !!submission?.id }
   );
@@ -204,6 +211,11 @@ export const AssignmentEditorPage = () => {
             original: file.content ?? '',
             content: file.content ?? '',
             editable: file.editable,
+            notShown: file.binary
+              ? 'This is a binary file, so it is not shown in the editor.'
+              : file.content === null
+                ? 'This file is too large to open in the editor.'
+                : null,
           });
           return next;
         });
@@ -446,6 +458,27 @@ export const AssignmentEditorPage = () => {
       <AssignmentTheme baseline>
         <Box sx={{ p: 3 }}>
           <Typography color="error">{extractErrorMessage(error)}</Typography>
+        </Box>
+      </AssignmentTheme>
+    );
+  }
+
+  if (assignment && !submission) {
+    // Nothing to edit until the assignment is accepted; waiting would spin
+    // forever.
+    return (
+      <AssignmentTheme baseline>
+        <Box sx={{ p: 3, display: 'grid', gap: 2, justifyItems: 'start' }}>
+          <Typography>
+            You have not accepted this assignment yet, so there is no workspace
+            to open.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate(`/assignments/${assignment.id}`)}
+          >
+            Go to the assignment
+          </Button>
         </Box>
       </AssignmentTheme>
     );
@@ -915,7 +948,19 @@ export const AssignmentEditorPage = () => {
                 bgcolor: 'workspace.bg',
               }}
             >
-              {activeFile ? (
+              {activeFile?.notShown ? (
+                <Box
+                  sx={{
+                    height: '100%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 13,
+                    color: 'text.secondary',
+                  }}
+                >
+                  {activeFile.notShown}
+                </Box>
+              ) : activeFile ? (
                 <Editor
                   height="100%"
                   theme="nonce-dark"
@@ -987,9 +1032,13 @@ export const AssignmentEditorPage = () => {
                     color: 'text.secondary',
                   }}
                 >
-                  {tree?.entries.length
-                    ? 'Select a file to start editing.'
-                    : 'This repository is empty.'}
+                  {isTreeError
+                    ? `Could not load your files: ${extractErrorMessage(treeError)}`
+                    : tree?.entries.length
+                      ? 'Select a file to start editing.'
+                      : tree
+                        ? 'This repository is empty.'
+                        : 'Loading your files…'}
                 </Box>
               )}
             </Box>
