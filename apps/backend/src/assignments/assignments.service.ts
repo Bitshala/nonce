@@ -113,7 +113,7 @@ export class AssignmentsService {
 
         const submission = await this.findSubmission(assignmentId, user.id);
         const runsToday = submission
-            ? await this.countRunsToday(submission.id)
+            ? await this.countRunsToday(submission)
             : 0;
 
         return new AssignmentDetailResponseDto(
@@ -232,14 +232,19 @@ export class AssignmentsService {
         return submission;
     }
 
-    /** Runs dispatched since UTC midnight, for the per-day quota. */
-    async countRunsToday(submissionId: string): Promise<number> {
+    /**
+     * Runs the student dispatched since UTC midnight, for the per-day quota.
+     * Only their own: a staff regrade on their submission must not use up the
+     * runs they have left. Needs `submission.user` loaded.
+     */
+    async countRunsToday(submission: AssignmentSubmission): Promise<number> {
         const startOfDay = new Date();
         startOfDay.setUTCHours(0, 0, 0, 0);
 
         return this.ciRunRepository.count({
             where: {
-                submission: { id: submissionId },
+                submission: { id: submission.id },
+                triggeredByUser: { id: submission.user.id },
                 dispatchedAt: MoreThanOrEqual(startOfDay),
             },
         });

@@ -114,9 +114,8 @@ export class RunsService {
             return this.toDetail(inFlight, submission);
         }
 
-        const runsToday = await this.assignmentsService.countRunsToday(
-            submission.id,
-        );
+        const runsToday =
+            await this.assignmentsService.countRunsToday(submission);
         if (runsToday >= assignment.maxRunsPerDay) {
             throw new ForbiddenException(
                 `You have used all ${assignment.maxRunsPerDay} runs for today on this assignment.`,

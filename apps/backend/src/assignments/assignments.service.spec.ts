@@ -153,4 +153,22 @@ describe('AssignmentsService', () => {
             );
         });
     });
+
+    describe('countRunsToday', () => {
+        it("counts only the owner's runs, so a staff regrade spends none of their quota", async () => {
+            ciRunRepository.count.mockResolvedValue(0);
+
+            await service.countRunsToday(submission(student.id));
+
+            const [{ where }] = ciRunRepository.count.mock.calls[0] as [
+                { where: Record<string, unknown> },
+            ];
+            expect(where).toEqual(
+                expect.objectContaining({
+                    submission: { id: 'submission-1' },
+                    triggeredByUser: { id: student.id },
+                }),
+            );
+        });
+    });
 });
