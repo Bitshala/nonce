@@ -11,7 +11,10 @@ import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { User } from '@/entities/user.entity';
 import { ProvisionStatus } from '@/common/enum';
-import { PayloadTooLargeException } from '@nestjs/common';
+import {
+    PayloadTooLargeException,
+    UnprocessableEntityException,
+} from '@nestjs/common';
 import { MAX_FILE_BYTES, MAX_TOTAL_BYTES } from '@/assignments/path.util';
 
 /** The WHERE operators recordCommit's guard uses, evaluated against a row. */
@@ -65,6 +68,15 @@ describe('SubmissionsService — recording a save', () => {
         getCommit: jest.fn(async () => ({ treeSha: 'tree-base' })),
         createBlob: jest.fn(async () => 'blob'),
         createTree: jest.fn(async () => 'tree-new'),
+        getTree: jest.fn(async () => ({
+            sha: 'tree-base',
+            truncated: false,
+            entries: [
+                { path: 'main.py', type: 'blob', sha: 'b1', size: 1 },
+                { path: 'test', type: 'tree', sha: 't1', size: null },
+                { path: 'test/main.spec.py', type: 'blob', sha: 'b2', size: 1 },
+            ],
+        })),
         createCommit: jest.fn(
             async ({ message }: { message: string }) => message,
         ),
@@ -84,7 +96,7 @@ describe('SubmissionsService — recording a save', () => {
             defaultBranch: 'main',
             provisionStatus: ProvisionStatus.READY,
             assignment: Object.assign(new Assignment(), {
-                protectedPaths: [],
+                protectedPaths: ['test/**'],
             }),
         });
 
@@ -142,7 +154,13 @@ describe('SubmissionsService — recording a save', () => {
                         ),
                     },
                 },
-                { provide: CACHE_MANAGER, useValue: {} },
+                {
+                    provide: CACHE_MANAGER,
+                    useValue: {
+                        get: jest.fn(async () => undefined),
+                        set: jest.fn(async () => undefined),
+                    },
+                },
             ],
         }).compile();
         service = module.get(SubmissionsService);
@@ -151,6 +169,33 @@ describe('SubmissionsService — recording a save', () => {
     afterEach(() => {
         jest.useRealTimers();
         jest.clearAllMocks();
+    });
+
+    it('refuses to delete a directory that holds protected files', async () => {
+        const removingTests = service.commit(
+            'submission-1',
+            { baseCommitSha: BASE, files: [], deletedPaths: ['test'] },
+            { id: 'student-1', name: 'Student' } as User,
+        );
+
+        await expect(removingTests).rejects.toThrow(
+            UnprocessableEntityException,
+        );
+        expect(gitHubAppClient.createTree).not.toHaveBeenCalled();
+    });
+
+    it('refuses to write a file over a directory of protected files', async () => {
+        const overwriting = service.commit(
+            'submission-1',
+            {
+                baseCommitSha: BASE,
+                files: [{ path: 'test', content: 'gone', encoding: 'utf-8' }],
+            },
+            { id: 'student-1', name: 'Student' } as User,
+        );
+
+        await expect(overwriting).rejects.toThrow(UnprocessableEntityException);
+        expect(gitHubAppClient.createTree).not.toHaveBeenCalled();
     });
 
     it('records each save in turn when they finish in order', async () => {

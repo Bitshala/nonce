@@ -61,6 +61,31 @@ export function normalizeRepoPath(
 }
 
 /**
+ * Paths in a save that name a directory holding a protected file. Writing a
+ * file over that directory, or deleting it, would replace or remove the
+ * protected file without ever naming it, so a glob check on the path alone
+ * lets it through. Decided against the real tree, because a glob cannot tell
+ * which paths are directories.
+ */
+export function findProtectedDirectories(params: {
+    paths: string[];
+    treePaths: string[];
+    protectedPaths: string[];
+}): PathViolation[] {
+    const protectedFiles = params.treePaths.filter((path) =>
+        isProtectedPath(path, params.protectedPaths),
+    );
+    return params.paths
+        .filter((path) =>
+            protectedFiles.some((file) => file.startsWith(`${path}/`)),
+        )
+        .map((path) => ({
+            path,
+            reason: 'path is a directory that holds protected files',
+        }));
+}
+
+/**
  * Validates every path in one save. Collects all violations rather than
  * failing on the first, so the editor can highlight everything at once.
  */

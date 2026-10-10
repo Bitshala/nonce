@@ -1,5 +1,6 @@
 import {
     MAX_FILE_BYTES,
+    findProtectedDirectories,
     isProtectedPath,
     matchesGlob,
     normalizeRepoPath,
@@ -197,5 +198,45 @@ describe('path.util — isProtectedPath', () => {
         const patterns = ['.github/**', 'Cargo.lock'];
         expect(isProtectedPath('Cargo.lock', patterns)).toBe(true);
         expect(isProtectedPath('src/main.rs', patterns)).toBe(false);
+    });
+});
+
+describe('path.util — findProtectedDirectories', () => {
+    const tree = ['src/main.rs', 'test/basic.spec.ts', 'vendor/lib/pinned.rs'];
+    const find = (paths: string[], protectedPaths: string[]) =>
+        findProtectedDirectories({ paths, treePaths: tree, protectedPaths });
+
+    it('refuses the directory a ** pattern protects', () => {
+        // Deleting `test` would take test/basic.spec.ts with it, though
+        // `test` itself does not match `test/**`.
+        expect(find(['test'], ['test/**'])).toEqual([
+            {
+                path: 'test',
+                reason: 'path is a directory that holds protected files',
+            },
+        ]);
+    });
+
+    it('refuses any ancestor of a protected exact path', () => {
+        expect(
+            find(['vendor', 'vendor/lib'], ['vendor/lib/pinned.rs']),
+        ).toEqual([
+            expect.objectContaining({ path: 'vendor' }),
+            expect.objectContaining({ path: 'vendor/lib' }),
+        ]);
+    });
+
+    it('allows a directory with nothing protected in it', () => {
+        expect(find(['src'], ['test/**'])).toEqual([]);
+    });
+
+    it('does not mistake a lookalike prefix for the directory', () => {
+        expect(
+            findProtectedDirectories({
+                paths: ['tes', 'testing'],
+                treePaths: ['test/basic.spec.ts'],
+                protectedPaths: ['test/**'],
+            }),
+        ).toEqual([]);
     });
 });

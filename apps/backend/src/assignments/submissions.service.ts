@@ -31,6 +31,7 @@ import { CreateCommitRequestDto } from '@/assignments/assignments.request.dto';
 import {
     MAX_FILE_BYTES,
     MAX_TOTAL_BYTES,
+    findProtectedDirectories,
     isProtectedPath,
     normalizeRepoPath,
     validateCommitPaths,
@@ -254,6 +255,13 @@ export class SubmissionsService {
             repo,
             request.baseCommitSha,
         );
+        await this.assertNoProtectedDirectories(
+            owner,
+            repo,
+            baseCommit.treeSha,
+            [...normalized.values()],
+            submission.assignment.protectedPaths,
+        );
 
         const blobs = await this.createBlobs(owner, repo, files, normalized);
         const treeSha = await this.gitHubAppClient.createTree({
@@ -456,6 +464,35 @@ export class SubmissionsService {
         // Past the deadline, saving is still allowed by default so students can
         // keep practising. Scoring is gated separately, at dispatch time.
         this.assignmentsService.assertOpenForSubmission(submission.assignment);
+    }
+
+    private async assertNoProtectedDirectories(
+        owner: string,
+        repo: string,
+        treeSha: string,
+        paths: string[],
+        protectedPaths: string[],
+    ): Promise<void> {
+        // The editor loaded this same tree, so this is usually a cache hit.
+        const tree = await this.readTreeCached(owner, repo, treeSha);
+        if (tree.truncated) {
+            // A protected file could be in the part we were not shown.
+            throw new UnprocessableEntityException(
+                'This repository is too large to check this save against its protected files',
+            );
+        }
+
+        const violations = findProtectedDirectories({
+            paths,
+            treePaths: tree.entries.map((entry) => entry.path),
+            protectedPaths,
+        });
+        if (violations.length > 0) {
+            throw new UnprocessableEntityException({
+                message: 'One or more paths were rejected',
+                violations,
+            });
+        }
     }
 
     private repoOf(submission: AssignmentSubmission): {
