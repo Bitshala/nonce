@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CohortsService } from '@/cohorts/cohorts.service';
+import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import {
     UpdateCohortRequestDto,
     UpdateCohortWeekRequestDto,
@@ -155,6 +156,7 @@ describe('CohortsService — deadlines follow the cohort calendar', () => {
                 { provide: MailService, useValue: {} },
                 { provide: CohortsConfigService, useValue: {} },
                 { provide: CohortCalendarService, useValue: {} },
+                { provide: ExerciseScoreWritebackService, useValue: {} },
             ],
         }).compile();
 

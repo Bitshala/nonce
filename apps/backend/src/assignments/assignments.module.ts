@@ -22,7 +22,7 @@ import { GitHubWebhookController } from '@/assignments/github-webhook.controller
 import { GitHubWebhookGuard } from '@/assignments/github-webhook.guard';
 import { AdminAssignmentsController } from '@/assignments/admin-assignments.controller';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
-import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
+import { ExerciseScoreWritebackModule } from '@/assignments/exercise-score-writeback.module';
 
 @Module({
     imports: [
@@ -38,6 +38,7 @@ import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writ
         ]),
         GitHubAppClientModule,
         DbTransactionModule,
+        ExerciseScoreWritebackModule,
         // For CohortsConfigService, which owns the config assignments are
         // authored in.
         CohortsModule,
@@ -55,7 +56,6 @@ import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writ
         SubmissionsService,
         RunsService,
         AdminAssignmentsService,
-        ExerciseScoreWritebackService,
         GitHubWebhookGuard,
     ],
     // Exported for TaskProcessorModule, which dispatches the three task types

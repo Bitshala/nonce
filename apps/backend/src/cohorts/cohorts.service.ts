@@ -51,6 +51,8 @@ import { TWENTY_FOUR_HOURS_MS } from '@/common/durations.constants';
 import { MailService } from '@/mail/mail.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { CohortCalendarService } from '@/cohort-calendar/cohort-calendar.service';
+import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
+import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import {
     canViewBonusQuestions,
     ViewerRole,
@@ -99,6 +101,7 @@ export class CohortsService {
         private readonly mailService: MailService,
         private readonly cohortConfigService: CohortsConfigService,
         private readonly cohortCalendarService: CohortCalendarService,
+        private readonly scoreWriteback: ExerciseScoreWritebackService,
     ) {
         this.masteringBitcoinDiscordRoleId =
             this.configService.getOrThrow<string>(
@@ -1184,6 +1187,23 @@ export class CohortsService {
                 await manager.save(groupDiscussionScores);
                 if (exerciseScores.length > 0)
                     await manager.save(exerciseScores);
+
+                // A student who left and is rejoining keeps their submissions,
+                // but the rows just seeded start them at zero. Writeback is
+                // what decides these fields, so let it, rather than erase a
+                // pass that their bestRun still records.
+                const submissions = await manager.find(AssignmentSubmission, {
+                    where: {
+                        user: { id: user.id },
+                        assignment: {
+                            cohortWeek: { cohort: { id: cohort.id } },
+                        },
+                    },
+                    select: { id: true },
+                });
+                for (const submission of submissions) {
+                    await this.scoreWriteback.sync(manager, submission.id);
+                }
 
                 if (waitlistEntry) await manager.remove(waitlistEntry);
 
