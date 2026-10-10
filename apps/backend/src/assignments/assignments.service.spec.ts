@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AssignmentsService } from '@/assignments/assignments.service';
@@ -8,7 +8,7 @@ import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { User } from '@/entities/user.entity';
-import { UserRole } from '@/common/enum';
+import { AssignmentStatus, UserRole } from '@/common/enum';
 
 // This service is the whole access-control boundary for student code: nobody
 // holds GitHub credentials for the repos, so whatever it lets through, it lets
@@ -16,7 +16,9 @@ import { UserRole } from '@/common/enum';
 describe('AssignmentsService', () => {
     let service: AssignmentsService;
 
+    const assignmentRepository = { findOne: jest.fn() };
     const submissionRepository = { findOne: jest.fn() };
+    const ciRunRepository = { count: jest.fn() };
     const membershipRepository = { findOne: jest.fn() };
 
     const student = { id: 'student-1', role: UserRole.STUDENT } as User;
@@ -36,12 +38,18 @@ describe('AssignmentsService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AssignmentsService,
-                { provide: getRepositoryToken(Assignment), useValue: {} },
+                {
+                    provide: getRepositoryToken(Assignment),
+                    useValue: assignmentRepository,
+                },
                 {
                     provide: getRepositoryToken(AssignmentSubmission),
                     useValue: submissionRepository,
                 },
-                { provide: getRepositoryToken(CIRun), useValue: {} },
+                {
+                    provide: getRepositoryToken(CIRun),
+                    useValue: ciRunRepository,
+                },
                 {
                     provide: getRepositoryToken(CohortMembership),
                     useValue: membershipRepository,
@@ -104,6 +112,45 @@ describe('AssignmentsService', () => {
             await expect(
                 service.resolveSubmissionForViewer('submission-1', student),
             ).rejects.toThrow(ForbiddenException);
+        });
+    });
+
+    describe('reading and accepting an unpublished assignment', () => {
+        const draft = () =>
+            Object.assign(new Assignment(), {
+                id: 'assignment-1',
+                status: AssignmentStatus.DRAFT,
+                cohortWeek: {
+                    id: 'week-1',
+                    week: 1,
+                    cohort: { id: 'cohort-1', type: 'PB', season: 4 },
+                },
+            });
+
+        beforeEach(() => {
+            assignmentRepository.findOne.mockResolvedValue(draft());
+            membershipRepository.findOne.mockResolvedValue({ id: 'm-1' });
+            submissionRepository.findOne.mockResolvedValue(null);
+        });
+
+        it('hides a draft brief from an enrolled student', async () => {
+            await expect(
+                service.getAssignment('assignment-1', student),
+            ).rejects.toThrow(NotFoundException);
+        });
+
+        it('answers accept on a draft the same way as a missing id', async () => {
+            await expect(
+                service.accept('assignment-1', student),
+            ).rejects.toThrow(NotFoundException);
+        });
+
+        it('still shows a draft to staff', async () => {
+            await expect(
+                service.getAssignment('assignment-1', staff),
+            ).resolves.toEqual(
+                expect.objectContaining({ status: AssignmentStatus.DRAFT }),
+            );
         });
     });
 });

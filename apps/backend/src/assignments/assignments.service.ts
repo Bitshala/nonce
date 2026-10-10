@@ -26,6 +26,12 @@ import {
 /** Postgres unique-violation SQLSTATE. */
 const UNIQUE_VIOLATION = '23505';
 
+/** What a student may see. A DRAFT is staff-only until it is published. */
+const STUDENT_VISIBLE_STATUSES = [
+    AssignmentStatus.PUBLISHED,
+    AssignmentStatus.CLOSED,
+];
+
 /**
  * Accepting an assignment and reading assignment state.
  *
@@ -63,10 +69,7 @@ export class AssignmentsService {
         const assignments = await this.assignmentRepository.find({
             where: {
                 cohortWeek: { cohort: { id: In(cohortIds) } },
-                status: In([
-                    AssignmentStatus.PUBLISHED,
-                    AssignmentStatus.CLOSED,
-                ]),
+                status: In(STUDENT_VISIBLE_STATUSES),
             },
             relations: { cohortWeek: { cohort: true } },
         });
@@ -106,8 +109,7 @@ export class AssignmentsService {
         assignmentId: string,
         user: User,
     ): Promise<AssignmentDetailResponseDto> {
-        const assignment = await this.loadAssignment(assignmentId);
-        await this.assertCohortMember(assignment, user);
+        const assignment = await this.loadVisibleAssignment(assignmentId, user);
 
         const submission = await this.findSubmission(assignmentId, user.id);
         const runsToday = submission
@@ -131,8 +133,7 @@ export class AssignmentsService {
         assignmentId: string,
         user: User,
     ): Promise<SubmissionResponseDto> {
-        const assignment = await this.loadAssignment(assignmentId);
-        await this.assertCohortMember(assignment, user);
+        const assignment = await this.loadVisibleAssignment(assignmentId, user);
 
         if (assignment.status !== AssignmentStatus.PUBLISHED) {
             throw new ForbiddenException(
@@ -263,6 +264,27 @@ export class AssignmentsService {
             relations: { cohortWeek: { cohort: true } },
         });
         if (!assignment) {
+            throw new NotFoundException('Assignment not found');
+        }
+        return assignment;
+    }
+
+    /**
+     * An assignment the caller may read. A student gets the same 404 for a
+     * draft as for an id that does not exist, so an unpublished brief cannot
+     * be read or even confirmed by guessing its id.
+     */
+    private async loadVisibleAssignment(
+        assignmentId: string,
+        user: User,
+    ): Promise<Assignment> {
+        const assignment = await this.loadAssignment(assignmentId);
+        await this.assertCohortMember(assignment, user);
+
+        if (
+            !isAtLeastRole(user.role, UserRole.TEACHING_ASSISTANT) &&
+            !STUDENT_VISIBLE_STATUSES.includes(assignment.status)
+        ) {
             throw new NotFoundException('Assignment not found');
         }
         return assignment;
