@@ -62,6 +62,14 @@ const MAX_CORRELATION_PAGES = 10;
 /** Slack on top of the assignment's own timeout before force-completing. */
 const TIMEOUT_GRACE_MS = 5 * 60_000;
 
+/**
+ * How long a run may wait in GitHub's queue before we give up on it. Separate
+ * from the assignment's timeout, which is about grading time: in a deadline
+ * rush, org concurrency limits queue runs for a long while, and timing those
+ * out would cost students a run they can no longer redo before the deadline.
+ */
+const QUEUED_TIMEOUT_MS = 6 * 60 * 60_000;
+
 /** Backoff for the reconcile recurrence, in seconds, last value repeating. */
 const RECONCILE_DELAYS_SECONDS = [5, 5, 10, 10, 20, 30, 60];
 
@@ -335,17 +343,23 @@ export class RunsService {
         await this.applyRunState(run, remote);
 
         // A run GitHub has forgotten about, or one wedged past its own timeout,
-        // must not stay live forever.
+        // must not stay live forever. The grading timeout runs from when the
+        // run started; time in the queue has its own, longer ceiling.
         const timeoutMs =
             (run.submission?.assignment?.runTimeoutMinutes ?? 10) * 60_000 +
             TIMEOUT_GRACE_MS;
+        // Time since dispatch bounds time since start, so below this nothing
+        // can be overdue and the read can be skipped.
         if (age > timeoutMs) {
             const fresh = await this.ciRunRepository.findOne({
                 where: { id: run.id },
             });
-            if (fresh && !fresh.isTerminal) {
+            const overdue = fresh?.startedAt
+                ? now - fresh.startedAt.getTime() > timeoutMs
+                : age > QUEUED_TIMEOUT_MS;
+            if (fresh && !fresh.isTerminal && overdue) {
                 this.logger.warn(
-                    `Run ${run.id} exceeded its timeout; forcing TIMED_OUT`,
+                    `Run ${run.id} exceeded its timeout${fresh.startedAt ? '' : ' while queued'}; forcing TIMED_OUT`,
                 );
                 await this.completeRun(run.id, CIRunConclusion.TIMED_OUT);
             }
@@ -368,11 +382,21 @@ export class RunsService {
                 githubRunAttempt: remote.runAttempt,
                 ...(status === CIRunStatus.COMPLETED ? {} : { status }),
                 jobs,
-                startedAt: remote.runStartedAt
-                    ? new Date(remote.runStartedAt)
-                    : null,
             },
         );
+
+        // When we first see it out of the queue, which is what the grading
+        // timeout is measured from. Set once: later updates must not move it.
+        if (status !== CIRunStatus.QUEUED) {
+            await this.ciRunRepository.update(
+                {
+                    id: run.id,
+                    startedAt: IsNull(),
+                    status: Not(In(TERMINAL_STATUSES)),
+                },
+                { startedAt: new Date() },
+            );
+        }
 
         if (status === CIRunStatus.COMPLETED) {
             await this.completeRun(run.id, mapConclusion(remote.conclusion));

@@ -121,6 +121,10 @@ export class CIRun extends BaseEntity {
     @Column('timestamptz')
     dispatchedAt!: Date;
 
+    // When we first saw the run leave GitHub's queue. Deliberately not
+    // GitHub's run_started_at, whose value while a run is still queued is not
+    // something to rely on. The grading timeout is measured from here; null
+    // means still queued.
     @Column('timestamptz', { nullable: true })
     startedAt!: Date | null;
 

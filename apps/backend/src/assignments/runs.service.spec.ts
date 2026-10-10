@@ -397,6 +397,84 @@ describe('RunsService — completing a run', () => {
         });
     });
 
+    describe('timing out', () => {
+        const minutesAgo = (minutes: number) =>
+            new Date(Date.now() - minutes * 60_000);
+
+        beforeEach(() => {
+            // A run forced out has no report to read.
+            gitHubAppClient.listRunArtifacts.mockResolvedValue([]);
+        });
+
+        it('does not time out a run that is still queued', async () => {
+            // Past the 10-minute grading timeout, but it never started.
+            runRow.status = CIRunStatus.QUEUED;
+            runRow.dispatchedAt = minutesAgo(30);
+            gitHubAppClient.getWorkflowRun.mockResolvedValueOnce(
+                remote('queued', null),
+            );
+
+            await service.refresh(snapshot());
+
+            expect(runRow.status).toBe(CIRunStatus.QUEUED);
+            expect(runRow.startedAt).toBeNull();
+        });
+
+        it('times out a run that has been grading too long', async () => {
+            runRow.dispatchedAt = minutesAgo(40);
+            runRow.startedAt = minutesAgo(30);
+            gitHubAppClient.getWorkflowRun.mockResolvedValueOnce(
+                remote('in_progress', null),
+            );
+
+            await service.refresh(snapshot());
+
+            expect(runRow.status).toBe(CIRunStatus.COMPLETED);
+            expect(runRow.conclusion).toBe(CIRunConclusion.TIMED_OUT);
+        });
+
+        it('lets a run that waited in the queue have its full grading time', async () => {
+            runRow.dispatchedAt = minutesAgo(60);
+            runRow.startedAt = minutesAgo(5);
+            gitHubAppClient.getWorkflowRun.mockResolvedValueOnce(
+                remote('in_progress', null),
+            );
+
+            await service.refresh(snapshot());
+
+            expect(runRow.status).toBe(CIRunStatus.IN_PROGRESS);
+        });
+
+        it('gives up on a run queued past the queue ceiling', async () => {
+            runRow.status = CIRunStatus.QUEUED;
+            runRow.dispatchedAt = minutesAgo(7 * 60);
+            gitHubAppClient.getWorkflowRun.mockResolvedValueOnce(
+                remote('queued', null),
+            );
+
+            await service.refresh(snapshot());
+
+            expect(runRow.conclusion).toBe(CIRunConclusion.TIMED_OUT);
+        });
+
+        it('records when the run left the queue, once', async () => {
+            runRow.status = CIRunStatus.QUEUED;
+            await service.applyRunState(
+                snapshot(),
+                remote('in_progress', null),
+            );
+            const firstSeen = runRow.startedAt;
+
+            expect(firstSeen).toBeInstanceOf(Date);
+
+            await service.applyRunState(
+                snapshot(),
+                remote('in_progress', null),
+            );
+            expect(runRow.startedAt).toBe(firstSeen);
+        });
+    });
+
     it('still answers an editor poll when the refresh fails', async () => {
         gitHubAppClient.getWorkflowRun.mockRejectedValueOnce(
             new Error('GitHub is down'),
