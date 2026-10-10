@@ -11,10 +11,11 @@ import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
-import { ProvisionStatus } from '@/common/enum';
+import { ProvisionStatus, UserRole } from '@/common/enum';
 
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
@@ -22,7 +23,8 @@ describe('AdminAssignmentsService', () => {
     const assignmentRepository = { findOne: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
-    const exerciseScoreRepository = { exists: jest.fn() };
+    const membershipRepository = { find: jest.fn() };
+    const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
     const scoreWriteback = { sync: jest.fn() };
     const manager = {
         findOne: jest.fn(),
@@ -48,6 +50,10 @@ describe('AdminAssignmentsService', () => {
                     useValue: submissionRepository,
                 },
                 { provide: getRepositoryToken(Cohort), useValue: {} },
+                {
+                    provide: getRepositoryToken(CohortMembership),
+                    useValue: membershipRepository,
+                },
                 {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
@@ -77,13 +83,30 @@ describe('AdminAssignmentsService', () => {
     });
 
     describe('regrade', () => {
+        const inCohort = (id: string) =>
+            ({ id, cohortWeek: { cohort: { id: 'cohort-1' } } }) as Assignment;
+        const enrolled = (...userIds: string[]) =>
+            membershipRepository.find.mockResolvedValue(
+                userIds.map((id) => ({ user: { id } })),
+            );
+        const by = (
+            userId: string,
+            id = userId,
+            bestRun: object | null = null,
+        ) => ({
+            id,
+            user: { id: userId },
+            bestRun,
+        });
+
         it('re-grades only submissions that have not passed, against the assignment it loaded', async () => {
-            const assignment = { id: 'assignment-1' } as Assignment;
+            const assignment = inCohort('assignment-1');
             assignmentRepository.findOne.mockResolvedValue(assignment);
+            enrolled('s1', 's2', 's3');
             submissionRepository.find.mockResolvedValue([
-                { id: 'passed', bestRun: { id: 'run-0' } },
-                { id: 'eligible', bestRun: null },
-                { id: 'nothing-eligible', bestRun: null },
+                by('s1', 'passed', { id: 'run-0' }),
+                by('s2', 'eligible'),
+                by('s3', 'nothing-eligible'),
             ]);
             runsService.dispatchRegrade.mockImplementation(
                 async (submission: { id: string }) =>
@@ -103,10 +126,11 @@ describe('AdminAssignmentsService', () => {
         });
 
         it('counts a failed dispatch as skipped rather than aborting the rest', async () => {
-            assignmentRepository.findOne.mockResolvedValue({ id: 'a' });
+            assignmentRepository.findOne.mockResolvedValue(inCohort('a'));
+            enrolled('s1', 's2');
             submissionRepository.find.mockResolvedValue([
-                { id: 'broken', bestRun: null },
-                { id: 'fine', bestRun: null },
+                by('s1', 'broken'),
+                by('s2', 'fine'),
             ]);
             runsService.dispatchRegrade
                 .mockRejectedValueOnce(new Error('GitHub is down'))
@@ -115,6 +139,64 @@ describe('AdminAssignmentsService', () => {
             const result = await service.regrade('a', staff);
 
             expect(result).toEqual({ dispatched: 1, skipped: 1 });
+        });
+
+        it("re-grades only the cohort's current students", async () => {
+            // Staff trying the assignment, and a student since removed, keep
+            // their submissions but have no score anyone reads.
+            assignmentRepository.findOne.mockResolvedValue(inCohort('a'));
+            enrolled('student');
+            submissionRepository.find.mockResolvedValue([
+                by('student'),
+                by('ta'),
+                by('withdrawn'),
+            ]);
+            runsService.dispatchRegrade.mockResolvedValue({ id: 'run-1' });
+
+            const result = await service.regrade('a', staff);
+
+            expect(membershipRepository.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: {
+                        cohort: { id: 'cohort-1' },
+                        user: { role: UserRole.STUDENT },
+                    },
+                }),
+            );
+            expect(runsService.dispatchRegrade).toHaveBeenCalledTimes(1);
+            expect(runsService.dispatchRegrade).toHaveBeenCalledWith(
+                expect.objectContaining({ id: 'student' }),
+                expect.anything(),
+                staff,
+            );
+            expect(result).toEqual({ dispatched: 1, skipped: 0 });
+        });
+    });
+
+    describe('listSubmissions', () => {
+        it("lists only the cohort's current students", async () => {
+            assignmentRepository.findOne.mockResolvedValue({
+                id: 'a',
+                cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
+            });
+            membershipRepository.find.mockResolvedValue([
+                { user: { id: 'student' } },
+            ]);
+            const submission = (id: string, userId: string) =>
+                Object.assign(new AssignmentSubmission(), {
+                    id,
+                    user: { id: userId },
+                    acceptedAt: new Date(),
+                });
+            submissionRepository.find.mockResolvedValue([
+                submission('mine', 'student'),
+                submission('staff-trial', 'ta'),
+            ]);
+            exerciseScoreRepository.find.mockResolvedValue([]);
+
+            const listed = await service.listSubmissions('a');
+
+            expect(listed.map((s) => s.id)).toEqual(['mine']);
         });
     });
 

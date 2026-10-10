@@ -10,6 +10,7 @@ import { In, Repository } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { User } from '@/entities/user.entity';
@@ -20,7 +21,7 @@ import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
-import { AssignmentBackend, ProvisionStatus } from '@/common/enum';
+import { AssignmentBackend, ProvisionStatus, UserRole } from '@/common/enum';
 import {
     AdminSubmissionResponseDto,
     ArchiveAssignmentResponseDto,
@@ -55,6 +56,8 @@ export class AdminAssignmentsService {
         private readonly submissionRepository: Repository<AssignmentSubmission>,
         @InjectRepository(Cohort)
         private readonly cohortRepository: Repository<Cohort>,
+        @InjectRepository(CohortMembership)
+        private readonly membershipRepository: Repository<CohortMembership>,
         @InjectRepository(ExerciseScore)
         private readonly exerciseScoreRepository: Repository<ExerciseScore>,
         private readonly cohortsConfigService: CohortsConfigService,
@@ -131,10 +134,15 @@ export class AdminAssignmentsService {
     ): Promise<AdminSubmissionResponseDto[]> {
         const assignment = await this.loadAssignment(assignmentId);
 
-        const submissions = await this.submissionRepository.find({
-            where: { assignment: { id: assignmentId } },
-            relations: { user: true, latestRun: true, bestRun: true },
-        });
+        const students = await this.currentStudentIds(
+            assignment.cohortWeek.cohort.id,
+        );
+        const submissions = (
+            await this.submissionRepository.find({
+                where: { assignment: { id: assignmentId } },
+                relations: { user: true, latestRun: true, bestRun: true },
+            })
+        ).filter((submission) => students.has(submission.user.id));
         if (submissions.length === 0) return [];
 
         const scores = await this.exerciseScoreRepository.find({
@@ -222,13 +230,18 @@ export class AdminAssignmentsService {
     ): Promise<RegradeResponseDto> {
         const assignment = await this.loadAssignment(assignmentId);
 
-        const submissions = await this.submissionRepository.find({
-            where: {
-                assignment: { id: assignmentId },
-                provisionStatus: ProvisionStatus.READY,
-            },
-            relations: { user: true, bestRun: true },
-        });
+        const students = await this.currentStudentIds(
+            assignment.cohortWeek.cohort.id,
+        );
+        const submissions = (
+            await this.submissionRepository.find({
+                where: {
+                    assignment: { id: assignmentId },
+                    provisionStatus: ProvisionStatus.READY,
+                },
+                relations: { user: true, bestRun: true },
+            })
+        ).filter((submission) => students.has(submission.user.id));
 
         let dispatched = 0;
         let skipped = 0;
@@ -375,6 +388,24 @@ export class AdminAssignmentsService {
             `Archived ${archived} repos for cohort ${cohortId} (${failed} failed)`,
         );
         return new ArchiveAssignmentResponseDto(archived, failed);
+    }
+
+    /**
+     * The students enrolled in a cohort right now. Every cohort-facing view of
+     * its submissions is limited to them: staff can accept and run an
+     * assignment without being part of the cohort's progress, and a removed
+     * student's submission stays behind but no longer counts — re-grading it
+     * would only spend Actions minutes on a score nobody reads.
+     */
+    private async currentStudentIds(cohortId: string): Promise<Set<string>> {
+        const memberships = await this.membershipRepository.find({
+            where: {
+                cohort: { id: cohortId },
+                user: { role: UserRole.STUDENT },
+            },
+            relations: { user: true },
+        });
+        return new Set(memberships.map((membership) => membership.user.id));
     }
 
     private async loadAssignment(assignmentId: string): Promise<Assignment> {
