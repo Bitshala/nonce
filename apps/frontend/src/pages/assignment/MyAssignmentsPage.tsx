@@ -30,7 +30,10 @@ import {
   BUCKET_META,
   type ChipColor,
 } from '../../components/assignment/chips.ts';
-import { isProvisioning } from '../../components/assignment/provision.ts';
+import {
+  isProvisioning,
+  listProvisionRefetchInterval,
+} from '../../components/assignment/provision.ts';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
 import { formatDate } from '../../utils/dateUtils.ts';
 import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
@@ -126,7 +129,16 @@ const findUpNext = (
 
 export const MyAssignmentsPage = () => {
   const navigate = useNavigate();
-  const { data: assignments, isLoading, isError, error } = useMyAssignments();
+  // Polls while anything is setting up, so a workspace whose drawer was
+  // closed still turns up as ready.
+  const {
+    data: assignments,
+    isLoading,
+    isError,
+    error,
+  } = useMyAssignments(undefined, {
+    refetchInterval: listProvisionRefetchInterval,
+  });
   const [selectedCourse, setSelectedCourse] = useState<string | null>(() =>
     readStored('assignments-course')
   );

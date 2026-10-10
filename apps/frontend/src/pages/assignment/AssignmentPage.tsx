@@ -36,7 +36,13 @@ export const AssignmentPage = () => {
     assignment?.title ? `${assignment.title} — Exercise` : 'Exercise'
   );
 
-  useOpenEditorWhenReady(assignmentId, assignment?.submission?.provisionStatus);
+  useOpenEditorWhenReady(
+    assignmentId,
+    assignment?.submission?.provisionStatus,
+    {
+      replace: true,
+    }
+  );
 
   if (isLoading || isError || !assignment) {
     return (
