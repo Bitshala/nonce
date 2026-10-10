@@ -6,14 +6,16 @@
  * repository. There is no push path around them.
  */
 
+import { MAX_FILE_BYTES } from '@nonce/shared/constants';
 import { isProtectedPath, matchesGlob } from '@nonce/shared/protected-paths';
 
 // The glob matcher lives in the shared package so the editor greys out exactly
 // the paths refused here. Re-exported so callers keep importing from this file.
 export { isProtectedPath, matchesGlob };
 
-/** Per-file ceiling. Anything larger is not something the editor can edit. */
-export const MAX_FILE_BYTES = 1024 * 1024;
+// Per-file ceiling, shared with the editor so it can skip what would be
+// refused. Re-exported so callers keep importing from this file.
+export { MAX_FILE_BYTES };
 
 /** Ceiling on one save's total payload. */
 export const MAX_TOTAL_BYTES = 5 * 1024 * 1024;

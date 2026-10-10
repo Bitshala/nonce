@@ -44,3 +44,9 @@ export const BONUS_RAW_MAX =
 
 /** Total raw group-discussion score before scaling into SCALING_FACTOR.GD (150). */
 export const GD_RAW_MAX = GD_TRAITS_RAW_MAX + BONUS_RAW_MAX;
+
+/**
+ * Largest file the editor saves, and the largest draft the API keeps. The API
+ * enforces it; the editor reads it to skip sending what would be refused.
+ */
+export const MAX_FILE_BYTES = 1024 * 1024;
