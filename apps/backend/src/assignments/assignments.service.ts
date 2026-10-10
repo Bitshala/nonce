@@ -5,7 +5,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, In, MoreThanOrEqual, Repository } from 'typeorm';
 import { QueryFailedError } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
@@ -235,13 +235,19 @@ export class AssignmentsService {
     /**
      * Runs the student dispatched since UTC midnight, for the per-day quota.
      * Only their own: a staff regrade on their submission must not use up the
-     * runs they have left. Needs `submission.user` loaded.
+     * runs they have left. Needs `submission.user` loaded. Pass the manager
+     * when the count has to see an open transaction's own writes and locks.
      */
-    async countRunsToday(submission: AssignmentSubmission): Promise<number> {
+    async countRunsToday(
+        submission: AssignmentSubmission,
+        manager?: EntityManager,
+    ): Promise<number> {
         const startOfDay = new Date();
         startOfDay.setUTCHours(0, 0, 0, 0);
 
-        return this.ciRunRepository.count({
+        const repository =
+            manager?.getRepository(CIRun) ?? this.ciRunRepository;
+        return repository.count({
             where: {
                 submission: { id: submission.id },
                 triggeredByUser: { id: submission.user.id },

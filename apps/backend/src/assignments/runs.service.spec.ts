@@ -57,6 +57,7 @@ async function compileRunsService(deps: {
     ciRunLogRepository?: object;
     gitHubAppClient?: object;
     assignmentsService?: object;
+    submissionsService?: object;
     scoreWriteback?: object;
     dbTransactionService?: object;
     cacheManager?: object;
@@ -78,7 +79,10 @@ async function compileRunsService(deps: {
                 provide: AssignmentsService,
                 useValue: deps.assignmentsService ?? {},
             },
-            { provide: SubmissionsService, useValue: {} },
+            {
+                provide: SubmissionsService,
+                useValue: deps.submissionsService ?? {},
+            },
             {
                 provide: ExerciseScoreWritebackService,
                 useValue: deps.scoreWriteback ?? {},
@@ -331,6 +335,8 @@ describe('RunsService — regrade', () => {
         dispatchWorkflow: jest.fn(async () => undefined),
     };
     const manager = {
+        // The locked submission row, then nothing in flight.
+        findOne: jest.fn<Promise<null>, [unknown, unknown]>(async () => null),
         create: jest.fn((_: unknown, fields: object) => ({
             id: 'run-new',
             ...fields,
@@ -386,9 +392,7 @@ describe('RunsService — regrade', () => {
     afterEach(() => jest.clearAllMocks());
 
     it('past the deadline, grades the commit of the last run that counted', async () => {
-        ciRunRepository.findOne
-            .mockResolvedValueOnce({ commitSha: ELIGIBLE }) // last eligible run
-            .mockResolvedValueOnce(null); // nothing already in flight
+        ciRunRepository.findOne.mockResolvedValueOnce({ commitSha: ELIGIBLE });
 
         const run = await service.dispatchRegrade(
             submission(),
@@ -411,8 +415,6 @@ describe('RunsService — regrade', () => {
     });
 
     it('before the deadline, grades the latest commit', async () => {
-        ciRunRepository.findOne.mockResolvedValueOnce(null);
-
         const run = await service.dispatchRegrade(
             submission(),
             beforeDeadline(),
@@ -448,20 +450,150 @@ describe('RunsService — regrade', () => {
     });
 
     it('does not take a practice run in flight on the same commit as the regrade', async () => {
-        ciRunRepository.findOne
-            .mockResolvedValueOnce({ commitSha: ELIGIBLE })
-            .mockResolvedValueOnce(null);
+        ciRunRepository.findOne.mockResolvedValueOnce({ commitSha: ELIGIBLE });
 
         await service.dispatchRegrade(submission(), pastDeadline(), staff);
 
-        const [inFlightQuery] = ciRunRepository.findOne.mock.calls[1] as [
-            { where: Record<string, unknown> },
-        ];
+        const [, inFlightQuery] = manager.findOne.mock.calls.find(
+            ([target]) => target === CIRun,
+        ) as unknown as [unknown, { where: Record<string, unknown> }];
         expect(inFlightQuery.where).toEqual(
             expect.objectContaining({
                 commitSha: ELIGIBLE,
                 countsForScore: true,
             }),
         );
+    });
+});
+
+// Run is the one student action that spends something real — Actions minutes
+// and their daily quota — so the in-flight de-dupe and the quota have to hold
+// when requests arrive together: two tabs, a double click, or a script.
+describe('RunsService — starting runs concurrently', () => {
+    let service: RunsService;
+
+    // The runs table, and the row lock on the submission: whoever takes it
+    // waits for the previous holder's transaction to finish.
+    let runs: { id: string; commitSha: string; status: CIRunStatus }[];
+    let lockQueue: Promise<void>;
+
+    const inFlightOn = (commitSha: string) =>
+        runs.find(
+            (run) => run.commitSha === commitSha && run.status !== 'COMPLETED',
+        ) ?? null;
+
+    const newManager = (releaseOnCommit: (release: () => void) => void) => ({
+        findOne: jest.fn(
+            async (
+                target: unknown,
+                options: {
+                    where: { commitSha?: string };
+                    lock?: unknown;
+                },
+            ) => {
+                if (target === AssignmentSubmission) {
+                    if (options.lock) {
+                        const previous = lockQueue;
+                        lockQueue = new Promise((resolve) =>
+                            releaseOnCommit(resolve),
+                        );
+                        await previous;
+                    }
+                    return { id: 'submission-1' };
+                }
+                return inFlightOn(options.where.commitSha ?? '');
+            },
+        ),
+        create: jest.fn((_: unknown, fields: { commitSha: string }) => ({
+            id: `run-${runs.length + 1}`,
+            ...fields,
+        })),
+        save: jest.fn(async (entity: { commitSha?: string }) => {
+            if (entity.commitSha) runs.push(entity as (typeof runs)[number]);
+        }),
+        update: jest.fn(async () => ({ affected: 1 })),
+    });
+
+    const dbTransactionService = {
+        execute: jest.fn(async (cb: (m: unknown) => unknown) => {
+            let release: () => void = () => undefined;
+            try {
+                return await cb(newManager((r) => (release = r)));
+            } finally {
+                release();
+            }
+        }),
+    };
+    const ciRunRepository = {
+        findOne: jest.fn(async ({ where }: { where: { commitSha: string } }) =>
+            inFlightOn(where.commitSha),
+        ),
+        update: jest.fn(async () => ({ affected: 1 })),
+    };
+    const gitHubAppClient = {
+        dispatchWorkflow: jest.fn(async () => undefined),
+    };
+    const assignmentsService = {
+        assertOpenForSubmission: jest.fn(),
+        countRunsToday: jest.fn(async () => runs.length),
+    };
+
+    const student = { id: 'student-1' } as User;
+    const withQuota = (maxRunsPerDay: number) => ({
+        loadReadySubmission: jest.fn(async () =>
+            Object.assign(new AssignmentSubmission(), {
+                id: 'submission-1',
+                user: student,
+                repoOwner: 'org',
+                repoName: 'repo',
+                assignment: Object.assign(new Assignment(), {
+                    slug: 'pb-week-1-s4',
+                    deadline: null,
+                    maxRunsPerDay,
+                    runTimeoutMinutes: 10,
+                }),
+            }),
+        ),
+    });
+
+    const start = async (maxRunsPerDay: number) => {
+        runs = [];
+        lockQueue = Promise.resolve();
+        service = await compileRunsService({
+            ciRunRepository,
+            gitHubAppClient,
+            assignmentsService,
+            submissionsService: withQuota(maxRunsPerDay),
+            dbTransactionService,
+        });
+    };
+
+    afterEach(() => jest.clearAllMocks());
+
+    it('dispatches once when Run is pressed several times on one commit', async () => {
+        await start(50);
+        const sha = 'a'.repeat(40);
+
+        const results = await Promise.all(
+            Array.from({ length: 5 }, () =>
+                service.createRun('submission-1', sha, student),
+            ),
+        );
+
+        expect(gitHubAppClient.dispatchWorkflow).toHaveBeenCalledTimes(1);
+        expect(new Set(results.map((r) => r.id)).size).toBe(1);
+    });
+
+    it('holds the daily quota against parallel runs on different commits', async () => {
+        await start(2);
+
+        const results = await Promise.allSettled(
+            ['a', 'b', 'c', 'd', 'e'].map((c) =>
+                service.createRun('submission-1', c.repeat(40), student),
+            ),
+        );
+
+        expect(gitHubAppClient.dispatchWorkflow).toHaveBeenCalledTimes(2);
+        expect(results.filter((r) => r.status === 'rejected')).toHaveLength(3);
     });
 });

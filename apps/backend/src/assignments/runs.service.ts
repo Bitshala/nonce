@@ -107,29 +107,20 @@ export class RunsService {
         const assignment = submission.assignment;
         this.assignmentsService.assertOpenForSubmission(assignment);
 
-        // Re-pressing Run on a commit that is already grading returns the run in
-        // flight rather than burning quota on a duplicate.
-        const inFlight = await this.findInFlight(submission.id, commitSha);
-        if (inFlight) {
-            return this.toDetail(inFlight, submission);
-        }
-
-        const runsToday =
-            await this.assignmentsService.countRunsToday(submission);
-        if (runsToday >= assignment.maxRunsPerDay) {
-            throw new ForbiddenException(
-                `You have used all ${assignment.maxRunsPerDay} runs for today on this assignment.`,
-            );
-        }
-
         const run = await this.dispatch(
             submission,
             assignment,
             commitSha,
             user,
-            // Frozen now: a run started before the deadline still counts even
-            // if it finishes after it.
-            !assignment.isPastDeadline(),
+            {
+                // Frozen now: a run started before the deadline still counts
+                // even if it finishes after it.
+                countsForScore: !assignment.isPastDeadline(),
+                // Re-pressing Run on a commit that is already grading returns
+                // the run in flight rather than burning quota on a duplicate.
+                reuseInFlight: 'any',
+                dailyQuota: assignment.maxRunsPerDay,
+            },
         );
         return this.toDetail(run, submission);
     }
@@ -164,17 +155,13 @@ export class RunsService {
         }
         if (!commitSha) return null;
 
-        // Only a run that can score may stand in for this one: a student's
-        // practice run on the same commit can be in flight, but passing it
-        // changes nothing.
-        const inFlight = await this.findInFlight(
-            submission.id,
-            commitSha,
-            true,
-        );
-        if (inFlight) return inFlight;
-
-        return this.dispatch(submission, assignment, commitSha, actor, true);
+        return this.dispatch(submission, assignment, commitSha, actor, {
+            countsForScore: true,
+            // Only a run that can score may stand in for this one: a student's
+            // practice run on the same commit can be in flight, but passing it
+            // changes nothing.
+            reuseInFlight: 'scoring',
+        });
     }
 
     async listRuns(
@@ -615,60 +602,86 @@ export class RunsService {
         return true;
     }
 
-    private findInFlight(
-        submissionId: string,
-        commitSha: string,
-        countsForScore?: boolean,
-    ): Promise<CIRun | null> {
-        return this.ciRunRepository.findOne({
-            where: {
-                submission: { id: submissionId },
-                commitSha,
-                status: Not(In(TERMINAL_STATUSES)),
-                ...(countsForScore === undefined ? {} : { countsForScore }),
-            },
-            relations: { submission: true },
-        });
-    }
-
-    /** Records the run, then asks GitHub to start it. */
+    /**
+     * Records the run, then asks GitHub to start it — unless a run already in
+     * flight on the same commit can stand in for it, which is returned instead.
+     */
     private async dispatch(
         submission: AssignmentSubmission,
         assignment: Assignment,
         commitSha: string,
         triggeredBy: User,
-        countsForScore: boolean,
+        options: DispatchOptions,
     ): Promise<CIRun> {
+        const { countsForScore } = options;
         const correlationToken = randomUUID();
-        const run = await this.dbTransactionService.execute(async (manager) => {
-            const created = manager.create(CIRun, {
-                submission,
-                triggeredByUser: triggeredBy,
-                commitSha,
-                correlationToken,
-                status: CIRunStatus.DISPATCHING,
-                dispatchedAt: new Date(),
-                countsForScore,
-                jobs: [],
-            });
-            await manager.save(created);
+        const { run, isNew } = await this.dbTransactionService.execute(
+            async (manager) => {
+                // Serialises dispatches for this submission. The in-flight and
+                // quota checks only hold while nothing else can insert a run
+                // between them and this insert; without the lock, parallel
+                // Runs all pass both checks and all dispatch.
+                await manager.findOne(AssignmentSubmission, {
+                    where: { id: submission.id },
+                    lock: { mode: 'pessimistic_write' },
+                });
 
-            await manager.update(
-                AssignmentSubmission,
-                { id: submission.id },
-                { latestRun: { id: created.id } },
-            );
+                const inFlight = await manager.findOne(CIRun, {
+                    where: {
+                        submission: { id: submission.id },
+                        commitSha,
+                        status: Not(In(TERMINAL_STATUSES)),
+                        ...(options.reuseInFlight === 'scoring'
+                            ? { countsForScore: true }
+                            : {}),
+                    },
+                    relations: { submission: true },
+                });
+                if (inFlight) return { run: inFlight, isNew: false };
 
-            await manager.save(
-                this.buildReconcileTask(
-                    created.id,
-                    0,
-                    new APITask<TaskType.RECONCILE_CI_RUN>(),
-                ),
-            );
+                if (options.dailyQuota !== undefined) {
+                    const runsToday =
+                        await this.assignmentsService.countRunsToday(
+                            submission,
+                            manager,
+                        );
+                    if (runsToday >= options.dailyQuota) {
+                        throw new ForbiddenException(
+                            `You have used all ${options.dailyQuota} runs for today on this assignment.`,
+                        );
+                    }
+                }
 
-            return created;
-        });
+                const created = manager.create(CIRun, {
+                    submission,
+                    triggeredByUser: triggeredBy,
+                    commitSha,
+                    correlationToken,
+                    status: CIRunStatus.DISPATCHING,
+                    dispatchedAt: new Date(),
+                    countsForScore,
+                    jobs: [],
+                });
+                await manager.save(created);
+
+                await manager.update(
+                    AssignmentSubmission,
+                    { id: submission.id },
+                    { latestRun: { id: created.id } },
+                );
+
+                await manager.save(
+                    this.buildReconcileTask(
+                        created.id,
+                        0,
+                        new APITask<TaskType.RECONCILE_CI_RUN>(),
+                    ),
+                );
+
+                return { run: created, isNew: true };
+            },
+        );
+        if (!isNew) return run;
 
         await this.gitHubAppClient.dispatchWorkflow({
             owner: this.graderOwner,
@@ -724,6 +737,14 @@ export class RunsService {
             hasLogs,
         );
     }
+}
+
+interface DispatchOptions {
+    countsForScore: boolean;
+    /** Which run already in flight on the same commit may stand in for this one. */
+    reuseInFlight: 'any' | 'scoring';
+    /** The student's runs-per-day limit; absent for staff, who have none. */
+    dailyQuota?: number;
 }
 
 /** GitHub's run statuses collapse to the three the UI distinguishes. */
