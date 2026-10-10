@@ -8,6 +8,7 @@ import { CIRun } from '@/entities/ci-run.entity';
 describe('GitHubWebhookController', () => {
     let cache: Map<string, unknown>;
     let runsService: {
+        isGraderRepo: jest.Mock;
         findRunByCorrelationToken: jest.Mock;
         findRunByGithubRunId: jest.Mock;
         applyRunState: jest.Mock;
@@ -20,6 +21,7 @@ describe('GitHubWebhookController', () => {
     });
     const workflowRun = {
         action: 'completed',
+        repository: { full_name: 'org/grader' },
         workflow_run: {
             id: 42,
             run_attempt: 1,
@@ -41,6 +43,7 @@ describe('GitHubWebhookController', () => {
     beforeEach(() => {
         cache = new Map();
         runsService = {
+            isGraderRepo: jest.fn((name: string) => name === 'org/grader'),
             findRunByCorrelationToken: jest.fn(async () => live),
             findRunByGithubRunId: jest.fn(async () => live),
             applyRunState: jest.fn(async () => undefined),
@@ -73,6 +76,38 @@ describe('GitHubWebhookController', () => {
             await deliver('delivery-1');
 
             expect(runsService.applyRunState).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('where a run comes from', () => {
+        it('ignores a run from any repo but the grader', async () => {
+            // A student repo's workflow can be titled grade-<token> too.
+            await controller.receive('workflow_run', 'delivery-1', {
+                ...workflowRun,
+                repository: { full_name: 'org/pb-week-1-s4-student-1' },
+            });
+            await settle();
+
+            expect(
+                runsService.findRunByCorrelationToken,
+            ).not.toHaveBeenCalled();
+            expect(runsService.applyRunState).not.toHaveBeenCalled();
+        });
+
+        it('ignores a job event from any repo but the grader', async () => {
+            await controller.receive('workflow_job', 'delivery-1', {
+                repository: { full_name: 'org/elsewhere' },
+                workflow_job: {
+                    id: 7,
+                    run_id: 42,
+                    name: 'grade',
+                    status: 'completed',
+                    conclusion: 'success',
+                },
+            });
+            await settle();
+
+            expect(runsService.findRunByGithubRunId).not.toHaveBeenCalled();
         });
     });
 });

@@ -21,6 +21,10 @@ import { CIRunJob } from '@/entities/ci-run.entity';
 /** Long enough to cover GitHub's redelivery window. */
 const DELIVERY_DEDUPE_TTL_MS = 10 * 60 * 1000;
 
+interface RepositoryPayload {
+    repository?: { full_name: string };
+}
+
 interface WorkflowRunPayload {
     action?: string;
     workflow_run?: {
@@ -81,7 +85,8 @@ export class GitHubWebhookController {
     async receive(
         @Headers('x-github-event') event: string,
         @Headers('x-github-delivery') deliveryId: string,
-        @Body() payload: WorkflowRunPayload & WorkflowJobPayload,
+        @Body()
+        payload: RepositoryPayload & WorkflowRunPayload & WorkflowJobPayload,
     ): Promise<{ accepted: boolean }> {
         const key = deliveryId ? `webhook:delivery:${deliveryId}` : null;
         if (key && (await this.cacheManager.get(key))) {
@@ -108,8 +113,18 @@ export class GitHubWebhookController {
 
     private async process(
         event: string,
-        payload: WorkflowRunPayload & WorkflowJobPayload,
+        payload: RepositoryPayload & WorkflowRunPayload & WorkflowJobPayload,
     ): Promise<void> {
+        // The App is installed on student repos too, and a run there can carry
+        // any title. Only the grader repo's runs say anything about a grade.
+        const repository = payload.repository?.full_name;
+        if (!this.runsService.isGraderRepo(repository)) {
+            this.logger.warn(
+                `Ignoring ${event} from ${repository ?? 'an unnamed repository'}, which is not the grader repo`,
+            );
+            return;
+        }
+
         if (event === 'workflow_run') {
             await this.handleWorkflowRun(payload);
             return;

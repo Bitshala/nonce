@@ -61,6 +61,7 @@ async function compileRunsService(deps: {
     scoreWriteback?: object;
     dbTransactionService?: object;
     cacheManager?: object;
+    config?: Record<string, string>;
 }): Promise<RunsService> {
     const module: TestingModule = await Test.createTestingModule({
         providers: [
@@ -92,7 +93,10 @@ async function compileRunsService(deps: {
                 useValue: deps.dbTransactionService ?? {},
             },
             { provide: CACHE_MANAGER, useValue: deps.cacheManager ?? {} },
-            { provide: ConfigService, useValue: { get: () => undefined } },
+            {
+                provide: ConfigService,
+                useValue: { get: (key: string) => deps.config?.[key] },
+            },
         ],
     }).compile();
     return module.get(RunsService);
@@ -595,5 +599,25 @@ describe('RunsService — starting runs concurrently', () => {
 
         expect(gitHubAppClient.dispatchWorkflow).toHaveBeenCalledTimes(2);
         expect(results.filter((r) => r.status === 'rejected')).toHaveLength(3);
+    });
+});
+
+describe('RunsService — isGraderRepo', () => {
+    it('recognises the configured grader repo, in any case', async () => {
+        const service = await compileRunsService({
+            config: { 'githubApp.graderRepo': 'Bitshala-Classrooms/grader' },
+        });
+
+        expect(service.isGraderRepo('bitshala-classrooms/GRADER')).toBe(true);
+        expect(service.isGraderRepo('Bitshala-Classrooms/pb-week-1')).toBe(
+            false,
+        );
+        expect(service.isGraderRepo(undefined)).toBe(false);
+    });
+
+    it('trusts no repo when none is configured', async () => {
+        const service = await compileRunsService({});
+
+        expect(service.isGraderRepo('/')).toBe(false);
     });
 });

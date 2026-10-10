@@ -372,6 +372,16 @@ export class RunsService {
         return runs.find((run) => run.displayTitle === expected) ?? null;
     }
 
+    /** Whether `owner/repo` names the repo grading runs execute in. */
+    isGraderRepo(fullName: string | undefined): boolean {
+        if (!fullName || !this.graderOwner || !this.graderRepo) return false;
+        // GitHub names are case-insensitive.
+        return (
+            fullName.toLowerCase() ===
+            `${this.graderOwner}/${this.graderRepo}`.toLowerCase()
+        );
+    }
+
     async findRunByGithubRunId(githubRunId: number): Promise<CIRun | null> {
         return this.ciRunRepository.findOne({
             where: { githubRunId: String(githubRunId) },
