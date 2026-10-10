@@ -111,14 +111,19 @@ describe('AdminAssignmentsService', () => {
                 sub('u5', { isPassingOverride: true }),
                 sub('staff', { bestRun: { id: 'r' } }),
             ]);
-            membershipRepository.find.mockResolvedValue([
+            const memberships = [
                 ...['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
                     cohort,
                     user: { id, role: UserRole.STUDENT },
                 })),
                 // A TA enrolled in the cohort is neither counted nor tallied.
                 { cohort, user: { id: 'staff', role: UserRole.ADMIN } },
-            ]);
+            ];
+            // Filters on role the way the query's WHERE does.
+            membershipRepository.find.mockImplementation(
+                async ({ where }: { where: { user: { role: UserRole } } }) =>
+                    memberships.filter((m) => m.user.role === where.user.role),
+            );
 
             const [row] = await service.listAssignments();
 
@@ -139,7 +144,10 @@ describe('AdminAssignmentsService', () => {
             ({ id, cohortWeek: { cohort: { id: 'cohort-1' } } }) as Assignment;
         const enrolled = (...userIds: string[]) =>
             membershipRepository.find.mockResolvedValue(
-                userIds.map((id) => ({ user: { id } })),
+                userIds.map((id) => ({
+                    cohort: { id: 'cohort-1' },
+                    user: { id },
+                })),
             );
         const by = (
             userId: string,
@@ -232,7 +240,7 @@ describe('AdminAssignmentsService', () => {
                 cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
             });
             membershipRepository.find.mockResolvedValue([
-                { user: { id: 'student' } },
+                { cohort: { id: 'cohort-1' }, user: { id: 'student' } },
             ]);
             const submission = (id: string, userId: string) =>
                 Object.assign(new AssignmentSubmission(), {

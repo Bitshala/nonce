@@ -152,7 +152,7 @@ export class AdminAssignmentsService {
         if (assignments.length === 0) return [];
 
         // ponytail: loads every submission to tally in memory; switch to a GROUP BY if this grows past a few thousand.
-        const [submissions, memberships] = await Promise.all([
+        const [submissions, studentsByCohort] = await Promise.all([
             this.submissionRepository.find({
                 relations: {
                     assignment: true,
@@ -161,18 +161,8 @@ export class AdminAssignmentsService {
                     latestRun: true,
                 },
             }),
-            this.membershipRepository.find({
-                relations: { cohort: true, user: true },
-            }),
+            this.currentStudentsByCohort(),
         ]);
-        // Only current students are tallied (see currentStudentIds).
-        const studentsByCohort = new Map<string, Set<string>>();
-        for (const m of memberships) {
-            if (m.user.role !== UserRole.STUDENT) continue;
-            const students = studentsByCohort.get(m.cohort.id) ?? new Set();
-            students.add(m.user.id);
-            studentsByCohort.set(m.cohort.id, students);
-        }
         const cohortOf = new Map(
             assignments.map((a) => [a.id, a.cohortWeek.cohort.id] as const),
         );
@@ -476,14 +466,31 @@ export class AdminAssignmentsService {
      * would only spend Actions minutes on a score nobody reads.
      */
     private async currentStudentIds(cohortId: string): Promise<Set<string>> {
+        const byCohort = await this.currentStudentsByCohort(cohortId);
+        return byCohort.get(cohortId) ?? new Set();
+    }
+
+    /**
+     * `currentStudentIds` for one cohort or, without an id, every cohort at
+     * once — what the tallies need. One query either way, and one rule.
+     */
+    private async currentStudentsByCohort(
+        cohortId?: string,
+    ): Promise<Map<string, Set<string>>> {
         const memberships = await this.membershipRepository.find({
             where: {
-                cohort: { id: cohortId },
+                ...(cohortId ? { cohort: { id: cohortId } } : {}),
                 user: { role: UserRole.STUDENT },
             },
-            relations: { user: true },
+            relations: { cohort: true, user: true },
         });
-        return new Set(memberships.map((membership) => membership.user.id));
+        const byCohort = new Map<string, Set<string>>();
+        for (const membership of memberships) {
+            const students = byCohort.get(membership.cohort.id) ?? new Set();
+            students.add(membership.user.id);
+            byCohort.set(membership.cohort.id, students);
+        }
+        return byCohort;
     }
 
     private async loadAssignment(assignmentId: string): Promise<Assignment> {
