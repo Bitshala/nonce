@@ -52,6 +52,7 @@ describe('AssignmentProvisioningService', () => {
     const claimCriteria = {
         id: 'submission-1',
         provisionStatus: ProvisionStatus.PROVISIONING,
+        provisionClaim: expect.any(String),
     };
 
     beforeEach(async () => {
@@ -80,7 +81,10 @@ describe('AssignmentProvisioningService', () => {
 
         expect(submissionRepository.update).toHaveBeenCalledWith(
             { id: 'submission-1', provisionStatus: ProvisionStatus.PENDING },
-            { provisionStatus: ProvisionStatus.PROVISIONING },
+            {
+                provisionStatus: ProvisionStatus.PROVISIONING,
+                provisionClaim: expect.any(String),
+            },
         );
         expect(gitHubAppClient.getRepo).not.toHaveBeenCalled();
         expect(gitHubAppClient.createRepoFromTemplate).not.toHaveBeenCalled();
@@ -133,5 +137,57 @@ describe('AssignmentProvisioningService', () => {
                 provisionError: 'GitHub 502',
             },
         );
+    });
+
+    it('leaves a row alone once a reprovision has handed it to a new worker', async () => {
+        // The row as the database holds it; updates only land where every
+        // criterion matches, the way the WHERE clause decides.
+        const row: Record<string, unknown> = {
+            id: 'submission-1',
+            provisionStatus: ProvisionStatus.PENDING,
+        };
+        submissionRepository.update.mockImplementation(
+            async (
+                criteria: Record<string, unknown>,
+                partial: Record<string, unknown>,
+            ) => {
+                const matches = Object.entries(criteria).every(
+                    ([key, value]) => row[key] === value,
+                );
+                if (matches) Object.assign(row, partial);
+                return { affected: matches ? 1 : 0 };
+            },
+        );
+
+        // The first worker hangs on GitHub, then fails on its last retry.
+        let failStale!: () => void;
+        gitHubAppClient.getRepo.mockImplementationOnce(
+            () =>
+                new Promise((_, reject) => {
+                    failStale = () => reject(new Error('GitHub timed out'));
+                }),
+        );
+        const stale = service.handleProvisionAssignmentRepo(task(2));
+        await new Promise(setImmediate);
+        expect(row.provisionStatus).toBe(ProvisionStatus.PROVISIONING);
+
+        // Past the lease, an admin reprovisions and a second worker claims.
+        row.provisionStatus = ProvisionStatus.PENDING;
+        let finishFresh!: () => void;
+        gitHubAppClient.getRepo.mockImplementationOnce(
+            () => new Promise((resolve) => (finishFresh = () => resolve(repo))),
+        );
+        gitHubAppClient.getBranchHead.mockResolvedValue('b'.repeat(40));
+        const fresh = service.handleProvisionAssignmentRepo(task(0));
+        await new Promise(setImmediate);
+
+        // The stale worker's failure lands while the row is PROVISIONING again.
+        failStale();
+        await expect(stale).rejects.toThrow('GitHub timed out');
+        expect(row.provisionStatus).toBe(ProvisionStatus.PROVISIONING);
+
+        finishFresh();
+        await fresh;
+        expect(row.provisionStatus).toBe(ProvisionStatus.READY);
     });
 });

@@ -56,6 +56,11 @@ export class AssignmentSubmission extends BaseEntity {
     @Column('text', { nullable: true })
     provisionError!: string | null;
 
+    // Identifies the provisioning task that currently holds the row, so a
+    // worker that has been superseded cannot write over its successor.
+    @Column('uuid', { nullable: true })
+    provisionClaim!: string | null;
+
     @Column('timestamptz')
     acceptedAt!: Date;
 

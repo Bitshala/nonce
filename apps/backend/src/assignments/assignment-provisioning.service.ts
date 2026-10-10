@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { APITask } from '@/entities/api-task.entity';
@@ -55,9 +56,13 @@ export class AssignmentProvisioningService {
         // Claimed in the UPDATE rather than read and then written: an admin
         // reprovision can queue a second task while the first is still pending
         // or running, and only one of them may go on to create the repo.
+        const claim = randomUUID();
         const claimed = await this.submissionRepository.update(
             { id: submission.id, provisionStatus: ProvisionStatus.PENDING },
-            { provisionStatus: ProvisionStatus.PROVISIONING },
+            {
+                provisionStatus: ProvisionStatus.PROVISIONING,
+                provisionClaim: claim,
+            },
         );
         if (!claimed.affected) {
             this.logger.log(
@@ -67,7 +72,7 @@ export class AssignmentProvisioningService {
         }
 
         try {
-            await this.provision(submission);
+            await this.provision(submission, claim);
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : String(error);
@@ -75,7 +80,7 @@ export class AssignmentProvisioningService {
             // Only give up once retries are exhausted; a transient GitHub error
             // should not strand a student with a FAILED submission.
             await this.submissionRepository.update(
-                ownedClaim(submission.id),
+                ownedClaim(submission.id, claim),
                 isLastRetry(task)
                     ? {
                           provisionStatus: ProvisionStatus.FAILED,
@@ -87,7 +92,10 @@ export class AssignmentProvisioningService {
         }
     }
 
-    private async provision(submission: AssignmentSubmission): Promise<void> {
+    private async provision(
+        submission: AssignmentSubmission,
+        claim: string,
+    ): Promise<void> {
         const assignment = submission.assignment;
         // The slug already carries the cohort season, so this stays unique even
         // when a student retakes the same cohort.
@@ -120,7 +128,7 @@ export class AssignmentProvisioningService {
         );
 
         const recorded = await this.submissionRepository.update(
-            ownedClaim(submission.id),
+            ownedClaim(submission.id, claim),
             {
                 repoOwner: repo.owner,
                 repoName: repo.name,
@@ -170,9 +178,16 @@ export class AssignmentProvisioningService {
  * Every write after the claim is conditional on still holding it. A worker
  * stuck on a slow GitHub call can outlive the lease an admin reprovision
  * respects; once the row has been handed on, it is no longer this worker's.
+ *
+ * The status alone cannot say whose claim it is — a re-claimed row is
+ * PROVISIONING again — so each claim carries its own token.
  */
-function ownedClaim(submissionId: string) {
-    return { id: submissionId, provisionStatus: ProvisionStatus.PROVISIONING };
+function ownedClaim(submissionId: string, claim: string) {
+    return {
+        id: submissionId,
+        provisionStatus: ProvisionStatus.PROVISIONING,
+        provisionClaim: claim,
+    };
 }
 
 function sleep(ms: number): Promise<void> {
