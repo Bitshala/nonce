@@ -36,7 +36,7 @@ export const describeOutput = (
   }
   const { label } = describeRun(run);
   const tests =
-    run.testsTotal !== null
+    run.testsPassed !== null && run.testsTotal !== null
       ? ` · ${run.testsPassed}/${run.testsTotal} tests`
       : '';
   return `${label[0].toUpperCase()}${label.slice(1)}${tests}`;
