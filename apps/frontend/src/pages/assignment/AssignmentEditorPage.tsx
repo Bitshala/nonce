@@ -372,6 +372,7 @@ export const AssignmentEditorPage = () => {
   // Run always targets an explicit commit, so an unsaved editor saves first.
   const run_ = async () => {
     if (!submission?.id || createRun.isPending || runStarting.current) return;
+    if (!assignment?.isOpenForSubmission) return;
     if (run && !isTerminal(run.status)) return;
     if (conflict || pendingClose) return;
     runStarting.current = true;
@@ -440,6 +441,9 @@ export const AssignmentEditorPage = () => {
   }
 
   const isSaving = commit.isPending;
+  // Closed, or past a deadline that takes no late work: the API refuses
+  // saves and runs, so the editor says so up front instead of on a 403.
+  const isLocked = !assignment.isOpenForSubmission;
   const isRunning = createRun.isPending || (!!run && !isTerminal(run.status));
   const statusChip = assignment.isPastDeadline
     ? { label: 'Past due', color: 'warning' as const }
@@ -590,7 +594,7 @@ export const AssignmentEditorPage = () => {
             onClose={() => setMenuAnchor(null)}
           >
             <MenuItem
-              disabled={isSaving || dirtyPaths.size === 0}
+              disabled={isLocked || isSaving || dirtyPaths.size === 0}
               onClick={() => {
                 setMenuAnchor(null);
                 void save();
@@ -617,7 +621,7 @@ export const AssignmentEditorPage = () => {
             variant="contained"
             color="primary"
             startIcon={<PlayArrowIcon />}
-            disabled={isRunning}
+            disabled={isLocked || isRunning}
             onClick={() => void run_()}
             sx={{
               flexShrink: 0,
@@ -931,7 +935,7 @@ export const AssignmentEditorPage = () => {
                   value={activeFile.content}
                   onChange={onEdit}
                   options={{
-                    readOnly: !activeFile.editable,
+                    readOnly: isLocked || !activeFile.editable,
                     fontFamily: fontFamilyMono,
                     fontSize: 13.5,
                     lineHeight: 22,
