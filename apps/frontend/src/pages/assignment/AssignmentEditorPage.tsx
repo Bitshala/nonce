@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { alpha, type Theme } from '@mui/material/styles';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useBlocker, useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   CircularProgress,
@@ -40,6 +40,7 @@ import Editor from '@monaco-editor/react';
 import '../../components/assignment/monacoSetup.ts';
 import { isAxiosError } from 'axios';
 import type { CommitConflictResponse, RepoFileResponse } from '@nonce/shared';
+import { MAX_FILE_BYTES } from '@nonce/shared';
 import { fontFamilyMono } from '../../components/fellowship/theme.ts';
 import { AssignmentTheme } from '../../components/assignment/AssignmentTheme.tsx';
 import {
@@ -131,6 +132,8 @@ export const AssignmentEditorPage = () => {
     readStored('editor-language')
   );
   const [pendingClose, setPendingClose] = useState<string | null>(null);
+  const [autosaveFailed, setAutosaveFailed] = useState(false);
+  const draftTimers = useRef(new Map<string, number>());
   const [outputOpen, setOutputOpen] = useState(false);
   const [langAnchor, setLangAnchor] = useState<HTMLElement | null>(null);
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
@@ -191,6 +194,26 @@ export const AssignmentEditorPage = () => {
           .map(file => file.path)
       ),
     [openFiles]
+  );
+
+  useEffect(() => {
+    const timers = draftTimers.current;
+    return () => timers.forEach(timer => window.clearTimeout(timer));
+  }, []);
+
+  // Unsaved edits live only in this tab, so leaving must not drop them
+  // without asking: the browser's prompt for a reload or a closed tab, and a
+  // dialog for in-app navigation.
+  const hasUnsaved = dirtyPaths.size > 0;
+  useEffect(() => {
+    if (!hasUnsaved) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasUnsaved]);
+  const leaveBlocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsaved && currentLocation.pathname !== nextLocation.pathname
   );
 
   const openFile = useCallback(
@@ -309,10 +332,26 @@ export const AssignmentEditorPage = () => {
       return next;
     });
 
-    // Autosave is a crash-safety net that runs alongside, not instead of, Save.
-    saveDraft.debouncedMutate(
-      { submissionId: submission.id, path: activePath, content: value },
-      DRAFT_DEBOUNCE_MS
+    // Autosave is a crash-safety net that runs alongside, not instead of,
+    // Save. One timer per file: a single shared one dropped file A's draft
+    // whenever file B was edited within the debounce.
+    const path = activePath;
+    const submissionId = submission.id;
+    window.clearTimeout(draftTimers.current.get(path));
+    draftTimers.current.set(
+      path,
+      window.setTimeout(() => {
+        draftTimers.current.delete(path);
+        // The API refuses a draft larger than a file may be.
+        if (new Blob([value]).size > MAX_FILE_BYTES) return;
+        saveDraft.mutate(
+          { submissionId, path, content: value },
+          {
+            onSuccess: () => setAutosaveFailed(false),
+            onError: () => setAutosaveFailed(true),
+          }
+        );
+      }, DRAFT_DEBOUNCE_MS)
     );
   };
 
@@ -507,7 +546,9 @@ export const AssignmentEditorPage = () => {
   const saveLabel = isSaving
     ? 'Saving…'
     : dirtyPaths.size > 0
-      ? 'Unsaved changes'
+      ? autosaveFailed
+        ? 'Unsaved changes · autosave failed'
+        : 'Unsaved changes'
       : 'Saved';
   const tabs = [...openFiles.keys()].filter(inView);
   const role = activePath
@@ -1205,6 +1246,28 @@ export const AssignmentEditorPage = () => {
           </Box>
         </Box>
       </Box>
+
+      <Dialog
+        open={leaveBlocker.state === 'blocked'}
+        onClose={() => leaveBlocker.reset?.()}
+      >
+        <DialogTitle>Leave without saving?</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: 13.5 }}>
+            You have changes that are not saved. Leaving discards them.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => leaveBlocker.reset?.()}>Keep editing</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => leaveBlocker.proceed?.()}
+          >
+            Discard and leave
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!pendingClose} onClose={() => setPendingClose(null)}>
         <DialogTitle>Close without saving?</DialogTitle>
