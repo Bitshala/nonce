@@ -83,19 +83,25 @@ export class GitHubWebhookController {
         @Headers('x-github-delivery') deliveryId: string,
         @Body() payload: WorkflowRunPayload & WorkflowJobPayload,
     ): Promise<{ accepted: boolean }> {
-        if (deliveryId) {
-            const key = `webhook:delivery:${deliveryId}`;
-            if (await this.cacheManager.get(key)) {
-                return { accepted: true };
-            }
-            await this.cacheManager.set(key, 1, DELIVERY_DEDUPE_TTL_MS);
+        const key = deliveryId ? `webhook:delivery:${deliveryId}` : null;
+        if (key && (await this.cacheManager.get(key))) {
+            return { accepted: true };
         }
 
-        void this.process(event, payload).catch((error) => {
-            this.logger.error(
-                `Failed handling ${event} delivery ${deliveryId}: ${error instanceof Error ? error.message : error}`,
-            );
-        });
+        // Remembered only once handled: a delivery that failed has to stay
+        // eligible for GitHub's redelivery, or the event is lost for good.
+        // Handling is idempotent, so a duplicate arriving meanwhile is safe.
+        void this.process(event, payload)
+            .then(async () => {
+                if (key) {
+                    await this.cacheManager.set(key, 1, DELIVERY_DEDUPE_TTL_MS);
+                }
+            })
+            .catch((error) => {
+                this.logger.error(
+                    `Failed handling ${event} delivery ${deliveryId}: ${error instanceof Error ? error.message : error}`,
+                );
+            });
 
         return { accepted: true };
     }
