@@ -146,6 +146,12 @@ export const AssignmentEditorPage = () => {
   const createRun = useCreateRun();
   const saveDraft = useSaveDraft();
 
+  // Reopening the editor shows the last run rather than "not run".
+  const latestRunId = submission?.latestRun?.id ?? null;
+  useEffect(() => {
+    if (latestRunId) setActiveRunId(current => current ?? latestRunId);
+  }, [latestRunId]);
+
   const { data: run } = useRun(activeRunId ?? '', {
     enabled: !!activeRunId,
     // A live run needs frequent updates; a finished one needs none. Overrides
