@@ -18,7 +18,7 @@ interface Props {
 
 interface CheckRow {
   name: string;
-  state: 'pending' | 'running' | 'passed' | 'failed';
+  state: 'pending' | 'running' | 'passed' | 'failed' | 'skipped' | 'unreported';
   message?: string | null;
 }
 
@@ -37,11 +37,16 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
       state:
         test.status === 'success' || test.status === 'passed'
           ? 'passed'
-          : 'failed',
+          : test.status === 'skipped'
+            ? 'skipped'
+            : 'failed',
       message: test.message,
     }));
   } else {
-    const state = isDispatching || isLive ? 'running' : 'pending';
+    // A finished run with no report has an outcome but no per-check result;
+    // "Not run yet" would say the opposite of what happened.
+    const state =
+      isDispatching || isLive ? 'running' : run ? 'unreported' : 'pending';
     rows = checks.map(name => ({ name, state }));
   }
 
@@ -51,7 +56,9 @@ export const RunPanel = ({ run, isDispatching, checks = [] }: Props) => {
       ? 'graded'
       : isDispatching || isLive
         ? 'running'
-        : 'not run';
+        : run
+          ? describeRun(run).label
+          : 'not run';
 
   return (
     <Box
@@ -125,6 +132,16 @@ const CHECK_STATE = {
   running: { label: 'Running…', color: 'info.main', bar: '#60a5fa' },
   passed: { label: 'Passed', color: 'success.main', bar: '#4ade80' },
   failed: { label: 'Failed', color: 'error.main', bar: '#f87171' },
+  skipped: {
+    label: 'Skipped',
+    color: 'text.secondary',
+    bar: 'workspace.lineStrong',
+  },
+  unreported: {
+    label: 'No result — the run left no report',
+    color: 'text.secondary',
+    bar: 'workspace.line',
+  },
 } as const;
 
 const CheckItem = ({
@@ -170,6 +187,8 @@ const CheckItem = ({
         <CheckIcon sx={{ fontSize: 12 }} />
       ) : row.state === 'failed' ? (
         <CloseIcon sx={{ fontSize: 12 }} />
+      ) : row.state === 'skipped' ? (
+        <RemoveIcon sx={{ fontSize: 12 }} />
       ) : (
         index + 1
       )}
@@ -274,7 +293,7 @@ const RunDetail = ({
         </Typography>
       )}
 
-      {run.testsTotal !== null && (
+      {run.testsPassed !== null && run.testsTotal !== null && (
         <Typography
           sx={{
             fontFamily: fontFamilyMono,
