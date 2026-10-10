@@ -137,7 +137,8 @@ export const AssignmentBriefBody = ({
             <Typography sx={{ fontWeight: 600 }}>Setting up</Typography>
             <LinearProgress />
             <Typography variant="caption" color="text.secondary">
-              Opens automatically — you can close this and keep browsing.
+              Opens automatically. If you close this, it shows as ready in your
+              assignments list.
             </Typography>
           </>
         )}

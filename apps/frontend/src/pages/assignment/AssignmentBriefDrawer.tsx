@@ -31,7 +31,13 @@ export const AssignmentBriefDrawer = ({
   } = useAssignment(assignmentId, {
     refetchInterval: provisionRefetchInterval,
   });
-  useOpenEditorWhenReady(assignmentId, assignment?.submission?.provisionStatus);
+  useOpenEditorWhenReady(
+    assignmentId,
+    assignment?.submission?.provisionStatus,
+    {
+      replace: false,
+    }
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
