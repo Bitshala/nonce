@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import * as AdmZip from 'adm-zip';
 import { FindOperator } from 'typeorm';
 import { RunsService } from '@/assignments/runs.service';
 import { AssignmentsService } from '@/assignments/assignments.service';
@@ -49,6 +50,13 @@ function applyUpdate(
     if (!matches) return { affected: 0 };
     Object.assign(row, partial);
     return { affected: 1 };
+}
+
+/** The grade-report artifact, zipped the way GitHub serves it. */
+function reportZip(report: object): Buffer {
+    const zip = new AdmZip();
+    zip.addFile('report.json', Buffer.from(JSON.stringify(report)));
+    return zip.toBuffer();
 }
 
 /** RunsService with only the collaborators a test cares about wired in. */
@@ -129,7 +137,8 @@ describe('RunsService — completing a run', () => {
     const ciRunLogRepository = { exist: jest.fn(async () => true) };
     const gitHubAppClient = {
         listRunJobs: jest.fn(async () => []),
-        listRunArtifacts: jest.fn(async () => []),
+        listRunArtifacts: jest.fn(async (): Promise<object[]> => []),
+        downloadArtifact: jest.fn(),
         listRecentDispatchRuns: jest.fn(async () => []),
         getWorkflowRun: jest.fn(),
     };
@@ -265,6 +274,30 @@ describe('RunsService — completing a run', () => {
         await service.completeRun('run-1', CIRunConclusion.FAILURE);
 
         expect(submissionRow.latestRun).toEqual({ id: 'run-2' });
+    });
+
+    it("records the grader's report from the run's artifact", async () => {
+        gitHubAppClient.listRunArtifacts.mockResolvedValueOnce([
+            { id: 7, name: 'grade-report', expired: false },
+        ]);
+        gitHubAppClient.downloadArtifact.mockResolvedValueOnce(
+            reportZip({
+                schemaVersion: 1,
+                passed: false,
+                tests: [
+                    { name: 'parses the block', status: 'passed' },
+                    { name: 'computes the fee', status: 'failed' },
+                ],
+            }),
+        );
+
+        await service.completeRun('run-1', CIRunConclusion.FAILURE);
+
+        expect(runRow.report).toEqual(
+            expect.objectContaining({ passed: false }),
+        );
+        expect(runRow.testsPassed).toBe(1);
+        expect(runRow.testsTotal).toBe(2);
     });
 
     it('never reopens a finished run on a late refresh', async () => {

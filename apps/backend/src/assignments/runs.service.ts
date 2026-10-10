@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
 import { randomUUID } from 'crypto';
-import AdmZip from 'adm-zip';
+import * as AdmZip from 'adm-zip';
 import { In, IsNull, Not, Repository } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
