@@ -1,5 +1,11 @@
 import { useEffect } from 'react';
-import { CircularProgress, Drawer, IconButton, Stack } from '@mui/material';
+import {
+  Alert,
+  CircularProgress,
+  Drawer,
+  IconButton,
+  Stack,
+} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { AssignmentBriefBody } from '../../components/assignment/AssignmentBriefBody.tsx';
 import {
@@ -7,6 +13,7 @@ import {
   useOpenEditorWhenReady,
 } from '../../components/assignment/provision.ts';
 import { useAssignment } from '../../hooks/assignmentHooks.ts';
+import { extractErrorMessage } from '../../utils/errorUtils.ts';
 
 /** The assignment brief as a side drawer, opened from the assignments list. */
 export const AssignmentBriefDrawer = ({
@@ -16,7 +23,12 @@ export const AssignmentBriefDrawer = ({
   assignmentId: string;
   onClose: () => void;
 }) => {
-  const { data: assignment, isLoading } = useAssignment(assignmentId, {
+  const {
+    data: assignment,
+    isLoading,
+    isError,
+    error,
+  } = useAssignment(assignmentId, {
     refetchInterval: provisionRefetchInterval,
   });
   useOpenEditorWhenReady(assignmentId, assignment?.submission?.provisionStatus);
@@ -44,7 +56,9 @@ export const AssignmentBriefDrawer = ({
           <CloseIcon fontSize="small" />
         </IconButton>
 
-        {isLoading || !assignment ? (
+        {isError ? (
+          <Alert severity="error">{extractErrorMessage(error)}</Alert>
+        ) : isLoading || !assignment ? (
           <CircularProgress size={24} aria-label="Loading assignment" />
         ) : (
           <AssignmentBriefBody assignment={assignment} />
