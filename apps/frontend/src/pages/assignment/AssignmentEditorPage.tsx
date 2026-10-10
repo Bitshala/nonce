@@ -389,6 +389,10 @@ export const AssignmentEditorPage = () => {
 
   /** Discards local edits and reloads from the branch head. */
   const reloadFromServer = () => {
+    // Read from where the branch is now. The landing file reopens before the
+    // tree refetch lands, and a copy read at the old base would be saved
+    // straight back over the other change, which the CAS cannot catch.
+    if (conflict) setBaseCommitSha(conflict.currentCommitSha);
     setConflict(null);
     setOpenFiles(new Map());
     setActivePath(null);
