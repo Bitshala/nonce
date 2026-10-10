@@ -413,6 +413,21 @@ export const AssignmentEditorPage = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const downloadZip = async () => {
+    if (!submission?.id) return;
+    try {
+      const blob = await assignmentService.downloadArchive(submission.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${assignment?.slug ?? 'assignment'}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      setBanner(extractErrorMessage(downloadError));
+    }
+  };
+
   /** Discards local edits and reloads from the branch head. */
   const reloadFromServer = () => {
     // Read from where the branch is now. The landing file reopens before the
@@ -612,9 +627,10 @@ export const AssignmentEditorPage = () => {
               <ListItemText>{isSaving ? 'Saving…' : 'Save'}</ListItemText>
             </MenuItem>
             <MenuItem
-              component="a"
-              href={assignmentService.downloadArchiveUrl(submission.id)}
-              onClick={() => setMenuAnchor(null)}
+              onClick={() => {
+                setMenuAnchor(null);
+                void downloadZip();
+              }}
             >
               <ListItemIcon>
                 <DownloadIcon fontSize="small" />
