@@ -1,0 +1,30 @@
+[
+  {
+    "chapter": "chapter-4",
+    "spec": "grader_checks_helper:HelperTest:test_little_endian_to_int"
+  },
+  {
+    "chapter": "chapter-4",
+    "spec": "grader_checks_helper:HelperTest:test_int_to_little_endian"
+  },
+  {
+    "chapter": "chapter-5",
+    "spec": "grader_checks_tx:TxTest:test_parse_version"
+  },
+  {
+    "chapter": "chapter-5",
+    "spec": "grader_checks_tx:TxTest:test_parse_inputs"
+  },
+  {
+    "chapter": "chapter-5",
+    "spec": "grader_checks_tx:TxTest:test_parse_outputs"
+  },
+  {
+    "chapter": "chapter-5",
+    "spec": "grader_checks_tx:TxTest:test_parse_locktime"
+  },
+  {
+    "chapter": "chapter-5",
+    "spec": "grader_checks_tx:TxTest:test_fee"
+  }
+]

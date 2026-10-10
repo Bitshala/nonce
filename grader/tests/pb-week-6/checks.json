@@ -1,0 +1,70 @@
+[
+  {
+    "chapter": "chapter-10",
+    "spec": "grader_checks_network:NetworkEnvelopeTest:test_parse"
+  },
+  {
+    "chapter": "chapter-10",
+    "spec": "grader_checks_network:NetworkEnvelopeTest:test_serialize"
+  },
+  {
+    "chapter": "chapter-10",
+    "spec": "grader_checks_network:VersionMessageTest:test_serialize"
+  },
+  {
+    "chapter": "chapter-10",
+    "spec": "grader_checks_network:SimpleNodeTest:test_handshake"
+  },
+  {
+    "chapter": "chapter-10",
+    "spec": "grader_checks_network:GetHeadersMessageTest:test_serialize"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_tx:TxTest:test_is_coinbase"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_tx:TxTest:test_coinbase_height"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_parse"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_serialize"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_hash"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_bip9"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_bip91"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_bip141"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_target"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_difficulty"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_block:BlockTest:test_check_pow"
+  },
+  {
+    "chapter": "chapter-9",
+    "spec": "grader_checks_helper:HelperTest:test_calculate_new_bits"
+  }
+]

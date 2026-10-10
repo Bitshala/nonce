@@ -1,0 +1,113 @@
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    ParseUUIDPipe,
+    Patch,
+    Post,
+    UsePipes,
+    ValidationPipe,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Roles } from '@/auth/roles.decorator';
+import { GetUser } from '@/decorators/user.decorator';
+import { User } from '@/entities/user.entity';
+import { UserRole } from '@/common/enum';
+import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
+import {
+    AdminSubmissionResponseDto,
+    RegradeResponseDto,
+    SyncAssignmentsResponseDto,
+} from '@/assignments/assignments.response.dto';
+import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
+
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+@ApiTags('Admin — Assignments')
+@ApiBearerAuth()
+@Roles(UserRole.ADMIN, UserRole.TEACHING_ASSISTANT)
+@Controller('admin')
+export class AdminAssignmentsController {
+    constructor(
+        private readonly adminAssignmentsService: AdminAssignmentsService,
+    ) {}
+
+    @Post('cohorts/:cohortId/sync-assignments')
+    // Rewriting assignment mechanics is an admin-only action; a TA re-running
+    // a grader is not the same thing as changing what the grader is.
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({
+        summary: 'Re-seed a cohort’s assignments from its config file',
+        description:
+            'Assignments are authored in assets/cohort-configs. This applies config edits to a cohort that already exists.',
+    })
+    async syncAssignments(
+        @Param('cohortId', ParseUUIDPipe) cohortId: string,
+    ): Promise<SyncAssignmentsResponseDto> {
+        return this.adminAssignmentsService.syncAssignments(cohortId);
+    }
+
+    @Get('assignments/:id/submissions')
+    @ApiOperation({
+        summary: 'Every submission for an assignment, with its current score',
+    })
+    async listSubmissions(
+        @Param('id', ParseUUIDPipe) id: string,
+    ): Promise<AdminSubmissionResponseDto[]> {
+        return this.adminAssignmentsService.listSubmissions(id);
+    }
+
+    @Post('submissions/:id/reprovision')
+    @HttpCode(HttpStatus.ACCEPTED)
+    @ApiOperation({
+        summary: 'Retry repository provisioning for a failed submission',
+        description:
+            'Refused with 409 once the repository exists, or while provisioning is still running (a run silent for 10 minutes is presumed dead and can be retried).',
+    })
+    async reprovision(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+        return this.adminAssignmentsService.reprovision(id);
+    }
+
+    @Post('assignments/:id/regrade')
+    @ApiOperation({
+        summary: 'Re-grade every submission that has not passed',
+        description:
+            'Use after fixing a grader bug. Ignores the deadline, closed status, and daily quota. Before the deadline the latest commit is graded; after it, the commit of the last run that counted, so practice after the deadline cannot earn a pass. Submissions that already passed, or have nothing eligible, are skipped.',
+    })
+    async regrade(
+        @Param('id', ParseUUIDPipe) id: string,
+        @GetUser() user: User,
+    ): Promise<RegradeResponseDto> {
+        return this.adminAssignmentsService.regrade(id, user);
+    }
+
+    @Patch('submissions/:id/score')
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({
+        summary: 'Manually override a submission’s exercise score',
+        description:
+            'For cases grading cannot express. Each field sent pins that part of the score, so later saves, runs, and regrades keep it. Send null to clear a pin and hand the field back to grading.',
+    })
+    async overrideScore(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() body: UpdateSubmissionScoreRequestDto,
+    ): Promise<void> {
+        return this.adminAssignmentsService.overrideScore(id, body);
+    }
+
+    @Post('cohorts/:cohortId/archive-assignment-repos')
+    @Roles(UserRole.ADMIN)
+    @HttpCode(HttpStatus.ACCEPTED)
+    @ApiOperation({
+        summary: 'Queue read-only archival of every repo in a cohort',
+        description:
+            'Repos are archived, never deleted. Students keep their work through the zip export.',
+    })
+    async archive(
+        @Param('cohortId', ParseUUIDPipe) cohortId: string,
+    ): Promise<void> {
+        return this.adminAssignmentsService.queueArchive(cohortId);
+    }
+}

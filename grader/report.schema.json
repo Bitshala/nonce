@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Grading report",
+  "description": "The contract between a grader and the backend. Written to report.json and uploaded as the `grade-report` artifact; the backend reads it with its own App token, which is why the graded job needs no outbound credential.",
+  "type": "object",
+  "required": ["schemaVersion", "passed", "tests"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "passed": {
+      "type": "boolean",
+      "description": "Authoritative pass/fail. ExerciseScore.isPassing derives from this."
+    },
+    "tests": {
+      "type": "array",
+      "description": "Per-test results. Drives the UI checklist and leaves room for partial credit later; ExerciseScore is binary today.",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "enum": ["passed", "failed", "skipped"] },
+          "durationMs": { "type": "number", "minimum": 0 },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

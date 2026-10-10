@@ -10,7 +10,7 @@ import { GroupDiscussionScore } from '@/entities/group-discussion-score.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { Attendance } from '@/entities/attendance.entity';
 import { BaseEntity } from '@/entities/base.entity';
-import { CohortType, UserRole } from '@/common/enum';
+import { AssignmentBackend, CohortType, UserRole } from '@/common/enum';
 import { Certificate } from '@/entities/certificate.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ServiceError } from '@/common/errors';
@@ -45,6 +45,15 @@ export class Cohort extends BaseEntity {
 
     @Column('text', { nullable: true })
     classroomId!: string | null;
+
+    // Which exercise system backs this cohort. Existing cohorts stay on
+    // CLASSROOM; the in-house classroom is rolled out one cohort at a time.
+    @Column({
+        type: 'enum',
+        enum: AssignmentBackend,
+        default: AssignmentBackend.CLASSROOM,
+    })
+    assignmentBackend!: AssignmentBackend;
 
     // Instruction-sheet links (global + course-specific). Seeded from config at
     // creation, editable per cohort. minRole gates visibility (filtered at read).

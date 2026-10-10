@@ -1,11 +1,20 @@
 {
   "$schema": "./cohort-config.schema.json",
+  "assignmentBackend": "INHOUSE",
   "gdSessions": 7,
   "classroomId": "243620",
   "links": [],
   "weeks": [
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-1",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-1-assignment",
+        "graderTestPath": "tests/pb-week-1",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Finite Fields and Elliptic Curves",
         "concepts": "Finite field arithmetic, modular arithmetic, Fermat's little theorem, elliptic curve point addition",
@@ -40,6 +49,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-2",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-2-assignment",
+        "graderTestPath": "tests/pb-week-2",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Elliptic Curve Cryptography",
         "concepts": "Elliptic curves over finite fields, scalar multiplication, secp256k1, public/private key pairs, ECDSA signing and verification",
@@ -74,6 +91,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-3",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-3-assignment",
+        "graderTestPath": "tests/pb-week-3",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Serialization and Transactions",
         "concepts": "SEC public key format, DER signatures, Base58Check, WIF, varints, transaction parsing and serialization, fee calculation",
@@ -114,6 +139,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-4",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-4-assignment",
+        "graderTestPath": "tests/pb-week-4",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Script and Transaction Validation",
         "concepts": "Bitcoin Script, opcode evaluation, p2pk and p2pkh, sighash computation, transaction validation, transaction creation",
@@ -146,6 +179,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-5",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-5-assignment",
+        "graderTestPath": "tests/pb-week-5",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Pay-to-Script-Hash (P2SH)",
         "concepts": "P2SH addresses, redeem scripts, bare multisig, OP_CHECKMULTISIG, p2sh signature validation",
@@ -183,6 +224,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-6",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-6-assignment",
+        "graderTestPath": "tests/pb-week-6",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "Blocks and Networking",
         "concepts": "Block headers, coinbase transactions, difficulty and target, proof-of-work validation, P2P network messages, version/verack handshake",
@@ -222,6 +271,14 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "pb-week-7",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "PB-week-7-assignment",
+        "graderTestPath": "tests/pb-week-7",
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 20
+      },
       "exercise": {
         "title": "SPV and Bloom Filters",
         "concepts": "Merkle trees, merkle proofs, simplified payment verification, bloom filters, merkleblock messages",
