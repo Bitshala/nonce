@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
-import { Repository } from 'typeorm';
+import { IsNull, LessThan, Or, Repository } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { User } from '@/entities/user.entity';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
@@ -185,6 +185,9 @@ export class SubmissionsService {
         request: CreateCommitRequestDto,
         user: User,
     ): Promise<CreateCommitResponseDto> {
+        // Taken before anything else: see recordCommit for why the start of
+        // the save, not its end, orders it against other saves.
+        const startedAt = new Date();
         const submission = await this.loadReadySubmission(submissionId, user);
         this.assertWritable(submission);
 
@@ -294,7 +297,7 @@ export class SubmissionsService {
             );
         }
 
-        await this.recordCommit(submission, commitSha);
+        await this.recordCommit(submission, commitSha, startedAt);
 
         return new CreateCommitResponseDto(commitSha, treeSha, true);
     }
@@ -545,16 +548,27 @@ export class SubmissionsService {
     /**
      * Records the new head and refreshes the score. A student who saves but
      * never runs still earns the submission points.
+     *
+     * Saves that land can still record out of order, and an older head
+     * written last would have regrade and scoring use stale code. The branch
+     * CAS means each landed save was built on the one before it, so it was
+     * started after that one landed: start times order saves the same way the
+     * branch does. Only a save that started later than the recorded one may
+     * replace it.
      */
     private async recordCommit(
         submission: AssignmentSubmission,
         commitSha: string,
+        startedAt: Date,
     ): Promise<void> {
         await this.dbTransactionService.execute(async (manager) => {
             await manager.update(
                 AssignmentSubmission,
-                { id: submission.id },
-                { lastCommitSha: commitSha, lastCommitAt: new Date() },
+                {
+                    id: submission.id,
+                    lastCommitAt: Or(IsNull(), LessThan(startedAt)),
+                },
+                { lastCommitSha: commitSha, lastCommitAt: startedAt },
             );
 
             await this.scoreWriteback.sync(manager, submission.id);
