@@ -32,6 +32,11 @@
       "import": "./dist/esm/protected-paths.js",
       "require": "./dist/cjs/protected-paths.js"
     },
+    "./submission-bucket": {
+      "types": "./dist/cjs/submission-bucket.d.ts",
+      "import": "./dist/esm/submission-bucket.js",
+      "require": "./dist/cjs/submission-bucket.js"
+    },
     "./dto": {
       "types": "./dist/cjs/dto/index.d.ts",
       "import": "./dist/esm/dto/index.js",
@@ -44,6 +49,7 @@
       "constants": ["./dist/cjs/constants.d.ts"],
       "cohort-display": ["./dist/cjs/cohort-display.d.ts"],
       "protected-paths": ["./dist/cjs/protected-paths.d.ts"],
+      "submission-bucket": ["./dist/cjs/submission-bucket.d.ts"],
       "dto": ["./dist/cjs/dto/index.d.ts"]
     }
   },

@@ -737,7 +737,7 @@ export class CohortsService {
      * from `startDate`, because `updateCohortWeek` can move one week on its own
      * and the calendar is then no longer a clean run of sevens.
      */
-    private async syncAssignmentDeadlines(
+    async syncAssignmentDeadlines(
         manager: EntityManager,
         cohortId: string,
     ): Promise<void> {

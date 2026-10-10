@@ -3,15 +3,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
+import { AdminAssignmentResponseDto } from '@/assignments/assignments.response.dto';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
+import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { CohortsService } from '@/cohorts/cohorts.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
-import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
@@ -20,10 +22,10 @@ import { ProvisionStatus, UserRole } from '@/common/enum';
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
 
-    const assignmentRepository = { findOne: jest.fn() };
+    const assignmentRepository = { findOne: jest.fn(), find: jest.fn() };
+    const membershipRepository = { find: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
-    const membershipRepository = { find: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
     const scoreWriteback = { sync: jest.fn() };
     const manager = {
@@ -58,6 +60,7 @@ describe('AdminAssignmentsService', () => {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
                 },
+                { provide: CohortsService, useValue: {} },
                 { provide: CohortsConfigService, useValue: {} },
                 { provide: GitHubAppClient, useValue: {} },
                 { provide: RunsService, useValue: runsService },
@@ -82,22 +85,89 @@ describe('AdminAssignmentsService', () => {
         );
     });
 
+    describe('listAssignments', () => {
+        it('buckets each enrolled submission once and ignores staff trial runs', async () => {
+            const cohort = { id: 'c1', type: 'x', season: 1 };
+            const assignment = {
+                id: 'a1',
+                cohortWeek: { week: 1, cohort },
+                isPastDeadline: () => false,
+                isOpenForSubmission: () => true,
+            };
+            const sub = (userId: string, o: object) => ({
+                assignment: { id: 'a1' },
+                user: { id: userId },
+                bestRun: null,
+                latestRun: null,
+                isPassingOverride: null,
+                provisionStatus: ProvisionStatus.READY,
+                ...o,
+            });
+            assignmentRepository.find.mockResolvedValue([assignment]);
+            submissionRepository.find.mockResolvedValue([
+                sub('u1', { bestRun: { id: 'r' } }),
+                sub('u2', { latestRun: { id: 'r' } }),
+                sub('u3', {}),
+                sub('u4', { provisionStatus: ProvisionStatus.FAILED }),
+                sub('u5', { isPassingOverride: true }),
+                sub('staff', { bestRun: { id: 'r' } }),
+            ]);
+            const memberships = [
+                ...['u1', 'u2', 'u3', 'u4', 'u5', 'u6'].map((id) => ({
+                    cohort,
+                    user: { id, role: UserRole.STUDENT },
+                })),
+                // A TA enrolled in the cohort is neither counted nor tallied.
+                { cohort, user: { id: 'staff', role: UserRole.ADMIN } },
+            ];
+            // Filters on role the way the query's WHERE does.
+            membershipRepository.find.mockImplementation(
+                async ({ where }: { where: { user: { role: UserRole } } }) =>
+                    memberships.filter((m) => m.user.role === where.user.role),
+            );
+
+            const [row] = await service.listAssignments();
+
+            expect(row).toMatchObject({
+                enrolledCount: 6,
+                submissionCount: 5,
+                passedCount: 2,
+                failingCount: 1,
+                inProgressCount: 1,
+                failedProvisionCount: 1,
+                notStartedCount: 1,
+            });
+        });
+    });
+
     describe('regrade', () => {
         const inCohort = (id: string) =>
             ({ id, cohortWeek: { cohort: { id: 'cohort-1' } } }) as Assignment;
         const enrolled = (...userIds: string[]) =>
             membershipRepository.find.mockResolvedValue(
-                userIds.map((id) => ({ user: { id } })),
+                userIds.map((id) => ({
+                    cohort: { id: 'cohort-1' },
+                    user: { id },
+                })),
             );
+        // A READY submission with work beyond the template, graded rather
+        // than pinned: what a re-grade exists for, unless a test says otherwise.
         const by = (
             userId: string,
             id = userId,
             bestRun: object | null = null,
-        ) => ({
-            id,
-            user: { id: userId },
-            bestRun,
-        });
+            overrides: Partial<AssignmentSubmission> = {},
+        ) =>
+            Object.assign(new AssignmentSubmission(), {
+                id,
+                user: { id: userId },
+                bestRun,
+                provisionStatus: ProvisionStatus.READY,
+                initialCommitSha: 'a'.repeat(40),
+                lastCommitSha: 'b'.repeat(40),
+                isPassingOverride: null,
+                ...overrides,
+            });
 
         it('re-grades only submissions that have not passed, against the assignment it loaded', async () => {
             const assignment = inCohort('assignment-1');
@@ -141,6 +211,53 @@ describe('AdminAssignmentsService', () => {
             expect(result).toEqual({ dispatched: 1, skipped: 1 });
         });
 
+        it('leaves alone what a re-grade could not change', async () => {
+            assignmentRepository.findOne.mockResolvedValue(inCohort('a'));
+            enrolled('graded', 'yes', 'no', 'template');
+            const submissions = [
+                by('graded'),
+                // A pin outranks grading, whichever way it points.
+                by('yes', 'pinned-yes', null, { isPassingOverride: true }),
+                by(
+                    'no',
+                    'pinned-no',
+                    { id: 'run-0' },
+                    { isPassingOverride: false },
+                ),
+                // Nothing beyond the template to grade.
+                by('template', 'template', null, {
+                    lastCommitSha: 'a'.repeat(40),
+                }),
+            ];
+            submissionRepository.find.mockResolvedValue(submissions);
+            runsService.dispatchRegrade.mockResolvedValue({ id: 'run-1' });
+
+            const result = await service.regrade('a', staff);
+
+            expect(runsService.dispatchRegrade).toHaveBeenCalledTimes(1);
+            expect(runsService.dispatchRegrade).toHaveBeenCalledWith(
+                expect.objectContaining({ id: 'graded' }),
+                expect.anything(),
+                staff,
+            );
+            expect(result).toEqual({ dispatched: 1, skipped: 3 });
+            // The admin's button counts with the same rule.
+            expect(
+                new AdminAssignmentResponseDto(
+                    Object.assign(new Assignment(), {
+                        id: 'a',
+                        cohortWeek: {
+                            id: 'w',
+                            week: 1,
+                            cohort: { id: 'cohort-1', type: 'x', season: 1 },
+                        },
+                    }),
+                    submissions,
+                    4,
+                ).regradableCount,
+            ).toBe(1);
+        });
+
         it("re-grades only the cohort's current students", async () => {
             // Staff trying the assignment, and a student since removed, keep
             // their submissions but have no score anyone reads.
@@ -180,7 +297,7 @@ describe('AdminAssignmentsService', () => {
                 cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
             });
             membershipRepository.find.mockResolvedValue([
-                { user: { id: 'student' } },
+                { cohort: { id: 'cohort-1' }, user: { id: 'student' } },
             ]);
             const submission = (id: string, userId: string) =>
                 Object.assign(new AssignmentSubmission(), {
