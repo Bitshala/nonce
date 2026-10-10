@@ -30,7 +30,12 @@ import { Attendance } from '@/entities/attendance.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { DiscordClient } from '@/discord-client/discord.client';
 import { ConfigService } from '@nestjs/config';
-import { AssignmentBackend, CohortType, CohortWeekType } from '@/common/enum';
+import {
+    AssignmentBackend,
+    AssignmentDeadlineSource,
+    CohortType,
+    CohortWeekType,
+} from '@/common/enum';
 import { Assignment } from '@/entities/assignment.entity';
 import {
     applyAssignmentConfig,
@@ -746,6 +751,16 @@ export class CohortsService {
         for (const week of weeks) {
             const assignment = week.assignment;
             if (!assignment) continue;
+            // With no graduation week to read the date off, a GRADUATION
+            // deadline is unknown rather than absent: keep the one it has
+            // instead of quietly lifting it.
+            if (
+                assignment.deadlineSource ===
+                    AssignmentDeadlineSource.GRADUATION &&
+                !graduation
+            ) {
+                continue;
+            }
 
             assignment.deadline = resolveDeadline(
                 assignment.deadlineSource,

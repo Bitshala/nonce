@@ -221,4 +221,30 @@ describe('CohortsService — deadlines follow the cohort calendar', () => {
 
         expect(deadlines()).toEqual(Array(GD_SESSIONS).fill(undefined));
     });
+
+    it('keeps a GRADUATION deadline when the cohort has no graduation week', async () => {
+        // Nothing to read the date from is "unknown", not "no deadline":
+        // wiping it would quietly let every exercise be submitted forever.
+        const before = new Date('2026-04-13T18:29:59.999Z');
+        for (const week of weeks) {
+            if (week.type === CohortWeekType.GRADUATION) {
+                week.type = CohortWeekType.GROUP_DISCUSSION;
+            }
+            if (week.assignment) week.assignment.deadline = before;
+        }
+        cohortRepository.findOne.mockResolvedValue({
+            id: 'cohort-1',
+            type: CohortType.BITCOIN_PROTOCOL_DEVELOPMENT,
+            startDate: START,
+            weeks,
+        } as unknown as Cohort);
+
+        await service.updateCohort('cohort-1', {
+            startDate: '2026-03-16',
+        } as UpdateCohortRequestDto);
+
+        expect(deadlines()).toEqual(
+            Array(GD_SESSIONS).fill(before.toISOString()),
+        );
+    });
 });
