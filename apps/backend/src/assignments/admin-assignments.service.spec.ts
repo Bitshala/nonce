@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
+import { AdminAssignmentResponseDto } from '@/assignments/assignments.response.dto';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
@@ -149,15 +150,24 @@ describe('AdminAssignmentsService', () => {
                     user: { id },
                 })),
             );
+        // A READY submission with work beyond the template, graded rather
+        // than pinned: what a re-grade exists for, unless a test says otherwise.
         const by = (
             userId: string,
             id = userId,
             bestRun: object | null = null,
-        ) => ({
-            id,
-            user: { id: userId },
-            bestRun,
-        });
+            overrides: Partial<AssignmentSubmission> = {},
+        ) =>
+            Object.assign(new AssignmentSubmission(), {
+                id,
+                user: { id: userId },
+                bestRun,
+                provisionStatus: ProvisionStatus.READY,
+                initialCommitSha: 'a'.repeat(40),
+                lastCommitSha: 'b'.repeat(40),
+                isPassingOverride: null,
+                ...overrides,
+            });
 
         it('re-grades only submissions that have not passed, against the assignment it loaded', async () => {
             const assignment = inCohort('assignment-1');
@@ -199,6 +209,53 @@ describe('AdminAssignmentsService', () => {
             const result = await service.regrade('a', staff);
 
             expect(result).toEqual({ dispatched: 1, skipped: 1 });
+        });
+
+        it('leaves alone what a re-grade could not change', async () => {
+            assignmentRepository.findOne.mockResolvedValue(inCohort('a'));
+            enrolled('graded', 'yes', 'no', 'template');
+            const submissions = [
+                by('graded'),
+                // A pin outranks grading, whichever way it points.
+                by('yes', 'pinned-yes', null, { isPassingOverride: true }),
+                by(
+                    'no',
+                    'pinned-no',
+                    { id: 'run-0' },
+                    { isPassingOverride: false },
+                ),
+                // Nothing beyond the template to grade.
+                by('template', 'template', null, {
+                    lastCommitSha: 'a'.repeat(40),
+                }),
+            ];
+            submissionRepository.find.mockResolvedValue(submissions);
+            runsService.dispatchRegrade.mockResolvedValue({ id: 'run-1' });
+
+            const result = await service.regrade('a', staff);
+
+            expect(runsService.dispatchRegrade).toHaveBeenCalledTimes(1);
+            expect(runsService.dispatchRegrade).toHaveBeenCalledWith(
+                expect.objectContaining({ id: 'graded' }),
+                expect.anything(),
+                staff,
+            );
+            expect(result).toEqual({ dispatched: 1, skipped: 3 });
+            // The admin's button counts with the same rule.
+            expect(
+                new AdminAssignmentResponseDto(
+                    Object.assign(new Assignment(), {
+                        id: 'a',
+                        cohortWeek: {
+                            id: 'w',
+                            week: 1,
+                            cohort: { id: 'cohort-1', type: 'x', season: 1 },
+                        },
+                    }),
+                    submissions,
+                    4,
+                ).regradableCount,
+            ).toBe(1);
         });
 
         it("re-grades only the cohort's current students", async () => {

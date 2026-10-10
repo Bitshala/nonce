@@ -336,7 +336,7 @@ export const SubmissionsPanel = ({
   const onRegrade = () =>
     askConfirm({
       title: 'Re-grade unpassed submissions?',
-      body: 'Every student submission that has not passed and has committed code is graded again. Use this after fixing a grader bug.',
+      body: 'Every student submission that has committed code, has not passed, and has no staff score override is graded again. Use this after fixing a grader bug.',
       action: 'Re-grade',
       onConfirm: () =>
         regrade.mutate(assignmentId, {
@@ -395,7 +395,9 @@ export const SubmissionsPanel = ({
   const showNotStarted =
     assignment.notStartedCount > 0 &&
     (filter === 'all' || filter === 'notStarted');
-  const unpassed = assignment.failingCount + assignment.inProgressCount;
+  // Counted by the API with the rule the re-grade itself applies, so the
+  // label is what will be dispatched.
+  const regradable = assignment.regradableCount;
   const status = ASSIGNMENT_STATUS_CHIP[assignment.status];
 
   return (
@@ -514,12 +516,12 @@ export const SubmissionsPanel = ({
           <Button
             variant="outlined"
             sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-            disabled={regrade.isPending || unpassed === 0}
+            disabled={regrade.isPending || regradable === 0}
             onClick={onRegrade}
           >
             {regrade.isPending
               ? 'Re-grading…'
-              : `Re-grade unpassed ${unpassed}`}
+              : `Re-grade unpassed ${regradable}`}
           </Button>
         </Stack>
       </Box>
