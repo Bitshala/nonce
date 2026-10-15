@@ -17,12 +17,15 @@ import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
+import { CohortsService } from '@/cohorts/cohorts.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
+import { isRegradeCandidate } from '@nonce/shared/submission-bucket';
 import { AssignmentBackend, ProvisionStatus, UserRole } from '@/common/enum';
 import {
+    AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
     ArchiveAssignmentResponseDto,
     RegradeResponseDto,
@@ -61,6 +64,7 @@ export class AdminAssignmentsService {
         @InjectRepository(ExerciseScore)
         private readonly exerciseScoreRepository: Repository<ExerciseScore>,
         private readonly cohortsConfigService: CohortsConfigService,
+        private readonly cohortsService: CohortsService,
         private readonly gitHubAppClient: GitHubAppClient,
         private readonly runsService: RunsService,
         private readonly scoreWriteback: ExerciseScoreWritebackService,
@@ -121,12 +125,77 @@ export class AdminAssignmentsService {
             );
         }
 
-        if (toSave.length > 0) await this.assignmentRepository.save(toSave);
+        if (toSave.length > 0) {
+            // One transaction, so a failure cannot leave assignments saved
+            // with GRADUATION deadlines still unresolved.
+            await this.dbTransactionService.execute(async (manager) => {
+                await manager.save(toSave);
+                // applyAssignmentConfig cannot resolve a GRADUATION deadline —
+                // it sees one week, not the calendar.
+                await this.cohortsService.syncAssignmentDeadlines(
+                    manager,
+                    cohortId,
+                );
+            });
+        }
 
         this.logger.log(
             `Synced assignments for cohort ${cohortId}: ${created} created, ${updated} updated`,
         );
         return new SyncAssignmentsResponseDto(created, updated);
+    }
+
+    /** Every assignment in every cohort, drafts included, with submission tallies. */
+    async listAssignments(): Promise<AdminAssignmentResponseDto[]> {
+        const assignments = await this.assignmentRepository.find({
+            relations: { cohortWeek: { cohort: true } },
+        });
+        if (assignments.length === 0) return [];
+
+        // ponytail: loads every submission to tally in memory; switch to a GROUP BY if this grows past a few thousand.
+        const [submissions, studentsByCohort] = await Promise.all([
+            this.submissionRepository.find({
+                relations: {
+                    assignment: true,
+                    user: true,
+                    bestRun: true,
+                    latestRun: true,
+                },
+            }),
+            this.currentStudentsByCohort(),
+        ]);
+        const cohortOf = new Map(
+            assignments.map((a) => [a.id, a.cohortWeek.cohort.id] as const),
+        );
+        const byAssignment = new Map<string, AssignmentSubmission[]>();
+        for (const submission of submissions) {
+            const cohortId = cohortOf.get(submission.assignment.id);
+            if (!cohortId) continue;
+            if (!studentsByCohort.get(cohortId)?.has(submission.user.id))
+                continue;
+            const list = byAssignment.get(submission.assignment.id) ?? [];
+            list.push(submission);
+            byAssignment.set(submission.assignment.id, list);
+        }
+
+        return assignments
+            .sort(
+                (a, b) =>
+                    b.cohortWeek.cohort.season - a.cohortWeek.cohort.season ||
+                    a.cohortWeek.cohort.type.localeCompare(
+                        b.cohortWeek.cohort.type,
+                    ) ||
+                    a.cohortWeek.week - b.cohortWeek.week,
+            )
+            .map(
+                (assignment) =>
+                    new AdminAssignmentResponseDto(
+                        assignment,
+                        byAssignment.get(assignment.id) ?? [],
+                        studentsByCohort.get(assignment.cohortWeek.cohort.id)
+                            ?.size ?? 0,
+                    ),
+            );
     }
 
     async listSubmissions(
@@ -220,8 +289,8 @@ export class AdminAssignmentsService {
     }
 
     /**
-     * Re-grades every submission that has not passed — for when a grader bug
-     * is fixed after students have already run. `RunsService.dispatchRegrade`
+     * Re-grades every submission whose score grading could still change — for
+     * when a grader bug is fixed after students have already run. `RunsService.dispatchRegrade`
      * decides which commit is graded; this only picks who gets one.
      */
     async regrade(
@@ -247,9 +316,8 @@ export class AdminAssignmentsService {
         let skipped = 0;
 
         for (const submission of submissions) {
-            // A pass is never replaced, so re-running one would only spend
-            // Actions minutes.
-            if (submission.bestRun) {
+            // The same rule as the count on the admin's re-grade button.
+            if (!isRegradeCandidate(submission)) {
                 skipped++;
                 continue;
             }
@@ -398,14 +466,31 @@ export class AdminAssignmentsService {
      * would only spend Actions minutes on a score nobody reads.
      */
     private async currentStudentIds(cohortId: string): Promise<Set<string>> {
+        const byCohort = await this.currentStudentsByCohort(cohortId);
+        return byCohort.get(cohortId) ?? new Set();
+    }
+
+    /**
+     * `currentStudentIds` for one cohort or, without an id, every cohort at
+     * once — what the tallies need. One query either way, and one rule.
+     */
+    private async currentStudentsByCohort(
+        cohortId?: string,
+    ): Promise<Map<string, Set<string>>> {
         const memberships = await this.membershipRepository.find({
             where: {
-                cohort: { id: cohortId },
+                ...(cohortId ? { cohort: { id: cohortId } } : {}),
                 user: { role: UserRole.STUDENT },
             },
-            relations: { user: true },
+            relations: { cohort: true, user: true },
         });
-        return new Set(memberships.map((membership) => membership.user.id));
+        const byCohort = new Map<string, Set<string>>();
+        for (const membership of memberships) {
+            const students = byCohort.get(membership.cohort.id) ?? new Set();
+            students.add(membership.user.id);
+            byCohort.set(membership.cohort.id, students);
+        }
+        return byCohort;
     }
 
     private async loadAssignment(assignmentId: string): Promise<Assignment> {

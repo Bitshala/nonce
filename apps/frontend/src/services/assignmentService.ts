@@ -6,6 +6,11 @@ import axios, {
 } from 'axios';
 import { getAuthTokenFromStorage } from './authService.ts';
 import type {
+  AdminAssignmentResponse,
+  AdminSubmissionResponse,
+  RegradeResponse,
+  SyncAssignmentsResponse,
+  UpdateSubmissionScoreRequest,
   AssignmentDetailResponse,
   AssignmentSummaryResponse,
   CIRunDetailResponse,
@@ -210,9 +215,94 @@ class AssignmentService {
     return data;
   };
 
-  /** The export path — students have no GitHub access, so this is how they keep their work. */
-  public downloadArchiveUrl = (submissionId: string): string =>
-    `${API_BASE_URL}/submissions/${submissionId}/archive`;
+  // =========================
+  // Admin
+  // =========================
+
+  public listAdminAssignments = async (): Promise<AdminAssignmentResponse[]> => {
+    const { data } = await this.request<AdminAssignmentResponse[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: '/admin/assignments',
+    });
+    return data;
+  };
+
+  public listAdminSubmissions = async (
+    assignmentId: string
+  ): Promise<AdminSubmissionResponse[]> => {
+    const { data } = await this.request<AdminSubmissionResponse[]>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/admin/assignments/${assignmentId}/submissions`,
+    });
+    return data;
+  };
+
+  public reprovisionSubmission = async (submissionId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/admin/submissions/${submissionId}/reprovision`,
+    });
+  };
+
+  public regradeAssignment = async (
+    assignmentId: string
+  ): Promise<RegradeResponse> => {
+    const { data } = await this.request<RegradeResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/admin/assignments/${assignmentId}/regrade`,
+    });
+    return data;
+  };
+
+  public overrideSubmissionScore = async (
+    submissionId: string,
+    body: UpdateSubmissionScoreRequest
+  ): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'PATCH',
+      url: `/admin/submissions/${submissionId}/score`,
+      data: body,
+    });
+  };
+
+  public syncCohortAssignments = async (
+    cohortId: string
+  ): Promise<SyncAssignmentsResponse> => {
+    const { data } = await this.request<SyncAssignmentsResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/admin/cohorts/${cohortId}/sync-assignments`,
+    });
+    return data;
+  };
+
+  public archiveCohortRepos = async (cohortId: string): Promise<void> => {
+    await this.request<void>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/admin/cohorts/${cohortId}/archive-assignment-repos`,
+    });
+  };
+
+  /**
+   * The export path — students have no GitHub access, so this is how they
+   * keep their work. Fetched rather than linked: a plain link sends no
+   * session header, and the API refuses it.
+   */
+  public downloadArchive = async (submissionId: string): Promise<Blob> => {
+    const { data } = await this.request<Blob>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/submissions/${submissionId}/archive`,
+      responseType: 'blob',
+    });
+    return data;
+  };
 }
 
 const assignmentService = new AssignmentService();
