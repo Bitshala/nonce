@@ -5,12 +5,14 @@ import {
     Column,
     ManyToOne,
     OneToMany,
+    OneToOne,
     Unique,
 } from 'typeorm';
 import { Cohort } from '@/entities/cohort.entity';
 import { GroupDiscussionScore } from '@/entities/group-discussion-score.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { Attendance } from '@/entities/attendance.entity';
+import { Assignment } from '@/entities/assignment.entity';
 import { BaseEntity } from '@/entities/base.entity';
 import { CohortWeekType } from '@/common/enum';
 
@@ -88,4 +90,10 @@ export class CohortWeek extends BaseEntity {
 
     @OneToMany(() => ExerciseScore, (es) => es.cohortWeek)
     exerciseScores!: ExerciseScore[];
+
+    // Present only on in-house cohorts with an exercise this week. The
+    // human-readable problem statement stays in `exercise` above; this owns
+    // only the mechanics (template, grader, deadline, limits).
+    @OneToOne(() => Assignment, (a) => a.cohortWeek)
+    assignment!: Assignment | null;
 }

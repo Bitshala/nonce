@@ -17,6 +17,7 @@ import { Certificate } from '@/entities/certificate.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { MailModule } from '@/mail/mail.module';
 import { CohortCalendarModule } from '@/cohort-calendar/cohort-calendar.module';
+import { ExerciseScoreWritebackModule } from '@/assignments/exercise-score-writeback.module';
 
 @Module({
     imports: [
@@ -32,12 +33,13 @@ import { CohortCalendarModule } from '@/cohort-calendar/cohort-calendar.module';
             APITask,
         ]),
         DbTransactionModule,
+        ExerciseScoreWritebackModule,
         DiscordClientModule,
         MailModule,
         CohortCalendarModule,
     ],
     providers: [CohortsConfigService, CohortsService, CohortReminderService],
     controllers: [CohortsController],
-    exports: [CohortsService, CohortReminderService],
+    exports: [CohortsService, CohortReminderService, CohortsConfigService],
 })
 export class CohortsModule {}

@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CohortType, UserRole } from '@/common/enum';
+import { AssignmentBackend, CohortType, UserRole } from '@/common/enum';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { validateSync } from 'class-validator';
@@ -69,6 +69,43 @@ export class CohortsConfigService implements OnModuleInit {
             if (config.weeks.length !== config.gdSessions) {
                 throw new Error(
                     `Invalid config for ${type}: weeks array length (${config.weeks.length}) must equal gdSessions (${config.gdSessions})`,
+                );
+            }
+
+            // class-validator cannot see the parent's backend from a week, so
+            // the "an in-house exercise week needs grading mechanics" rule is
+            // checked here. Boot fails loudly rather than a student hitting
+            // Accept on an assignment that was never configured.
+            if (
+                (config.assignmentBackend ?? AssignmentBackend.CLASSROOM) ===
+                AssignmentBackend.INHOUSE
+            ) {
+                const missing = config.weeks
+                    .map((week, index) => ({ week, number: index + 1 }))
+                    .filter(({ week }) => week.hasExercise && !week.assignment)
+                    .map(({ number }) => number);
+                if (missing.length > 0) {
+                    throw new Error(
+                        `Invalid config for ${type}: INHOUSE cohort is missing an \`assignment\` block on exercise week(s) ${missing.join(', ')}`,
+                    );
+                }
+            }
+
+            // `deadline` and `deadlineDaysAfterWeek` are two answers to the
+            // same question. class-validator can only skip one when both are
+            // present, which would silently drop whichever lost — so reject the
+            // pair outright rather than pick.
+            const conflicting = config.weeks
+                .map((week, index) => ({ week, number: index + 1 }))
+                .filter(
+                    ({ week }) =>
+                        week.assignment?.deadline !== undefined &&
+                        week.assignment?.deadlineDaysAfterWeek !== undefined,
+                )
+                .map(({ number }) => number);
+            if (conflicting.length > 0) {
+                throw new Error(
+                    `Invalid config for ${type}: week(s) ${conflicting.join(', ')} set both \`deadline\` and \`deadlineDaysAfterWeek\`; use one`,
                 );
             }
 

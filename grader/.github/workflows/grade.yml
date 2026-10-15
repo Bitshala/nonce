@@ -1,0 +1,277 @@
+name: grade
+
+# The backend dispatches this workflow and gets a 204 with no body back, so it
+# has no run id to record. This run name is the only handle that ties a GitHub
+# run to the CIRun row that started it — the backend finds the run by matching
+# `display_title`. Do not change the `grade-` prefix without changing
+# RunsService.findRunByToken.
+run-name: grade-${{ inputs.correlation_token }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      student_repo:
+        description: 'owner/name of the student repository'
+        required: true
+        type: string
+      commit_sha:
+        description: 'Exact commit to grade. Never a branch.'
+        required: true
+        type: string
+      assignment_slug:
+        required: true
+        type: string
+      test_path:
+        description: 'Path to this assignment''s tests inside this repo'
+        required: true
+        type: string
+      correlation_token:
+        required: true
+        type: string
+      timeout_minutes:
+        description: 'Upper bound from the assignment config. The suite''s own manifest may ask for less.'
+        required: false
+        type: string
+        default: '10'
+
+# One in-flight run per dispatch. A student mashing Run cancels only their own
+# previous attempt, because the token is unique per press.
+concurrency:
+  group: grade-${{ inputs.correlation_token }}
+  cancel-in-progress: true
+
+# Deny by default, then grant per job. `grade` inherits this empty set, which is
+# the point of the whole split.
+permissions: {}
+
+jobs:
+  # Trusted. Checks out student code and the test suite, and executes neither.
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Just enough for this job to clone *this* repo (the test suite), which is
+    # private. Reading the student's repo uses the scoped App token below, not
+    # this. Nothing student-authored runs in this job.
+    permissions:
+      contents: read
+    outputs:
+      network: ${{ steps.manifest.outputs.network }}
+      node: ${{ steps.manifest.outputs.node }}
+      python: ${{ steps.manifest.outputs.python }}
+      rust: ${{ steps.manifest.outputs.rust }}
+      services: ${{ steps.manifest.outputs.services }}
+      timeout: ${{ steps.manifest.outputs.timeout }}
+    steps:
+      # `repositories` wants a bare repo name, but the dispatch input is
+      # owner-qualified. Passed through env rather than interpolated into the
+      # script body, so the value can never be read as shell.
+      - name: Resolve the student repository name
+        id: student
+        env:
+          STUDENT_REPO: ${{ inputs.student_repo }}
+        run: echo "name=${STUDENT_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Mint a scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          # client-id, not app-id: the action marks app-id deprecated, and
+          # GitHub recommends the Client ID as the JWT issuer.
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          # Narrow the token to exactly what this job does: read one student
+          # repository. Without these it would carry every permission the App
+          # holds, including repo administration, for no reason.
+          repositories: ${{ steps.student.outputs.name }}
+          permission-contents: read
+
+      - name: Check out the student repository at the graded commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.student_repo }}
+          ref: ${{ inputs.commit_sha }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: student
+          persist-credentials: false
+
+      # Belt and braces: the commit endpoint already refuses to write
+      # .github/**, so nothing should be here. Removing it anyway means a
+      # protected-path bug cannot become CI execution.
+      - name: Drop anything that could influence CI
+        run: rm -rf student/.github student/.git
+
+      - name: Check out the test suite
+        uses: actions/checkout@v4
+        with:
+          path: grader
+          persist-credentials: false
+
+      - name: Isolate this assignment's tests
+        env:
+          TEST_PATH: ${{ inputs.test_path }}
+        run: |
+          set -euo pipefail
+          test -d "grader/${TEST_PATH}" \
+            || { echo "::error::No tests at ${TEST_PATH}"; exit 1; }
+          mkdir -p tests
+          cp -R "grader/${TEST_PATH}/." tests/
+          cp grader/run-tests.sh tests/run-tests.sh
+          # The shared helpers travel with every suite; they are this
+          # repository's code, not one assignment's, so they overwrite rather
+          # than nest if a suite happens to carry a lib/ of its own.
+          rm -rf tests/lib
+          cp -R grader/lib tests/lib
+
+      # Read once here so the grade job can act on it without checking out the
+      # suite itself — which it must not do, since that needs a credential.
+      - name: Read the assignment manifest
+        id: manifest
+        env:
+          # An upper bound from the dispatch, so a manifest cannot grant itself
+          # more runner time than the assignment was configured for.
+          MAX_TIMEOUT: ${{ inputs.timeout_minutes }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, pathlib
+
+          path = pathlib.Path('tests/manifest.json')
+          manifest = json.loads(path.read_text()) if path.exists() else {}
+
+          network = manifest.get('network', 'full')
+          services = bool(manifest.get('services', False))
+          if services and network == 'none':
+              raise SystemExit(
+                  '::error::manifest sets services with network "none"; '
+                  'containers are unreachable from inside the namespace'
+              )
+
+          toolchains = manifest.get('toolchains', {})
+
+          # The manifest may only ask for less time than the assignment allows.
+          ceiling = int(os.environ['MAX_TIMEOUT'])
+          timeout = min(int(manifest.get('timeoutMinutes', ceiling)), ceiling)
+
+          print(f'network={network}')
+          print(f'services={"true" if services else "false"}')
+          print(f'timeout={timeout}')
+          for key in ('node', 'python', 'rust'):
+              print(f'{key}={toolchains.get(key, "")}')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: student-code
+          path: student
+          include-hidden-files: true
+          retention-days: 1
+
+      # Only this assignment's tests travel to the graded job, so a bug there
+      # cannot leak the whole suite.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assignment-tests
+          path: tests
+          include-hidden-files: true
+          retention-days: 1
+
+  # Untrusted: this is where student code runs.
+  grade:
+    needs: fetch
+    runs-on: ubuntu-latest
+    # Zero-scope GITHUB_TOKEN. Combined with referencing no `secrets.*`, there
+    # is nothing in this job's environment worth stealing.
+    permissions: {}
+    timeout-minutes: ${{ fromJSON(needs.fetch.outputs.timeout) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: student-code
+          path: student
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: assignment-tests
+          path: tests
+
+      # The templates install nvm and rustup themselves inside test.sh, which
+      # costs a minute per run, needs a network, and picks whatever version is
+      # current that day. Declaring them in the manifest instead makes the
+      # toolchain part of the assignment definition and lets the runner cache it.
+      - uses: actions/setup-node@v4
+        if: needs.fetch.outputs.node != ''
+        with:
+          node-version: ${{ needs.fetch.outputs.node }}
+
+      - uses: actions/setup-python@v5
+        if: needs.fetch.outputs.python != ''
+        with:
+          python-version: ${{ needs.fetch.outputs.python }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.fetch.outputs.rust != ''
+        with:
+          toolchain: ${{ needs.fetch.outputs.rust }}
+
+      - name: Run the tests
+        # Never fail the step: the report is the result, and it still has to be
+        # uploaded when the tests fail.
+        continue-on-error: true
+        env:
+          STUDENT_DIR: ${{ github.workspace }}/student
+          TEST_DIR: ${{ github.workspace }}/tests
+          LIB_DIR: ${{ github.workspace }}/tests/lib
+          REPORT_PATH: ${{ github.workspace }}/report.json
+          ASSIGNMENT_SLUG: ${{ inputs.assignment_slug }}
+          GRADE_NETWORK: ${{ needs.fetch.outputs.network }}
+        run: bash tests/run-tests.sh
+
+      # grade.sh traps EXIT to tear its own stack down, but a cancelled or
+      # timed-out job never runs the trap. services_up records the compose file
+      # it used so this can finish the job without guessing — and without
+      # reaching for `docker rm -f $(docker ps -aq)`, which would be fine on a
+      # throwaway runner and ruinous on a self-hosted one.
+      - name: Stop any leftover services
+        if: always() && needs.fetch.outputs.services == 'true'
+        run: |
+          set -euo pipefail
+          marker=student/.compose-file
+          if [ -s "$marker" ]; then
+            docker compose -f "$(cat "$marker")" down -v --remove-orphans || true
+          fi
+
+      - name: Guarantee a report
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -s report.json ]; then
+            printf '%s' '{"schemaVersion":1,"passed":false,"tests":[{"name":"grader","status":"failed","message":"The grader produced no report."}]}' > report.json
+          fi
+
+      # The backend reads this with its own App token. That is why the graded
+      # job needs no outbound credential of its own.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grade-report
+          path: report.json
+          retention-days: 7
+
+      # Container logs, when the assignment had any. Not part of the contract —
+      # this is for a TA diagnosing "the node never came up".
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.fetch.outputs.services == 'true'
+        with:
+          name: service-logs
+          path: student/logs
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Mirrors the report into the run conclusion, so a missing artifact still
+      # leaves the backend something to fall back on.
+      - name: Reflect the result in the run conclusion
+        if: always()
+        run: |
+          set -euo pipefail
+          node -e 'const r=JSON.parse(require("fs").readFileSync("report.json","utf8"));console.log(r.passed?"passed":"failed");process.exit(r.passed?0:1)'

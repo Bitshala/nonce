@@ -1,0 +1,22 @@
+[
+  {
+    "chapter": "chapter-6",
+    "spec": "grader_checks_op:OpTest:test_op_hash160"
+  },
+  {
+    "chapter": "chapter-6",
+    "spec": "grader_checks_op:OpTest:test_op_checksig"
+  },
+  {
+    "chapter": "chapter-7",
+    "spec": "grader_checks_tx:TxTest:test_sig_hash"
+  },
+  {
+    "chapter": "chapter-7",
+    "spec": "grader_checks_tx:TxTest:test_verify_p2pkh"
+  },
+  {
+    "chapter": "chapter-7",
+    "spec": "grader_checks_tx:TxTest:test_sign_input"
+  }
+]

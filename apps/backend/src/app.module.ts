@@ -32,6 +32,7 @@ import { MonitoringModule } from '@/common/monitoring.module';
 import { FellowshipApplicationsModule } from '@/fellowship-applications/fellowship-applications.module';
 import { FellowshipsModule } from '@/fellowships/fellowships.module';
 import { FellowshipReportsModule } from '@/fellowship-reports/fellowship-reports.module';
+import { AssignmentsModule } from '@/assignments/assignments.module';
 
 @Module({
     imports: [
@@ -95,6 +96,7 @@ import { FellowshipReportsModule } from '@/fellowship-reports/fellowship-reports
         FellowshipApplicationsModule,
         FellowshipsModule,
         FellowshipReportsModule,
+        AssignmentsModule,
     ],
     controllers: [AppController],
     providers: [

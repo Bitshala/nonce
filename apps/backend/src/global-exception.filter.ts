@@ -36,6 +36,18 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
             }
         }
 
+        // A 4xx with a structured body is that endpoint's contract — a save
+        // conflict's changed paths, a save's rejected paths — and the client
+        // reads it. Rewriting it into the generic error shape below would
+        // throw that away.
+        if (
+            exception instanceof HttpException &&
+            exception.getStatus() < 500 &&
+            isStructuredBody(exception.getResponse())
+        ) {
+            return super.catch(exception, host);
+        }
+
         let wrappedException: ServiceError;
         let httpException: HttpException;
 
@@ -79,4 +91,12 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
 
         super.catch(httpException, host);
     }
+}
+
+/**
+ * An object body the thrower built itself, as opposed to the
+ * `{ statusCode, message }` Nest wraps a plain message in.
+ */
+function isStructuredBody(response: string | object): boolean {
+    return typeof response === 'object' && !('statusCode' in response);
 }
