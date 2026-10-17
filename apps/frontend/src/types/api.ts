@@ -198,6 +198,10 @@ export interface LeaderboardEntryDto {
   maxTotalScore: number;
   totalAttendance: number;
   maxAttendance: number;
+  // Group discussion weeks only: orientation and graduation are left out.
+  // This is the figure certificate eligibility is decided on.
+  totalGroupDiscussionAttendance: number;
+  maxGroupDiscussionAttendance: number;
 }
 
 export type GetCohortLeaderboardResponseDto = LeaderboardEntryDto[] | { leaderboard: LeaderboardEntryDto[] };

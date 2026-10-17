@@ -126,17 +126,22 @@ const StudentDetailPage = () => {
   }, [selectedCohort?.weeklyScores, weekIdToNumberMap]);
 
   const totalWeeks = sortedWeeklyScores.length || 0;
-  const attendedWeeks = sortedWeeklyScores.filter(w => w.attended ?? w.groupDiscussionScores?.attendance).length || 0;
+  // Orientation and graduation don't count toward attendance, matching the
+  // rule the server applies to certificate eligibility.
+  const attendanceWeeks = sortedWeeklyScores.filter(
+    w => (weekIdToTypeMap.get(w.weekId) ?? 'GROUP_DISCUSSION') === 'GROUP_DISCUSSION',
+  );
+  const attendedWeeks = attendanceWeeks.filter(w => w.attended ?? w.groupDiscussionScores?.attendance).length;
   const hasExercises = cohortHasExercises(cohortData?.type || selectedCohort?.cohortType || '');
 
   const stats = {
     totalScore: selectedCohort?.totalScore || 0,
     maxPossibleScore: selectedCohort?.maxTotalScore || 0,
     avgScore: totalWeeks > 0 ? (selectedCohort?.totalScore || 0) / totalWeeks : 0,
-    attendanceRate: totalWeeks > 0 ? (attendedWeeks / totalWeeks) * 100 : 0,
+    attendanceRate: attendanceWeeks.length > 0 ? (attendedWeeks / attendanceWeeks.length) * 100 : 0,
     overallPercentage: (selectedCohort?.maxTotalScore || 0) > 0 ? ((selectedCohort?.totalScore || 0) / (selectedCohort?.maxTotalScore || 0)) * 100 : 0,
     attendedWeeks,
-    totalWeeks,
+    totalWeeks: attendanceWeeks.length,
   };
 
   const validWeeks = sortedWeeklyScores

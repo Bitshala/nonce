@@ -13,17 +13,17 @@ import { ServiceError } from '@/common/errors';
 import { CertificatesGenerationService } from '@/certificates/certificates-generation.service';
 import { CertificateType, CohortType } from '@/common/enum';
 import { ScoresService } from '@/scores/scores.service';
-import {
-    ABSENCE_THRESHOLD_DAYS,
-    TOP_PERFORMER_CUTOFF,
-} from '@/certificates/certificates.constants';
+import { TOP_PERFORMER_CUTOFF } from '@/certificates/certificates.constants';
 import { Certificate } from '@/entities/certificate.entity';
 import { User } from '@/entities/user.entity';
 import {
     CertificatePreviewResponseDto,
     GetCertificateResponseDto,
 } from '@/certificates/certificates.response.dto';
-import { generateCertificateFileName } from '@/certificates/certificates.utils';
+import {
+    generateCertificateFileName,
+    isEligibleForCertificate,
+} from '@/certificates/certificates.utils';
 import { APITask } from '@/entities/api-task.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { MailService } from '@/mail/mail.service';
@@ -66,14 +66,8 @@ export class CertificatesService {
         const leaderboard =
             await this.scoresService.getCohortLeaderboard(cohortId);
 
-        const absenceThresholdDays = ABSENCE_THRESHOLD_DAYS[cohort.type];
-
         const certificateEntities = leaderboard
-            .filter(
-                (entry) =>
-                    entry.totalGroupDiscussionAttendance >=
-                    entry.maxGroupDiscussionAttendance - absenceThresholdDays,
-            )
+            .filter((entry) => isEligibleForCertificate(entry, cohort.type))
             .map((entry, index) => {
                 const certificateType: CertificateType =
                     index < TOP_PERFORMER_CUTOFF
