@@ -21,8 +21,8 @@ export interface LeaderboardEntry {
   discordGlobalName?: string;
   discordUsername?: string;
   totalScore?: number;
-  totalAttendance?: number;
-  maxAttendance?: number;
+  totalGroupDiscussionAttendance?: number;
+  maxGroupDiscussionAttendance?: number;
   exerciseTotalScore?: number;
 }
 
@@ -72,8 +72,10 @@ export const transformLeaderboardData = (
 
     totalScore: entry.totalScore ?? 0,
 
-    totalAttendance: entry.totalAttendance ?? 0,
-    maxAttendance: entry.maxAttendance ?? 0,
+    // Orientation and graduation don't count toward attendance, matching the
+    // rule the server applies to certificate eligibility.
+    totalAttendance: entry.totalGroupDiscussionAttendance ?? 0,
+    maxAttendance: entry.maxGroupDiscussionAttendance ?? 0,
 
     exercisesCompleted: Math.floor((entry.exerciseTotalScore ?? 0) / 60),
   }));

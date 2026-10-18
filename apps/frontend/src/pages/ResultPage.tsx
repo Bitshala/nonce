@@ -407,15 +407,13 @@ export const ResultPage: React.FC = () => {
                       )}
 
                       {showDownloadColumn && (() => {
-                        const attended = student.totalAttendance;
-                        const total = student.maxAttendance;
-                        const passesAttendance = total > 0 && attended / total >= 0.7;
+                        // The server decides eligibility when it generates
+                        // certificates, so a certificate record is the answer.
                         const hasCertificate = certificateUserIds.has(student.userId);
-                        const eligible = passesAttendance && hasCertificate;
 
                         return (
                           <TableCell sx={{ ...cellSx, display: { xs: 'none', sm: 'table-cell' } }}>
-                            {eligible ? (
+                            {hasCertificate ? (
                               <Button
                                 size="small"
                                 variant="outlined"
