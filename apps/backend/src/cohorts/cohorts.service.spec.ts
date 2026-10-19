@@ -41,7 +41,10 @@ describe('CohortsService — registration deadline (end-of-day IST)', () => {
     const dbTransactionService = {
         execute: jest.fn(async (cb: (m: unknown) => unknown) => cb(manager)),
     };
-    const scoreWriteback = { sync: jest.fn(async () => undefined) };
+    const scoreWriteback = {
+        sync: jest.fn(async () => undefined),
+        restoreClassroomResults: jest.fn(async () => undefined),
+    };
     const configService = { getOrThrow: jest.fn(() => 'discord-role-id') };
 
     beforeEach(async () => {
@@ -215,5 +218,65 @@ describe('CohortsService — registration deadline (end-of-day IST)', () => {
         expect(scoreWriteback.sync.mock.invocationCallOrder[0]).toBeGreaterThan(
             manager.save.mock.invocationCallOrder[scoresSaved],
         );
+    });
+
+    describe('rejoining a cohort switched from GitHub Classroom', () => {
+        const joinCohortThatSwitched = async (
+            switchedFromClassroomAt: Date | null,
+        ) => {
+            cohortRepository.findOne.mockResolvedValue({
+                id: 'cohort-1',
+                type: CohortType.MASTERING_BITCOIN,
+                registrationDeadline: new Date(Date.now() + 86_400_000),
+                switchedFromClassroomAt,
+                weeks: [
+                    {
+                        id: 'week-1',
+                        type: CohortWeekType.GROUP_DISCUSSION,
+                        hasExercise: true,
+                    },
+                ],
+            } as unknown as Cohort);
+            cohortMembershipRepository.exists.mockResolvedValue(false);
+            cohortWaitlistRepository.findOne.mockResolvedValue(null);
+            cohortCalendarService.generateCalendarInvite.mockResolvedValue(
+                'invite',
+            );
+            mailService.sendCohortJoiningConfirmationEmail.mockResolvedValue(
+                undefined,
+            );
+            existingSubmissions = [{ id: 'submission-1' }];
+
+            await service.joinCohort(
+                { id: 'user-1', email: 'a@b.com' } as unknown as User,
+                'cohort-1',
+            );
+        };
+
+        it('restores their frozen Classroom results before replaying in-house work', async () => {
+            // Removal deleted the rows, and no Classroom sync runs on a
+            // switched cohort, so nothing else would bring a Classroom-only
+            // pass back.
+            await joinCohortThatSwitched(new Date('2026-09-01T00:00:00Z'));
+
+            expect(scoreWriteback.restoreClassroomResults).toHaveBeenCalledWith(
+                manager,
+                'user-1',
+                'cohort-1',
+            );
+            // In-house work raises the restored results, so it goes second.
+            expect(
+                scoreWriteback.restoreClassroomResults.mock
+                    .invocationCallOrder[0],
+            ).toBeLessThan(scoreWriteback.sync.mock.invocationCallOrder[0]);
+        });
+
+        it('has nothing to restore on a cohort that never switched', async () => {
+            await joinCohortThatSwitched(null);
+
+            expect(
+                scoreWriteback.restoreClassroomResults,
+            ).not.toHaveBeenCalled();
+        });
     });
 });

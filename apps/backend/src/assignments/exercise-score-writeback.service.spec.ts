@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { ServiceError } from '@/common/errors';
 import { AssignmentBackend } from '@/common/enum';
 
@@ -13,7 +14,12 @@ import { AssignmentBackend } from '@/common/enum';
 // students on every save.
 describe('ExerciseScoreWritebackService — sync', () => {
     let service: ExerciseScoreWritebackService;
-    const manager = { findOne: jest.fn(), save: jest.fn(), exists: jest.fn() };
+    const manager = {
+        findOne: jest.fn(),
+        find: jest.fn(),
+        save: jest.fn(),
+        exists: jest.fn(),
+    };
 
     const buildSubmission = (
         overrides: Partial<AssignmentSubmission> = {},
@@ -56,11 +62,14 @@ describe('ExerciseScoreWritebackService — sync', () => {
     const runSync = async (
         submission: AssignmentSubmission,
         score: Partial<ExerciseScore> = {},
+        // A switched cohort reads the frozen Classroom result third.
+        snapshot: Partial<ClassroomResultSnapshot> | null = null,
     ) => {
         const row = { isSubmitted: false, isPassing: false, ...score };
         manager.findOne
             .mockResolvedValueOnce(submission)
-            .mockResolvedValueOnce(row);
+            .mockResolvedValueOnce(row)
+            .mockResolvedValueOnce(snapshot);
 
         await service.sync(manager as unknown as EntityManager, 'submission-1');
         return row;
@@ -185,9 +194,9 @@ describe('ExerciseScoreWritebackService — sync', () => {
         ).rejects.toBeInstanceOf(ServiceError);
     });
     // A cohort GitHub Classroom graded before it switched keeps those results
-    // on its rows. A student's first in-house save has no passing run behind
-    // it, so the native rule would wipe a Classroom pass — and after the
-    // deadline no run could ever restore it.
+    // in a frozen snapshot. A student's first in-house save has no passing run
+    // behind it, so the native rule would wipe a Classroom pass — and after
+    // the deadline no run could ever restore it.
     describe('on a cohort switched from GitHub Classroom', () => {
         const switched = (
             overrides: Partial<AssignmentSubmission> = {},
@@ -208,14 +217,21 @@ describe('ExerciseScoreWritebackService — sync', () => {
                 } as never,
                 ...overrides,
             });
+        const classroomRepo = 'https://github.com/classroom/week-1-alice';
+        const inhouseRepo = 'https://github.com/bitshala/pb-week-3-s4-user-1';
         const classroomPass = {
             isSubmitted: true,
             isPassing: true,
-            classroomRepositoryUrl: 'https://github.com/classroom/week-1-alice',
+            classroomRepositoryUrl: classroomRepo,
+        };
+        const classroomFail = {
+            isSubmitted: true,
+            isPassing: false,
+            classroomRepositoryUrl: classroomRepo,
         };
 
         it('keeps a Classroom pass when the student saves without a passing run', async () => {
-            const row = await runSync(switched(), classroomPass);
+            const row = await runSync(switched(), classroomPass, classroomPass);
 
             expect(row.isPassing).toBe(true);
             expect(row.isSubmitted).toBe(true);
@@ -226,6 +242,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
             const row = await runSync(
                 switched({}, new Date(Date.now() - 86_400_000)),
                 classroomPass,
+                classroomPass,
             );
 
             expect(row.isPassing).toBe(true);
@@ -234,7 +251,8 @@ describe('ExerciseScoreWritebackService — sync', () => {
         it('raises a Classroom fail once an in-house run passes', async () => {
             const row = await runSync(
                 switched({ bestRun: { id: 'run-1' } as never }),
-                { isSubmitted: true, isPassing: false },
+                classroomFail,
+                classroomFail,
             );
 
             expect(row.isPassing).toBe(true);
@@ -247,6 +265,32 @@ describe('ExerciseScoreWritebackService — sync', () => {
                     isSubmittedOverride: false,
                 }),
                 classroomPass,
+                classroomPass,
+            );
+
+            expect(row.isPassing).toBe(false);
+            expect(row.isSubmitted).toBe(false);
+        });
+
+        it('gives back the Classroom pass when a pin to fail is cleared', async () => {
+            // The pin wrote false onto the row; the frozen result still says
+            // pass, and that is what clearing the pin returns to.
+            const row = await runSync(
+                switched(),
+                { isSubmitted: false, isPassing: false },
+                classroomPass,
+            );
+
+            expect(row.isPassing).toBe(true);
+            expect(row.isSubmitted).toBe(true);
+        });
+
+        it('returns to the Classroom fail when a pin to pass is cleared', async () => {
+            const sha = 'a'.repeat(40);
+            const row = await runSync(
+                switched({ initialCommitSha: sha, lastCommitSha: sha }),
+                { isSubmitted: true, isPassing: true },
+                { isSubmitted: false, isPassing: false },
             );
 
             expect(row.isPassing).toBe(false);
@@ -257,42 +301,59 @@ describe('ExerciseScoreWritebackService — sync', () => {
             const sha = 'a'.repeat(40);
             const row = await runSync(
                 switched({ initialCommitSha: sha, lastCommitSha: sha }),
-                { isSubmitted: true, isPassing: false },
+                classroomFail,
+                classroomFail,
             );
 
             expect(row.isSubmitted).toBe(true);
         });
 
-        it('keeps the Classroom repository url rather than overwriting it', async () => {
+        it('follows grading alone for a student who joined after the switch', async () => {
+            const row = (await runSync(switched(), {}, null)) as ExerciseScore;
+
+            expect(row.isSubmitted).toBe(true);
+            expect(row.isPassing).toBe(false);
+            expect(row.classroomRepositoryUrl).toBe(inhouseRepo);
+        });
+
+        it('points at the Classroom repo while that is where the result came from', async () => {
             const row = (await runSync(
                 switched(),
                 classroomPass,
+                classroomPass,
             )) as ExerciseScore;
 
-            expect(row.classroomRepositoryUrl).toBe(
-                'https://github.com/classroom/week-1-alice',
-            );
+            expect(row.classroomRepositoryUrl).toBe(classroomRepo);
+        });
+
+        it('points at the in-house repo once an in-house run passes', async () => {
+            const row = (await runSync(
+                switched({ bestRun: { id: 'run-1' } as never }),
+                classroomFail,
+                classroomFail,
+            )) as ExerciseScore;
+
+            expect(row.classroomRepositoryUrl).toBe(inhouseRepo);
         });
 
         it('never clears the repository url', async () => {
             const row = (await runSync(
                 switched({ repoHtmlUrl: null } as never),
                 classroomPass,
+                classroomPass,
             )) as ExerciseScore;
 
-            expect(row.classroomRepositoryUrl).toBe(
-                'https://github.com/classroom/week-1-alice',
-            );
+            expect(row.classroomRepositoryUrl).toBe(classroomRepo);
         });
 
         it('records the in-house repository for a week Classroom never saw', async () => {
-            const row = (await runSync(switched(), {
-                classroomRepositoryUrl: null,
-            })) as ExerciseScore;
+            const row = (await runSync(
+                switched(),
+                { classroomRepositoryUrl: null },
+                { isSubmitted: false, isPassing: false },
+            )) as ExerciseScore;
 
-            expect(row.classroomRepositoryUrl).toBe(
-                'https://github.com/bitshala/pb-week-3-s4-user-1',
-            );
+            expect(row.classroomRepositoryUrl).toBe(inhouseRepo);
         });
     });
 
@@ -324,5 +385,64 @@ describe('ExerciseScoreWritebackService — sync', () => {
         expect(row.classroomRepositoryUrl).toBe(
             'https://github.com/bitshala/pb-week-3-s4-user-1',
         );
+    });
+});
+
+describe('ExerciseScoreWritebackService — restoreClassroomResults', () => {
+    let service: ExerciseScoreWritebackService;
+    const manager = { find: jest.fn(), save: jest.fn() };
+
+    beforeEach(async () => {
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [ExerciseScoreWritebackService],
+        }).compile();
+        service = module.get(ExerciseScoreWritebackService);
+    });
+
+    afterEach(() => jest.resetAllMocks());
+
+    it('copies each frozen result onto the matching fresh row', async () => {
+        const week1 = { id: 'week-1', cohortWeek: { id: 'w1' } };
+        const week2 = { id: 'week-2', cohortWeek: { id: 'w2' } };
+        manager.find
+            .mockResolvedValueOnce([
+                {
+                    cohortWeek: { id: 'w1' },
+                    isSubmitted: true,
+                    isPassing: true,
+                    classroomRepositoryUrl: 'https://github.com/classroom/w1',
+                },
+            ])
+            .mockResolvedValueOnce([
+                { ...week1, isSubmitted: false, isPassing: false },
+                { ...week2, isSubmitted: false, isPassing: false },
+            ]);
+
+        await service.restoreClassroomResults(
+            manager as unknown as EntityManager,
+            'user-1',
+            'cohort-1',
+        );
+
+        expect(manager.save).toHaveBeenCalledWith([
+            {
+                ...week1,
+                isSubmitted: true,
+                isPassing: true,
+                classroomRepositoryUrl: 'https://github.com/classroom/w1',
+            },
+        ]);
+    });
+
+    it('writes nothing for a student with no frozen results', async () => {
+        manager.find.mockResolvedValueOnce([]);
+
+        await service.restoreClassroomResults(
+            manager as unknown as EntityManager,
+            'user-1',
+            'cohort-1',
+        );
+
+        expect(manager.save).not.toHaveBeenCalled();
     });
 });

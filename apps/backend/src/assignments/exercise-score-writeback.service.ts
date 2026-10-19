@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { isSwitchedFromClassroom } from '@/entities/cohort.entity';
 import { ServiceError } from '@/common/errors';
 
@@ -75,19 +76,35 @@ export class ExerciseScoreWritebackService {
 
         if (isSwitchedFromClassroom(cohort)) {
             // Classroom graded this week before the cohort switched, and its
-            // result is already on this row. In-house work may add to it but
+            // result is frozen in the snapshot. In-house work may add to it but
             // never take it away: a save with no passing run yet must not undo
             // a Classroom pass, which after the deadline no run could restore.
             // A staff pin still wins either way.
+            //
+            // The baseline is the snapshot, never this row's current value:
+            // the row also holds whatever a pin last wrote, so ORing onto it
+            // would turn a cleared pin into a permanent one, in either
+            // direction. A student who joined after the switch has no snapshot.
+            const snapshot = await manager.findOne(ClassroomResultSnapshot, {
+                where: {
+                    user: { id: submission.user.id },
+                    cohortWeek: { id: week.id },
+                },
+            });
+            const passedInHouse = submission.bestRun != null;
             score.isSubmitted =
                 submission.isSubmittedOverride ??
-                (submission.hasStudentCommits || score.isSubmitted);
+                (submission.hasStudentCommits ||
+                    (snapshot?.isSubmitted ?? false));
             score.isPassing =
                 submission.isPassingOverride ??
-                (submission.bestRun != null || score.isPassing);
-            // The Classroom repo is the evidence for a Classroom result.
+                (passedInHouse || (snapshot?.isPassing ?? false));
+            // The evidence is the repo that produced the result: the in-house
+            // one once it passes, otherwise the Classroom one if there was any.
             score.classroomRepositoryUrl =
-                score.classroomRepositoryUrl ?? submission.repoHtmlUrl;
+                (passedInHouse ? submission.repoHtmlUrl : null) ??
+                snapshot?.classroomRepositoryUrl ??
+                submission.repoHtmlUrl;
         } else {
             // A staff pin wins, field by field; without one, grading decides.
             score.isSubmitted =
@@ -103,6 +120,51 @@ export class ExerciseScoreWritebackService {
 
         this.logger.log(
             `Synced ExerciseScore for submission ${submission.id}: submitted=${score.isSubmitted} passing=${score.isPassing}`,
+        );
+    }
+
+    /**
+     * Puts a switched cohort's frozen Classroom results back on a student's
+     * freshly seeded score rows. Removal deletes those rows, and on a switched
+     * cohort no Classroom sync will ever refill them, so without this a
+     * student removed and added back would lose every Classroom pass.
+     *
+     * Covers every week, including ones with no in-house submission, which
+     * `sync` never visits. Call it before replaying submissions through
+     * `sync`, which then raises the weeks with in-house work.
+     */
+    async restoreClassroomResults(
+        manager: EntityManager,
+        userId: string,
+        cohortId: string,
+    ): Promise<void> {
+        const snapshots = await manager.find(ClassroomResultSnapshot, {
+            where: { user: { id: userId }, cohort: { id: cohortId } },
+            relations: { cohortWeek: true },
+        });
+        if (snapshots.length === 0) return;
+
+        const scores = await manager.find(ExerciseScore, {
+            where: { user: { id: userId }, cohort: { id: cohortId } },
+            relations: { cohortWeek: true },
+        });
+        const byWeekId = new Map(
+            snapshots.map((snap) => [snap.cohortWeek.id, snap] as const),
+        );
+
+        const restored: ExerciseScore[] = [];
+        for (const score of scores) {
+            const snapshot = byWeekId.get(score.cohortWeek.id);
+            if (!snapshot) continue;
+            score.isSubmitted = snapshot.isSubmitted;
+            score.isPassing = snapshot.isPassing;
+            score.classroomRepositoryUrl = snapshot.classroomRepositoryUrl;
+            restored.push(score);
+        }
+        if (restored.length > 0) await manager.save(restored);
+
+        this.logger.log(
+            `Restored ${restored.length} Classroom result(s) for user ${userId} in cohort ${cohortId}`,
         );
     }
 }

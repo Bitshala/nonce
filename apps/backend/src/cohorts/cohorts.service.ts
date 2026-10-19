@@ -6,7 +6,7 @@ import {
     StreamableFile,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Cohort } from '@/entities/cohort.entity';
+import { Cohort, isSwitchedFromClassroom } from '@/entities/cohort.entity';
 import { EntityManager, In, Repository } from 'typeorm';
 import {
     CreateCohortRequestDto,
@@ -1188,10 +1188,21 @@ export class CohortsService {
                 if (exerciseScores.length > 0)
                     await manager.save(exerciseScores);
 
-                // A student who left and is rejoining keeps their submissions,
-                // but the rows just seeded start them at zero. Writeback is
-                // what decides these fields, so let it, rather than erase a
-                // pass that their bestRun still records.
+                // A student who left and is rejoining a switched cohort gets
+                // their frozen Classroom results back first; nothing else
+                // would ever refill them.
+                if (isSwitchedFromClassroom(cohort)) {
+                    await this.scoreWriteback.restoreClassroomResults(
+                        manager,
+                        user.id,
+                        cohort.id,
+                    );
+                }
+
+                // They also keep their submissions, but the rows just seeded
+                // start them at zero. Writeback is what decides these fields,
+                // so let it, rather than erase a pass that their bestRun still
+                // records.
                 const submissions = await manager.find(AssignmentSubmission, {
                     where: {
                         user: { id: user.id },
@@ -1284,6 +1295,9 @@ export class CohortsService {
                     user: { id: user.id },
                     cohort: { id: cohort.id },
                 });
+                // On a switched cohort the Classroom result also lives in
+                // ClassroomResultSnapshot, which is kept so a rejoin can
+                // restore it.
                 await manager.delete(ExerciseScore, {
                     user: { id: user.id },
                     cohort: { id: cohort.id },
