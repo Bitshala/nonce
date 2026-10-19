@@ -1,4 +1,4 @@
-import { CohortType, CohortWeekType } from '../enums';
+import { AssignmentBackend, CohortType, CohortWeekType } from '../enums';
 
 // --- Instruction-sheet content, served inside GET /cohorts/:id ---
 
@@ -55,6 +55,8 @@ export interface GetCohortResponse {
   /** Graded GitHub-Classroom flag — NOT the Exercises tab, which is per-week. */
   hasExercises: boolean;
   classroomId: string | null;
+  /** Which system grades this cohort's exercises. */
+  assignmentBackend: AssignmentBackend;
   links: CohortLink[];
   weeks: GetCohortWeekResponse[];
 }

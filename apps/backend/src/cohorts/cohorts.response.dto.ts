@@ -1,4 +1,4 @@
-import { CohortType, CohortWeekType } from '@/common/enum';
+import { AssignmentBackend, CohortType, CohortWeekType } from '@/common/enum';
 import type {
     CohortLink as SharedCohortLink,
     GetCohortResponse,
@@ -66,6 +66,7 @@ export class GetCohortResponseDto implements GetCohortResponse {
     registrationDeadline!: string;
     hasExercises!: boolean;
     classroomId!: string | null;
+    assignmentBackend!: AssignmentBackend;
     links!: CohortLink[];
     weeks!: GetCohortWeekResponseDto[];
 
@@ -79,6 +80,7 @@ export class GetCohortResponseDto implements GetCohortResponse {
         this.registrationDeadline = obj.registrationDeadline;
         this.hasExercises = obj.hasExercises;
         this.classroomId = obj.classroomId;
+        this.assignmentBackend = obj.assignmentBackend;
         this.links = obj.links;
         this.weeks = obj.weeks
             .map((week) => new GetCohortWeekResponseDto(week))
@@ -105,6 +107,7 @@ export class GetCohortResponseDto implements GetCohortResponse {
             registrationDeadline: cohort.registrationDeadline.toISOString(),
             hasExercises: cohort.hasExercises,
             classroomId: isAnonymous ? null : (cohort.classroomId ?? null),
+            assignmentBackend: cohort.assignmentBackend,
             // Links are filtered by role; minRole is dropped from the response.
             links: filterLinksByRole(cohort.links ?? [], role).map((link) => ({
                 label: link.label,
