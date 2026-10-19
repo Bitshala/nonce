@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, AlertTitle } from '@mui/material';
+import { Alert, AlertTitle, IconButton, Stack } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { formatDate } from '../../utils/dateUtils.ts';
 
@@ -38,8 +39,21 @@ export const ClassroomSwitchBanner = ({
     <Alert
       severity="info"
       variant="outlined"
-      onClose={dismiss}
-      action={action}
+      // A custom action replaces MUI's own close button, so it is drawn here
+      // too; otherwise passing an action would make the notice undismissable.
+      action={
+        <Stack direction="row" sx={{ alignItems: 'center' }}>
+          {action}
+          <IconButton
+            aria-label="Dismiss"
+            size="small"
+            color="inherit"
+            onClick={dismiss}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      }
       sx={{
         mb: 3,
         bgcolor: 'rgba(96,165,250,0.08)',

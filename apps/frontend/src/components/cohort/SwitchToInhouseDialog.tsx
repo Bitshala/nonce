@@ -143,8 +143,9 @@ export const SwitchToInhouseDialog = ({
 
         {preview.data?.canSwitch && (
           <>
-            <Box
+            <Typography
               component="ul"
+              variant="body2"
               sx={{ ...textSx, m: 0, pl: '1.2rem', '& li': { mb: 0.75 } }}
             >
               <li>
@@ -169,7 +170,7 @@ export const SwitchToInhouseDialog = ({
                 this is not graded.
               </li>
               <li>These assignments open now, past weeks included:</li>
-            </Box>
+            </Typography>
 
             <Table size="small" aria-label="Assignments the switch opens">
               <TableHead>
@@ -230,7 +231,16 @@ export const SwitchToInhouseDialog = ({
           color="error"
           onClick={confirm}
           disabled={!canConfirm}
-          sx={{ textTransform: 'none', boxShadow: 'none', minWidth: 160 }}
+          sx={{
+            textTransform: 'none',
+            boxShadow: 'none',
+            minWidth: 160,
+            // MUI's default disabled grey is near-invisible on this dialog.
+            '&.Mui-disabled': {
+              bgcolor: 'rgba(239,68,68,0.15)',
+              color: 'rgba(252,165,165,0.6)',
+            },
+          }}
         >
           {isPending ? (
             <CircularProgress size={20} sx={{ color: '#fff' }} />

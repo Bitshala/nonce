@@ -202,7 +202,7 @@ const CohortTable = ({
               )}
               {hasExercises && (
                 <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', md: 'table-cell' } }}>
-                  <Typography variant="body2" sx={{ color: '#a1a1aa', whiteSpace: 'nowrap' }}>
+                  <Typography variant="body2" sx={{ color: '#a1a1aa' }}>
                     {cohort.exercises ?? '-'}
                   </Typography>
                 </TableCell>

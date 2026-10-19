@@ -9,6 +9,7 @@ Work you push to your GitHub Classroom repositories from now on will not be grad
 You'll find this and every remaining week's exercise on your Assignments page:
 <%~ it.assignmentsUrl %>
 
+
 Happy hacking!
 
 <%~ it.cohortName %> TAs
