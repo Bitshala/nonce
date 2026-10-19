@@ -4,6 +4,7 @@ import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writ
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { ServiceError } from '@/common/errors';
+import { AssignmentBackend } from '@/common/enum';
 
 // This service is the only thing that writes the two booleans the leaderboard
 // and certificates read. The invariant worth pinning is that it re-reads the
@@ -182,5 +183,144 @@ describe('ExerciseScoreWritebackService — sync', () => {
         await expect(
             service.sync(manager as unknown as EntityManager, 'missing'),
         ).rejects.toBeInstanceOf(ServiceError);
+    });
+    // A cohort GitHub Classroom graded before it switched keeps those results
+    // on its rows. A student's first in-house save has no passing run behind
+    // it, so the native rule would wipe a Classroom pass — and after the
+    // deadline no run could ever restore it.
+    describe('on a cohort switched from GitHub Classroom', () => {
+        const switched = (
+            overrides: Partial<AssignmentSubmission> = {},
+            deadline: Date | null = new Date(Date.now() + 86_400_000),
+        ) =>
+            buildSubmission({
+                assignment: {
+                    deadline,
+                    cohortWeek: {
+                        id: 'week-1',
+                        cohort: {
+                            id: 'cohort-1',
+                            assignmentBackend: AssignmentBackend.INHOUSE,
+                            classroomId: '243620',
+                        },
+                    },
+                } as never,
+                ...overrides,
+            });
+        const classroomPass = {
+            isSubmitted: true,
+            isPassing: true,
+            classroomRepositoryUrl: 'https://github.com/classroom/week-1-alice',
+        };
+
+        it('keeps a Classroom pass when the student saves without a passing run', async () => {
+            const row = await runSync(switched(), classroomPass);
+
+            expect(row.isPassing).toBe(true);
+            expect(row.isSubmitted).toBe(true);
+        });
+
+        it('keeps a Classroom pass after graduation, when no run can count', async () => {
+            // Past the deadline runs do not count, so bestRun stays null.
+            const row = await runSync(
+                switched({}, new Date(Date.now() - 86_400_000)),
+                classroomPass,
+            );
+
+            expect(row.isPassing).toBe(true);
+        });
+
+        it('raises a Classroom fail once an in-house run passes', async () => {
+            const row = await runSync(
+                switched({ bestRun: { id: 'run-1' } as never }),
+                { isSubmitted: true, isPassing: false },
+            );
+
+            expect(row.isPassing).toBe(true);
+        });
+
+        it('still lets a staff pin lower a Classroom result', async () => {
+            const row = await runSync(
+                switched({
+                    isPassingOverride: false,
+                    isSubmittedOverride: false,
+                }),
+                classroomPass,
+            );
+
+            expect(row.isPassing).toBe(false);
+            expect(row.isSubmitted).toBe(false);
+        });
+
+        it('does not un-submit a week the student pushed to in Classroom', async () => {
+            const sha = 'a'.repeat(40);
+            const row = await runSync(
+                switched({ initialCommitSha: sha, lastCommitSha: sha }),
+                { isSubmitted: true, isPassing: false },
+            );
+
+            expect(row.isSubmitted).toBe(true);
+        });
+
+        it('keeps the Classroom repository url rather than overwriting it', async () => {
+            const row = (await runSync(
+                switched(),
+                classroomPass,
+            )) as ExerciseScore;
+
+            expect(row.classroomRepositoryUrl).toBe(
+                'https://github.com/classroom/week-1-alice',
+            );
+        });
+
+        it('never clears the repository url', async () => {
+            const row = (await runSync(
+                switched({ repoHtmlUrl: null } as never),
+                classroomPass,
+            )) as ExerciseScore;
+
+            expect(row.classroomRepositoryUrl).toBe(
+                'https://github.com/classroom/week-1-alice',
+            );
+        });
+
+        it('records the in-house repository for a week Classroom never saw', async () => {
+            const row = (await runSync(switched(), {
+                classroomRepositoryUrl: null,
+            })) as ExerciseScore;
+
+            expect(row.classroomRepositoryUrl).toBe(
+                'https://github.com/bitshala/pb-week-3-s4-user-1',
+            );
+        });
+    });
+
+    it('follows grading alone on a native in-house cohort, even down', async () => {
+        // No classroomId: nothing Classroom-derived to protect, so today's
+        // rule applies unchanged.
+        const row = (await runSync(
+            buildSubmission({
+                assignment: {
+                    cohortWeek: {
+                        id: 'week-1',
+                        cohort: {
+                            id: 'cohort-1',
+                            assignmentBackend: AssignmentBackend.INHOUSE,
+                            classroomId: null,
+                        },
+                    },
+                } as never,
+            }),
+            {
+                isSubmitted: true,
+                isPassing: true,
+                classroomRepositoryUrl: 'https://github.com/old/url',
+            },
+        )) as ExerciseScore;
+
+        expect(row.isPassing).toBe(false);
+        expect(row.classroomRepositoryUrl).toBe(
+            'https://github.com/bitshala/pb-week-3-s4-user-1',
+        );
     });
 });
