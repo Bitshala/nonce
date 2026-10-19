@@ -153,6 +153,11 @@ export class APITaskProcessorService {
                         task,
                     );
                     break;
+                case TaskType.SEND_CLASSROOM_SWITCH_EMAILS:
+                    await this.adminAssignmentsService.handleSendClassroomSwitchEmails(
+                        task,
+                    );
+                    break;
                 default:
                     throw new ApiError(
                         `Unknown task type ${task.type} for task ${task.id}`,

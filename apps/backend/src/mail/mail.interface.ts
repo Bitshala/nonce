@@ -62,6 +62,14 @@ export interface CohortCalendarUpdateContext {
     season: string;
 }
 
+export interface CohortClassroomSwitchContext {
+    userName: string;
+    cohortName: string;
+    season: string;
+    switchedOn: string;
+    assignmentsUrl: string;
+}
+
 export interface FellowshipApplicationReceivedContext {
     userName: string;
     fellowshipType: string;
@@ -131,6 +139,7 @@ export interface TemplateContextMap {
     [MailTemplate.CohortCertificate]: CohortCertificateContext;
     [MailTemplate.CohortFeedbackReminder]: CohortFeedbackReminderContext;
     [MailTemplate.CohortCalendarUpdate]: CohortCalendarUpdateContext;
+    [MailTemplate.CohortClassroomSwitch]: CohortClassroomSwitchContext;
     [MailTemplate.FellowshipApplicationReceived]: FellowshipApplicationReceivedContext;
     [MailTemplate.FellowshipApplicationAccepted]: FellowshipApplicationAcceptedContext;
     [MailTemplate.FellowshipApplicationAcceptedNoDocuments]: FellowshipApplicationAcceptedNoDocumentsContext;

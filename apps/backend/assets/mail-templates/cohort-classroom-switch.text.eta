@@ -1,0 +1,14 @@
+Exercises have moved — <%~ it.cohortName %> <%~ it.season %>
+
+Hi <%~ it.userName %>,
+
+From <%~ it.switchedOn %>, exercises for <%~ it.cohortName %> <%~ it.season %> run on the Bitshala classroom instead of GitHub Classroom.
+
+Work you push to your GitHub Classroom repositories from now on will not be graded. The results GitHub Classroom already recorded are kept, and nothing you do on the Bitshala classroom can lower them.
+
+You'll find this and every remaining week's exercise on your Assignments page:
+<%~ it.assignmentsUrl %>
+
+Happy hacking!
+
+<%~ it.cohortName %> TAs

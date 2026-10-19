@@ -51,6 +51,7 @@ import {
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
+import { MailService } from '@/mail/mail.service';
 
 /**
  * How long a PROVISIONING row is presumed to have a live worker behind it.
@@ -106,6 +107,7 @@ export class AdminAssignmentsService {
         private readonly scoreWriteback: ExerciseScoreWritebackService,
         private readonly dbTransactionService: DbTransactionService,
         private readonly githubClassroomService: GitHubClassroomService,
+        private readonly mailService: MailService,
         configService: ConfigService,
     ) {
         this.org = configService.get<string>('githubApp.org') ?? '';
@@ -279,6 +281,17 @@ export class AdminAssignmentsService {
                         cohort,
                         config,
                     );
+
+                    // Queued with the switch, so the students are told
+                    // exactly when it commits, and never about one that
+                    // rolled back.
+                    await manager.save(
+                        manager.create(APITask, {
+                            type: TaskType.SEND_CLASSROOM_SWITCH_EMAILS,
+                            data: { cohortId },
+                        }),
+                    );
+
                     return {
                         ...seeded,
                         cancelled: cancelled.affected ?? 0,
@@ -830,6 +843,62 @@ export class AdminAssignmentsService {
      * keep their work via the zip export; throwing it away would be a poor
      * outcome for something they spent a cohort on.
      */
+    /**
+     * Emails every student of a cohort that just left GitHub Classroom. A
+     * failed send is logged and skipped rather than retried for everyone: a
+     * retry of the whole task would email the rest a second time.
+     */
+    async handleSendClassroomSwitchEmails(
+        task: APITask<TaskType.SEND_CLASSROOM_SWITCH_EMAILS>,
+    ): Promise<void> {
+        const { cohortId } = task.data;
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+            relations: { memberships: { user: true } },
+        });
+        if (!cohort) {
+            throw new ServiceError(
+                `Cohort ${cohortId} not found for Classroom switch emails`,
+            );
+        }
+        if (!cohort.switchedFromClassroomAt) {
+            throw new ServiceError(
+                `Cohort ${cohortId} has not switched from GitHub Classroom`,
+            );
+        }
+
+        const cohortName = this.mailService.getCohortShortName(cohort.type);
+        const season = `Season ${cohort.season.toString().padStart(2, '0')}`;
+        const users = cohort.memberships.map((m) => m.user);
+
+        this.logger.log(
+            `Sending Classroom switch emails to ${users.length} users for cohort ${cohortId}`,
+        );
+
+        for (const user of users) {
+            if (!user.email) {
+                this.logger.warn(
+                    `User ${user.id} does not have an email address, skipping Classroom switch email`,
+                );
+                continue;
+            }
+            try {
+                await this.mailService.sendClassroomSwitchEmail(
+                    user.email,
+                    user.displayName,
+                    cohortName,
+                    season,
+                    cohort.switchedFromClassroomAt,
+                );
+            } catch (error) {
+                this.logger.error(
+                    `Failed to send Classroom switch email to user ${user.id}: ${error.message}`,
+                    error.stack,
+                );
+            }
+        }
+    }
+
     async handleArchiveAssignmentRepos(
         task: APITask<TaskType.ARCHIVE_ASSIGNMENT_REPOS>,
     ): Promise<ArchiveAssignmentResponseDto> {

@@ -7,6 +7,7 @@ export enum MailTemplate {
     CohortCertificate = 'cohort-certificate',
     CohortFeedbackReminder = 'cohort-feedback-reminder',
     CohortCalendarUpdate = 'cohort-calendar-update',
+    CohortClassroomSwitch = 'cohort-classroom-switch',
     FellowshipApplicationReceived = 'fellowship-application-received',
     FellowshipApplicationAccepted = 'fellowship-application-accepted',
     FellowshipApplicationAcceptedNoDocuments = 'fellowship-application-accepted-no-documents',

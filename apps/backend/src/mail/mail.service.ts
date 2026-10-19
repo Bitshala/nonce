@@ -361,6 +361,42 @@ export class MailService implements OnModuleInit {
         });
     }
 
+    /**
+     * Tells a student their cohort's exercises have moved off GitHub
+     * Classroom. Without it, a student who never opens the portal keeps
+     * pushing to a Classroom repo that will never be graded again.
+     */
+    async sendClassroomSwitchEmail(
+        userEmail: string,
+        userName: string,
+        cohortName: string,
+        season: string,
+        switchedAt: Date,
+    ): Promise<void> {
+        const subject = `Exercises have moved: ${cohortName} ${season}`;
+        const frontEndUrl =
+            this.configService.getOrThrow<string>('app.frontEndUrl');
+
+        return this.sendTemplatedEmail({
+            to: userEmail,
+            subject,
+            template: MailTemplate.CohortClassroomSwitch,
+            context: {
+                userName,
+                cohortName,
+                season,
+                // The date deadlines are counted in, whatever the reader's zone.
+                switchedOn: switchedAt.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: 'Asia/Kolkata',
+                }),
+                assignmentsUrl: new URL('/assignments', frontEndUrl).toString(),
+            },
+        });
+    }
+
     private getFellowshipTypeDisplayName(type: FellowshipType): string {
         switch (type) {
             case FellowshipType.DEVELOPER:

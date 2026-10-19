@@ -54,6 +54,10 @@ export type ArchiveAssignmentReposTaskData = {
     cohortId: string;
 };
 
+export type SendClassroomSwitchEmailsTaskData = {
+    cohortId: string;
+};
+
 export type TaskDataMap = {
     [TaskType.ASSIGN_COHORT_ROLE]: AssignCohortRoleTaskData;
     [TaskType.ASSIGN_COHORT_ALUMNI_ROLE]: AssignCohortAlumniRoleTaskData;
@@ -67,6 +71,7 @@ export type TaskDataMap = {
     [TaskType.PROVISION_ASSIGNMENT_REPO]: ProvisionAssignmentRepoTaskData;
     [TaskType.RECONCILE_CI_RUN]: ReconcileCIRunTaskData;
     [TaskType.ARCHIVE_ASSIGNMENT_REPOS]: ArchiveAssignmentReposTaskData;
+    [TaskType.SEND_CLASSROOM_SWITCH_EMAILS]: SendClassroomSwitchEmailsTaskData;
 };
 
 export type TaskData<T extends TaskType> = TaskDataMap[T];

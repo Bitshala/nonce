@@ -18,6 +18,7 @@ import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { GitHubClassroomService } from '@/github-classroom/github-classroom.service';
+import { MailService } from '@/mail/mail.service';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
@@ -53,6 +54,10 @@ describe('AdminAssignmentsService', () => {
     const cohortRepository = { findOne: jest.fn() };
     const cohortsService = { syncAssignmentDeadlines: jest.fn() };
     const cohortsConfigService = { getConfig: jest.fn() };
+    const mailService = {
+        getCohortShortName: jest.fn(),
+        sendClassroomSwitchEmail: jest.fn(),
+    };
     const githubClassroomService = {
         fetchFinalResults: jest.fn(),
         applyFinalResults: jest.fn(),
@@ -71,6 +76,7 @@ describe('AdminAssignmentsService', () => {
         update: jest.fn(),
         save: jest.fn(),
         query: jest.fn(),
+        create: jest.fn(),
         createQueryBuilder: jest.fn(),
     };
     const dbTransactionService = {
@@ -126,6 +132,7 @@ describe('AdminAssignmentsService', () => {
                     provide: GitHubClassroomService,
                     useValue: githubClassroomService,
                 },
+                { provide: MailService, useValue: mailService },
                 { provide: ConfigService, useValue: { get: () => undefined } },
             ],
         }).compile();
@@ -306,6 +313,9 @@ describe('AdminAssignmentsService', () => {
             cohortsConfigService.getConfig.mockReturnValue(fullConfig);
             githubClassroomService.fetchFinalResults.mockResolvedValue(fetched);
             githubClassroomService.applyFinalResults.mockResolvedValue(2);
+            manager.create.mockImplementation(
+                (_entity: unknown, fields: object) => fields,
+            );
         });
 
         afterEach(() => jest.useRealTimers());
@@ -389,12 +399,19 @@ describe('AdminAssignmentsService', () => {
                 manager,
                 'cohort-1',
             );
-            // Besides the final Classroom read, only assignments are written.
-            for (const [entities] of manager.save.mock.calls) {
-                for (const entity of entities as unknown[]) {
-                    expect(entity).toBeInstanceOf(Assignment);
-                }
+            // Besides the final Classroom read and the snapshot, only
+            // assignments and the students' notice are written.
+            const [[seeded], [notice]] = manager.save.mock.calls as [
+                unknown[],
+            ][];
+            for (const entity of seeded as unknown[]) {
+                expect(entity).toBeInstanceOf(Assignment);
             }
+            expect(notice).toEqual({
+                type: TaskType.SEND_CLASSROOM_SWITCH_EMAILS,
+                data: { cohortId: 'cohort-1' },
+            });
+            expect(manager.save).toHaveBeenCalledTimes(2);
             expect(scoreWriteback.sync).not.toHaveBeenCalled();
         });
 
@@ -727,6 +744,62 @@ describe('AdminAssignmentsService', () => {
             await expect(attempt).rejects.toBeInstanceOf(ConflictException);
             await expect(attempt).rejects.toThrow('week(s) 1 would');
             expectNoWrites();
+        });
+    });
+
+    describe('handleSendClassroomSwitchEmails', () => {
+        const task = {
+            data: { cohortId: 'cohort-1' },
+        } as APITask<TaskType.SEND_CLASSROOM_SWITCH_EMAILS>;
+        const switchedAt = new Date('2026-10-19T09:00:00.000Z');
+
+        beforeEach(() => {
+            mailService.getCohortShortName.mockReturnValue('PB');
+        });
+
+        it('emails every student, and one failure does not stop the rest', async () => {
+            cohortRepository.findOne.mockResolvedValue({
+                id: 'cohort-1',
+                type: CohortType.PROGRAMMING_BITCOIN,
+                season: 3,
+                switchedFromClassroomAt: switchedAt,
+                memberships: [
+                    { user: { id: 'u1', email: 'a@x.org', displayName: 'A' } },
+                    { user: { id: 'u2', email: null, displayName: 'B' } },
+                    { user: { id: 'u3', email: 'c@x.org', displayName: 'C' } },
+                ],
+            });
+            mailService.sendClassroomSwitchEmail
+                .mockRejectedValueOnce(new Error('SMTP down'))
+                .mockResolvedValueOnce(undefined);
+
+            await service.handleSendClassroomSwitchEmails(task);
+
+            expect(mailService.sendClassroomSwitchEmail).toHaveBeenCalledTimes(
+                2,
+            );
+            expect(
+                mailService.sendClassroomSwitchEmail,
+            ).toHaveBeenLastCalledWith(
+                'c@x.org',
+                'C',
+                'PB',
+                'Season 03',
+                switchedAt,
+            );
+        });
+
+        it('refuses for a cohort that never switched', async () => {
+            cohortRepository.findOne.mockResolvedValue({
+                id: 'cohort-1',
+                switchedFromClassroomAt: null,
+                memberships: [],
+            });
+
+            await expect(
+                service.handleSendClassroomSwitchEmails(task),
+            ).rejects.toThrow('has not switched');
+            expect(mailService.sendClassroomSwitchEmail).not.toHaveBeenCalled();
         });
     });
 

@@ -24,6 +24,7 @@ import { AdminAssignmentsController } from '@/assignments/admin-assignments.cont
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import { ExerciseScoreWritebackModule } from '@/assignments/exercise-score-writeback.module';
 import { GitHubClassroomModule } from '@/github-classroom/github-classroom.module';
+import { MailModule } from '@/mail/mail.module';
 
 @Module({
     imports: [
@@ -42,6 +43,8 @@ import { GitHubClassroomModule } from '@/github-classroom/github-classroom.modul
         ExerciseScoreWritebackModule,
         // For the switch to in-house, which drains Classroom first.
         GitHubClassroomModule,
+        // For telling students their cohort switched.
+        MailModule,
         // For CohortsConfigService, which owns the config assignments are
         // authored in.
         CohortsModule,

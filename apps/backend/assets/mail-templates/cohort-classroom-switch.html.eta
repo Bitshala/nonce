@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <%~ include('./_dark-scheme-head.html.eta') %>
+  <title>Exercises have moved — <%~ it.cohortName %> <%~ it.season %></title>
+</head>
+<body bgcolor="#111111" style="margin:0; padding:0; background-color:#111111; font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+
+  <!-- Full-width background -->
+  <table bgcolor="#111111" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111111; padding:24px 0;">
+    <tr>
+      <td align="center">
+
+        <!-- Main card -->
+        <table bgcolor="#1b1b1b" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#1b1b1b; border-radius:16px; overflow:hidden;">
+          <!-- Header strip -->
+          <tr>
+            <td bgcolor="#000000" align="center" style="background-color:#000000; padding:24px 24px 20px 24px;">
+              <h1 style="margin:0; font-size:22px; color:#ffffff; font-weight:700;">
+                Exercises have moved
+              </h1>
+              <p style="margin:8px 0 0 0; font-size:14px; color:#f9b233; font-weight:500;">
+                <%~ it.cohortName %> <%~ it.season %>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Body copy -->
+          <tr>
+            <td style="padding:24px 32px 16px 32px; color:#eaeaea; font-size:14px; line-height:1.6;">
+              <p style="margin:0 0 16px 0;">
+                Hi <strong style="color:#ffd580;"><%~ it.userName %></strong>,
+              </p>
+
+              <p style="margin:0 0 20px 0;">
+                From <strong style="color:#ffd580;"><%~ it.switchedOn %></strong>, exercises for <strong style="color:#ffd580;"><%~ it.cohortName %> <%~ it.season %></strong> run on the Bitshala classroom instead of GitHub Classroom.
+              </p>
+
+              <p style="margin:0 0 20px 0;">
+                Work you push to your GitHub Classroom repositories from now on <strong style="color:#ffd580;">will not be graded</strong>. The results GitHub Classroom already recorded are kept, and nothing you do on the Bitshala classroom can lower them.
+              </p>
+
+              <p style="margin:0 0 24px 0;">
+                You'll find this and every remaining week's exercise on your Assignments page:
+              </p>
+
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td bgcolor="#f97316" style="background-color:#f97316; border-radius:8px;">
+                    <a href="<%~ it.assignmentsUrl %>" style="display:inline-block; padding:12px 20px; color:#ffffff; font-size:14px; font-weight:600; text-decoration:none;">Open my assignments</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 4px 0; font-weight:500;">
+                Happy hacking!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer / sign-off -->
+          <tr>
+            <td style="padding:0 32px 28px 32px; color:#b3b3b3; font-size:14px; line-height:1.6;">
+              <p style="margin:0;">
+                <strong style="color:#eaeaea;"><%~ it.cohortName %> TAs</strong>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Main card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
