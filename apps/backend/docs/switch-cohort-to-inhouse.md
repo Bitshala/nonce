@@ -30,6 +30,17 @@ pin ?? (in-house result || frozen Classroom result)
 
 A Classroom pass can only be lowered by an explicit staff pin. Clearing the pin brings the pass back. Removing a student and adding them back restores their Classroom results from the snapshot.
 
+## Graduated cohorts are frozen
+
+Once graduation day is over (end of that day in IST), nothing automatic writes a cohort's scores again. Certificates read them.
+
+- **The switch** refuses a graduated cohort.
+- **The Classroom sync** stops at graduation. Its last run is pulled forward to 15 minutes before the cut-off, so work pushed on the final day is still picked up. The old behaviour of syncing for 24 hours past the last week is gone.
+- **In-house grading** writes nothing after graduation. A run that finishes late is logged at `warn`, so staff can still see it.
+- **Score pins and assignment re-syncs** are refused with 409.
+
+Graduated cohorts are never candidates for a switch or a backfill: leave them as they are.
+
 ## Before the day
 
 - [ ] The cohort's config has an `assignment` block on every exercise week, and the preview shows no blockers.
