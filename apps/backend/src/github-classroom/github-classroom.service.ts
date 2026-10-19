@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Cohort } from '@/entities/cohort.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
@@ -10,11 +10,34 @@ import { SyncClassroomScoresTaskData } from '@/task-processor/task.types';
 import { ServiceError } from '@/common/errors';
 import { AssignmentBackend } from '@/common/enum';
 import { GitHubClassroomClient } from '@/github-classroom/client/github-classroom.client';
+import { AcceptedAssignment } from '@/github-classroom/client/response';
+import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { isLastRetry } from '@/task-processor/task-processor.utils';
 import {
     SIX_HOURS_MS,
     TWENTY_FOUR_HOURS_MS,
 } from '@/common/durations.constants';
+
+/** One week as GitHub Classroom reported it, read before any database write. */
+interface ClassroomWeekResult {
+    cohortWeekId: string;
+    inviteLink: string;
+    assignmentUrl: string;
+    accepted: AcceptedAssignment[];
+}
+
+/**
+ * A cohort's Classroom results, fetched and waiting to be applied. Fetching
+ * is network-bound and slow, so it happens outside any transaction; applying
+ * is quick and happens under the cohort row lock.
+ */
+export interface FetchedClassroomResults {
+    cohortId: string;
+    githubUsernameToUserId: Map<string, string>;
+    weeks: ClassroomWeekResult[];
+    // Weeks Classroom failed to report; their scores are left as they were.
+    failedWeekIds: string[];
+}
 
 @Injectable()
 export class GitHubClassroomService {
@@ -25,11 +48,8 @@ export class GitHubClassroomService {
         private readonly apiTaskRepository: Repository<APITask<any>>,
         @InjectRepository(Cohort)
         private readonly cohortRepository: Repository<Cohort>,
-        @InjectRepository(CohortWeek)
-        private readonly cohortWeekRepository: Repository<CohortWeek>,
-        @InjectRepository(ExerciseScore)
-        private readonly exerciseScoreRepository: Repository<ExerciseScore>,
         private readonly githubClassroomClient: GitHubClassroomClient,
+        private readonly dbTransactionService: DbTransactionService,
     ) {}
 
     private async scheduleNextSync(
@@ -86,19 +106,7 @@ export class GitHubClassroomService {
     }
 
     private async syncCohortScoresById(cohortId: string): Promise<boolean> {
-        const cohort = await this.cohortRepository.findOne({
-            where: { id: cohortId },
-            relations: {
-                memberships: { user: true },
-                weeks: true,
-            },
-        });
-
-        if (!cohort) {
-            throw new ServiceError(
-                `Cohort with ID ${cohortId} not found. Cannot sync GitHub Classroom scores.`,
-            );
-        }
+        const cohort = await this.loadCohort(cohortId);
 
         // A switched cohort keeps its classroomId as history, so that check
         // alone would let Classroom overwrite the in-house scores.
@@ -121,62 +129,43 @@ export class GitHubClassroomService {
             return false;
         }
 
-        const weeksWithAssignment = cohort.weeks.filter(
-            (w) => w.classroomAssignmentId,
+        const fetched = await this.fetchResults(cohort, { strict: false });
+        if (fetched.weeks.length === 0 && fetched.failedWeekIds.length === 0) {
+            // If the cohort has ended, we can stop scheduling syncs.
+            // If it hasn't ended, we keep scheduling in case assignments or
+            // users are added later.
+            return !hasCohortEnded;
+        }
+
+        const applied = await this.dbTransactionService.execute(
+            async (manager) => {
+                // The backend was checked before a fetch that can take
+                // minutes; a switch may have committed since. Re-read it under
+                // the lock the switch also takes, so either the switch waits
+                // for these writes and freezes them, or this run sees INHOUSE
+                // and writes nothing over the in-house scores.
+                const locked = await manager.findOne(Cohort, {
+                    where: { id: cohort.id },
+                    // FOR NO KEY UPDATE, not FOR UPDATE: it still serialises
+                    // against the switch's update, but does not block the
+                    // foreign-key checks of students joining meanwhile.
+                    lock: { mode: 'for_no_key_update' },
+                });
+                if (locked?.assignmentBackend !== AssignmentBackend.CLASSROOM) {
+                    return null;
+                }
+                return this.applyResults(manager, fetched, { strict: false });
+            },
         );
-        if (weeksWithAssignment.length === 0) {
+        if (applied === null) {
             this.logger.log(
-                `No weeks with classroomAssignmentId in cohort (${cohort.id}), skipping sync`,
+                `Cohort (${cohort.id}) left GitHub Classroom during the sync; discarded its results`,
             );
-            // If the cohort has ended, we can stop scheduling syncs.
-            // If it hasn't ended, we keep scheduling in case assignments are added later.
-            return !hasCohortEnded;
-        }
-
-        const githubUsernameToUserIdMap = new Map<string, string>();
-        for (const membership of cohort.memberships) {
-            const user = membership.user;
-            const username = this.extractGitHubUsername(user.githubProfileUrl);
-            if (username) {
-                githubUsernameToUserIdMap.set(username.toLowerCase(), user.id);
-            }
-        }
-
-        if (githubUsernameToUserIdMap.size === 0) {
-            this.logger.warn(
-                `No users with GitHub profiles in cohort (${cohort.id})`,
-            );
-            // If the cohort has ended, we can stop scheduling syncs.
-            // If it hasn't ended, we keep scheduling in case users are added later.
-            return !hasCohortEnded;
+            return false;
         }
 
         this.logger.log(
-            `Syncing cohort (${cohort.id}) — ${githubUsernameToUserIdMap.size} GitHub-linked user(s), ${weeksWithAssignment.length} assignment(s)`,
-        );
-
-        let syncedCount = 0;
-        let failedCount = 0;
-
-        for (const cohortWeek of weeksWithAssignment) {
-            try {
-                await this.syncAssignment(
-                    cohort,
-                    cohortWeek,
-                    githubUsernameToUserIdMap,
-                );
-                syncedCount++;
-            } catch (error) {
-                failedCount++;
-                this.logger.error(
-                    `Failed to sync cohort week (${cohortWeek.id}): ${error.message}`,
-                    error.stack,
-                );
-            }
-        }
-
-        this.logger.log(
-            `Cohort (${cohort.id}) sync complete: ${syncedCount} succeeded, ${failedCount} failed`,
+            `Cohort (${cohort.id}) sync complete: ${applied.syncedWeeks} succeeded, ${applied.failedWeeks + fetched.failedWeekIds.length} failed`,
         );
 
         // If the cohort has ended, we can stop scheduling syncs.
@@ -184,31 +173,169 @@ export class GitHubClassroomService {
         return !hasCohortEnded;
     }
 
-    private async syncAssignment(
-        cohort: Cohort,
-        cohortWeek: CohortWeek,
-        githubUsernameToUserIdMap: Map<string, string>,
-    ): Promise<void> {
-        if (!cohortWeek.classroomAssignmentId) {
-            this.logger.warn(
-                `Cohort week (${cohortWeek.id}) has no classroomAssignmentId, skipping`,
-            );
-            return;
-        }
+    /**
+     * The switch to the in-house classroom's drain step, part one: read every
+     * week's final results from Classroom, before the switch's transaction.
+     * Strict: a week Classroom cannot report fails the whole read, because the
+     * switch would otherwise freeze that week's stale scores for good.
+     */
+    async fetchFinalResults(
+        cohortId: string,
+    ): Promise<FetchedClassroomResults> {
+        const cohort = await this.loadCohort(cohortId);
+        return this.fetchResults(cohort, { strict: true });
+    }
 
-        const assignment = await this.githubClassroomClient.getAssignment(
-            parseInt(cohortWeek.classroomAssignmentId),
-        );
+    /**
+     * Part two: write those results inside the switch's transaction, which
+     * holds the cohort row lock, so no periodic sync can interleave. Strict
+     * for the same reason as the fetch. Returns how many scores it wrote.
+     */
+    async applyFinalResults(
+        manager: EntityManager,
+        fetched: FetchedClassroomResults,
+    ): Promise<number> {
+        const { scoresWritten } = await this.applyResults(manager, fetched, {
+            strict: true,
+        });
+        return scoresWritten;
+    }
 
-        await this.cohortWeekRepository.update(cohortWeek.id, {
-            classroomInviteLink: assignment.invite_link,
-            classroomAssignmentUrl: `${assignment.classroom.url}/assignments/${assignment.slug}`,
+    private async loadCohort(cohortId: string): Promise<Cohort> {
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+            relations: {
+                memberships: { user: true },
+                weeks: true,
+            },
         });
 
-        const existingScores = await this.exerciseScoreRepository.find({
+        if (!cohort) {
+            throw new ServiceError(
+                `Cohort with ID ${cohortId} not found. Cannot sync GitHub Classroom scores.`,
+            );
+        }
+        return cohort;
+    }
+
+    private async fetchResults(
+        cohort: Cohort,
+        { strict }: { strict: boolean },
+    ): Promise<FetchedClassroomResults> {
+        const fetched: FetchedClassroomResults = {
+            cohortId: cohort.id,
+            githubUsernameToUserId: new Map(),
+            weeks: [],
+            failedWeekIds: [],
+        };
+
+        const weeksWithAssignment = cohort.weeks.filter(
+            (w) => w.classroomAssignmentId,
+        );
+        if (weeksWithAssignment.length === 0) {
+            this.logger.log(
+                `No weeks with classroomAssignmentId in cohort (${cohort.id}), skipping sync`,
+            );
+            return fetched;
+        }
+
+        for (const membership of cohort.memberships) {
+            const user = membership.user;
+            const username = this.extractGitHubUsername(user.githubProfileUrl);
+            if (username) {
+                fetched.githubUsernameToUserId.set(
+                    username.toLowerCase(),
+                    user.id,
+                );
+            }
+        }
+
+        if (fetched.githubUsernameToUserId.size === 0) {
+            this.logger.warn(
+                `No users with GitHub profiles in cohort (${cohort.id})`,
+            );
+            return fetched;
+        }
+
+        this.logger.log(
+            `Syncing cohort (${cohort.id}) — ${fetched.githubUsernameToUserId.size} GitHub-linked user(s), ${weeksWithAssignment.length} assignment(s)`,
+        );
+
+        for (const cohortWeek of weeksWithAssignment) {
+            const assignmentId = parseInt(cohortWeek.classroomAssignmentId!);
+            try {
+                const assignment =
+                    await this.githubClassroomClient.getAssignment(
+                        assignmentId,
+                    );
+                const accepted =
+                    await this.githubClassroomClient.fetchAcceptedAssignments(
+                        assignmentId,
+                    );
+                fetched.weeks.push({
+                    cohortWeekId: cohortWeek.id,
+                    inviteLink: assignment.invite_link,
+                    assignmentUrl: `${assignment.classroom.url}/assignments/${assignment.slug}`,
+                    accepted,
+                });
+            } catch (error) {
+                if (strict) {
+                    throw new ServiceError(
+                        `GitHub Classroom could not report week ${cohortWeek.week}: ${error.message}`,
+                    );
+                }
+                fetched.failedWeekIds.push(cohortWeek.id);
+                this.logger.error(
+                    `Failed to sync cohort week (${cohortWeek.id}): ${error.message}`,
+                    error.stack,
+                );
+            }
+        }
+
+        return fetched;
+    }
+
+    private async applyResults(
+        manager: EntityManager,
+        fetched: FetchedClassroomResults,
+        { strict }: { strict: boolean },
+    ): Promise<{
+        syncedWeeks: number;
+        failedWeeks: number;
+        scoresWritten: number;
+    }> {
+        let syncedWeeks = 0;
+        let failedWeeks = 0;
+        let scoresWritten = 0;
+
+        for (const week of fetched.weeks) {
+            try {
+                scoresWritten += await this.applyWeek(manager, fetched, week);
+                syncedWeeks++;
+            } catch (error) {
+                if (strict) throw error;
+                failedWeeks++;
+                this.logger.error(
+                    `Failed to sync cohort week (${week.cohortWeekId}): ${error.message}`,
+                    error.stack,
+                );
+            }
+        }
+
+        return { syncedWeeks, failedWeeks, scoresWritten };
+    }
+
+    // Validates the whole week before writing any of it, so a week that fails
+    // leaves nothing half-written in the shared transaction.
+    private async applyWeek(
+        manager: EntityManager,
+        fetched: FetchedClassroomResults,
+        week: ClassroomWeekResult,
+    ): Promise<number> {
+        const existingScores = await manager.find(ExerciseScore, {
             where: {
-                cohort: { id: cohort.id },
-                cohortWeek: { id: cohortWeek.id },
+                cohort: { id: fetched.cohortId },
+                cohortWeek: { id: week.cohortWeekId },
             },
             relations: {
                 user: true,
@@ -220,17 +347,12 @@ export class GitHubClassroomService {
             userIdToScoreMap.set(score.user.id, score);
         }
 
-        const acceptedAssignments =
-            await this.githubClassroomClient.fetchAcceptedAssignments(
-                parseInt(cohortWeek.classroomAssignmentId),
-            );
-
         const scoresToSave: ExerciseScore[] = [];
         const unmatchedLogins: string[] = [];
 
-        for (const acceptedAssignment of acceptedAssignments) {
+        for (const acceptedAssignment of week.accepted) {
             for (const student of acceptedAssignment.students) {
-                const userId = githubUsernameToUserIdMap.get(
+                const userId = fetched.githubUsernameToUserId.get(
                     student.login.toLowerCase(),
                 );
                 if (!userId) {
@@ -241,7 +363,7 @@ export class GitHubClassroomService {
                 const score = userIdToScoreMap.get(userId);
                 if (!score) {
                     throw new ServiceError(
-                        `No ExerciseScore found for user ID (${userId}) for cohort week (${cohortWeek.id})`,
+                        `No ExerciseScore found for user ID (${userId}) for cohort week (${week.cohortWeekId})`,
                     );
                 }
 
@@ -255,20 +377,26 @@ export class GitHubClassroomService {
             }
         }
 
+        await manager.update(CohortWeek, week.cohortWeekId, {
+            classroomInviteLink: week.inviteLink,
+            classroomAssignmentUrl: week.assignmentUrl,
+        });
+
         if (unmatchedLogins.length > 0) {
             this.logger.warn(
-                `Cohort week (${cohortWeek.id}) has ${
+                `Cohort week (${week.cohortWeekId}) has ${
                     unmatchedLogins.length
                 } unmatched GitHub student(s): ${unmatchedLogins.join(', ')}`,
             );
         }
 
         if (scoresToSave.length > 0) {
-            await this.exerciseScoreRepository.save(scoresToSave);
+            await manager.save(scoresToSave);
             this.logger.log(
-                `Updated ${scoresToSave.length} exercise score(s) for cohort week (${cohortWeek.id})`,
+                `Updated ${scoresToSave.length} exercise score(s) for cohort week (${week.cohortWeekId})`,
             );
         }
+        return scoresToSave.length;
     }
 
     private extractGitHubUsername(profileUrl: string | null): string | null {

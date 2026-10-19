@@ -9,6 +9,8 @@ import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { AssignmentBackend } from '@/common/enum';
+import { DbTransactionService } from '@/db-transaction/db-transaction.service';
+import { ServiceError } from '@/common/errors';
 
 describe('GitHubClassroomService', () => {
     let service: GitHubClassroomService;
@@ -18,8 +20,17 @@ describe('GitHubClassroomService', () => {
         save: jest.fn(),
     };
     const cohortRepository = { findOne: jest.fn(), exists: jest.fn() };
-    const cohortWeekRepository = { update: jest.fn() };
-    const exerciseScoreRepository = { find: jest.fn(), save: jest.fn() };
+    // Scores and week links are written through the transaction's manager;
+    // findOne is the backend re-read under the cohort row lock.
+    const manager = {
+        findOne: jest.fn(),
+        find: jest.fn(),
+        update: jest.fn(),
+        save: jest.fn(),
+    };
+    const dbTransactionService = {
+        execute: jest.fn(async (cb: (m: unknown) => unknown) => cb(manager)),
+    };
     const githubClassroomClient = {
         getAssignment: jest.fn(),
         fetchAcceptedAssignments: jest.fn(),
@@ -40,12 +51,8 @@ describe('GitHubClassroomService', () => {
                     useValue: cohortRepository,
                 },
                 {
-                    provide: getRepositoryToken(CohortWeek),
-                    useValue: cohortWeekRepository,
-                },
-                {
-                    provide: getRepositoryToken(ExerciseScore),
-                    useValue: exerciseScoreRepository,
+                    provide: DbTransactionService,
+                    useValue: dbTransactionService,
                 },
                 {
                     provide: GitHubClassroomClient,
@@ -69,6 +76,13 @@ describe('GitHubClassroomService', () => {
             },
         ]);
         apiTaskRepository.create.mockImplementation((task: unknown) => task);
+        dbTransactionService.execute.mockImplementation(
+            async (cb: (m: unknown) => unknown) => cb(manager),
+        );
+        manager.findOne.mockResolvedValue({
+            id: 'cohort-1',
+            assignmentBackend: AssignmentBackend.CLASSROOM,
+        });
     });
 
     afterEach(() => jest.resetAllMocks());
@@ -126,8 +140,8 @@ describe('GitHubClassroomService', () => {
         await service.handleSyncClassroomTask(task());
 
         expect(githubClassroomClient.getAssignment).not.toHaveBeenCalled();
-        expect(cohortWeekRepository.update).not.toHaveBeenCalled();
-        expect(exerciseScoreRepository.save).not.toHaveBeenCalled();
+        expect(manager.update).not.toHaveBeenCalled();
+        expect(manager.save).not.toHaveBeenCalled();
         expect(apiTaskRepository.save).not.toHaveBeenCalled();
     });
 
@@ -136,7 +150,7 @@ describe('GitHubClassroomService', () => {
         cohortRepository.findOne.mockResolvedValue(
             cohort(AssignmentBackend.CLASSROOM, 30),
         );
-        exerciseScoreRepository.find.mockResolvedValue([storedScore()]);
+        manager.find.mockResolvedValue([storedScore()]);
         cohortRepository.exists.mockResolvedValue(false);
 
         await service.handleSyncClassroomTask(task());
@@ -150,16 +164,57 @@ describe('GitHubClassroomService', () => {
         expect(apiTaskRepository.save).not.toHaveBeenCalled();
     });
 
-    it('keeps syncing and rescheduling an active Classroom cohort', async () => {
+    it('writes nothing if the cohort switched while Classroom was being read', async () => {
+        // Loaded as CLASSROOM, but by the time the results are applied the
+        // switch has committed: the re-read under the lock sees INHOUSE.
         cohortRepository.findOne.mockResolvedValue(
             cohort(AssignmentBackend.CLASSROOM, 30),
         );
-        exerciseScoreRepository.find.mockResolvedValue([storedScore()]);
+        manager.find.mockResolvedValue([storedScore()]);
+        manager.findOne.mockResolvedValue({
+            id: 'cohort-1',
+            assignmentBackend: AssignmentBackend.INHOUSE,
+        });
+
+        await service.handleSyncClassroomTask(task());
+
+        expect(manager.findOne).toHaveBeenCalledWith(Cohort, {
+            where: { id: 'cohort-1' },
+            lock: { mode: 'for_no_key_update' },
+        });
+        expect(manager.save).not.toHaveBeenCalled();
+        expect(manager.update).not.toHaveBeenCalled();
+        expect(apiTaskRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('applies the results only after the network reads finish', async () => {
+        // Reads inside the transaction would hold the cohort lock for minutes.
+        cohortRepository.findOne.mockResolvedValue(
+            cohort(AssignmentBackend.CLASSROOM, 30),
+        );
+        manager.find.mockResolvedValue([storedScore()]);
         cohortRepository.exists.mockResolvedValue(true);
 
         await service.handleSyncClassroomTask(task());
 
-        expect(exerciseScoreRepository.save).toHaveBeenCalledTimes(1);
+        expect(
+            githubClassroomClient.fetchAcceptedAssignments.mock
+                .invocationCallOrder[0],
+        ).toBeLessThan(
+            dbTransactionService.execute.mock.invocationCallOrder[0],
+        );
+    });
+
+    it('keeps syncing and rescheduling an active Classroom cohort', async () => {
+        cohortRepository.findOne.mockResolvedValue(
+            cohort(AssignmentBackend.CLASSROOM, 30),
+        );
+        manager.find.mockResolvedValue([storedScore()]);
+        cohortRepository.exists.mockResolvedValue(true);
+
+        await service.handleSyncClassroomTask(task());
+
+        expect(manager.save).toHaveBeenCalledTimes(1);
         expect(apiTaskRepository.save).toHaveBeenCalledWith(
             expect.objectContaining({
                 type: TaskType.SYNC_CLASSROOM_SCORES,
@@ -172,16 +227,16 @@ describe('GitHubClassroomService', () => {
         cohortRepository.findOne.mockResolvedValue(
             cohort(AssignmentBackend.CLASSROOM, -30),
         );
-        exerciseScoreRepository.find.mockResolvedValue([storedScore()]);
+        manager.find.mockResolvedValue([storedScore()]);
 
         await service.handleSyncClassroomTask(task());
 
-        expect(cohortWeekRepository.update).toHaveBeenCalledWith('week-1', {
+        expect(manager.update).toHaveBeenCalledWith(CohortWeek, 'week-1', {
             classroomInviteLink: 'https://classroom.github.com/a/invite',
             classroomAssignmentUrl:
                 'https://classroom.github.com/classrooms/1/assignments/week-1',
         });
-        expect(exerciseScoreRepository.save).toHaveBeenCalledWith([
+        expect(manager.save).toHaveBeenCalledWith([
             expect.objectContaining({
                 id: 'score-1',
                 isSubmitted: true,
@@ -208,5 +263,55 @@ describe('GitHubClassroomService', () => {
         ).rejects.toThrow('connection reset');
 
         expect(apiTaskRepository.save).toHaveBeenCalledTimes(1);
+    });
+
+    describe('final read for the switch to in-house', () => {
+        it('fails the whole read if Classroom cannot report a week', async () => {
+            // A partial read would freeze that week's stale scores for good.
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 30),
+            );
+            githubClassroomClient.fetchAcceptedAssignments.mockRejectedValue(
+                new Error('502 Bad Gateway'),
+            );
+
+            await expect(
+                service.fetchFinalResults('cohort-1'),
+            ).rejects.toBeInstanceOf(ServiceError);
+        });
+
+        it('writes the fetched results in the caller’s transaction', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 30),
+            );
+            manager.find.mockResolvedValue([storedScore()]);
+
+            const fetched = await service.fetchFinalResults('cohort-1');
+            const written = await service.applyFinalResults(
+                manager as never,
+                fetched,
+            );
+
+            expect(written).toBe(1);
+            expect(manager.save).toHaveBeenCalledWith([
+                expect.objectContaining({ id: 'score-1', isPassing: true }),
+            ]);
+            // The caller owns the transaction.
+            expect(dbTransactionService.execute).not.toHaveBeenCalled();
+        });
+
+        it('refuses rather than skip a matched student with no score row', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 30),
+            );
+            manager.find.mockResolvedValue([]);
+
+            const fetched = await service.fetchFinalResults('cohort-1');
+
+            await expect(
+                service.applyFinalResults(manager as never, fetched),
+            ).rejects.toBeInstanceOf(ServiceError);
+            expect(manager.save).not.toHaveBeenCalled();
+        });
     });
 });

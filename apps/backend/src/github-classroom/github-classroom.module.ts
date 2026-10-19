@@ -6,11 +6,13 @@ import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { GitHubClassroomService } from '@/github-classroom/github-classroom.service';
 import { GitHubClassroomClientModule } from '@/github-classroom/client/github-classroom-client.module';
 import { APITask } from '@/entities/api-task.entity';
+import { DbTransactionModule } from '@/db-transaction/db-transaction.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([APITask, Cohort, CohortWeek, ExerciseScore]),
         GitHubClassroomClientModule,
+        DbTransactionModule,
     ],
     providers: [GitHubClassroomService],
     exports: [GitHubClassroomService],
