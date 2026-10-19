@@ -44,13 +44,16 @@ Graduated cohorts are never candidates for a switch or a backfill: leave them as
 ## Before the day
 
 - [ ] The cohort's config has an `assignment` block on every exercise week, and the preview shows no blockers.
-- [ ] No cohort is in the ambiguous state the old heuristic would have misread. This must return **0 rows**:
+- [ ] No live cohort is in the ambiguous state the old heuristic would have misread. This must return **0 rows**. Graduated cohorts are left out: they are frozen and need nothing.
 
   ```sql
-  SELECT id, type, season FROM cohort
-  WHERE "assignmentBackend" = 'INHOUSE'
-    AND "classroomId" IS NOT NULL
-    AND "switchedFromClassroomAt" IS NULL;
+  SELECT c.id, c.type, c.season FROM cohort c
+  JOIN cohort_week g ON g."cohortId" = c.id AND g.type = 'GRADUATION'
+  WHERE c."assignmentBackend" = 'INHOUSE'
+    AND c."classroomId" IS NOT NULL
+    AND c."switchedFromClassroomAt" IS NULL
+    -- not yet graduated: before 23:59:59.999 IST on graduation day
+    AND date_trunc('day', g."scheduledDate" AT TIME ZONE 'UTC') + interval '18:29:59.999' > (now() AT TIME ZONE 'UTC');
   ```
 - [ ] The grader and template repos for every week exist in the GitHub App's org. Do one test accept-and-run with a staff account.
 - [ ] Announce it on the cohort's Discord at least a day ahead. The bot cannot post messages, so do this by hand. Suggested text:
