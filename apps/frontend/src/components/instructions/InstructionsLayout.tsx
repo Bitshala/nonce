@@ -267,8 +267,9 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                     )}
                   </Box>
 
-                  {/* Assignment */}
-                  {(assignmentLink || currentWeek.classroomInviteLink) && (
+                  {/* Assignment — Classroom links only on a week still graded there; an
+                      in-house week links its assignment from the Exercises tab. */}
+                  {!assignmentByWeekId.has(currentWeek.id) && (assignmentLink || currentWeek.classroomInviteLink) && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <Typography variant="body2" sx={{ color: '#a1a1aa', fontWeight: 600, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Assignment
