@@ -37,6 +37,11 @@
       "import": "./dist/esm/submission-bucket.js",
       "require": "./dist/cjs/submission-bucket.js"
     },
+    "./deadline": {
+      "types": "./dist/cjs/deadline.d.ts",
+      "import": "./dist/esm/deadline.js",
+      "require": "./dist/cjs/deadline.js"
+    },
     "./dto": {
       "types": "./dist/cjs/dto/index.d.ts",
       "import": "./dist/esm/dto/index.js",
@@ -50,6 +55,7 @@
       "cohort-display": ["./dist/cjs/cohort-display.d.ts"],
       "protected-paths": ["./dist/cjs/protected-paths.d.ts"],
       "submission-bucket": ["./dist/cjs/submission-bucket.d.ts"],
+      "deadline": ["./dist/cjs/deadline.d.ts"],
       "dto": ["./dist/cjs/dto/index.d.ts"]
     }
   },

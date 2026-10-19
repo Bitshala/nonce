@@ -5,6 +5,7 @@ import {
 import { CohortWeek } from '@/entities/cohort-week.entity';
 import { AssignmentConfig } from '@/cohorts/cohorts.config.model';
 import { AssignmentDeadlineSource, AssignmentStatus } from '@/common/enum';
+import { endOfDayIst } from '@nonce/shared/deadline';
 
 /** The single workflow in the grader repo that every assignment runs through. */
 export const DEFAULT_GRADER_WORKFLOW_PATH = '.github/workflows/grade.yml';
@@ -106,7 +107,5 @@ export function resolveDeadline(
             break;
     }
 
-    // 23:59:59.999 IST = 18:29:59.999 UTC
-    deadline.setUTCHours(18, 29, 59, 999);
-    return deadline;
+    return endOfDayIst(deadline);
 }
