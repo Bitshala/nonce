@@ -8,6 +8,7 @@ import { APITask } from '@/entities/api-task.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { SyncClassroomScoresTaskData } from '@/task-processor/task.types';
 import { ServiceError } from '@/common/errors';
+import { AssignmentBackend } from '@/common/enum';
 import { GitHubClassroomClient } from '@/github-classroom/client/github-classroom.client';
 import { isLastRetry } from '@/task-processor/task-processor.utils';
 import {
@@ -34,6 +35,22 @@ export class GitHubClassroomService {
     private async scheduleNextSync(
         data: SyncClassroomScoresTaskData,
     ): Promise<void> {
+        // Re-read rather than trust the cohort this run loaded: a switch to the
+        // in-house classroom may have committed mid-run, and the switch's task
+        // cancellation cannot reach a task that is already running.
+        const stillOnClassroom = await this.cohortRepository.exists({
+            where: {
+                id: data.cohortId,
+                assignmentBackend: AssignmentBackend.CLASSROOM,
+            },
+        });
+        if (!stillOnClassroom) {
+            this.logger.debug(
+                `Cohort (${data.cohortId}) is no longer on GitHub Classroom, not rescheduling sync`,
+            );
+            return;
+        }
+
         const entity = this.apiTaskRepository.create({
             type: TaskType.SYNC_CLASSROOM_SCORES,
             data: data,
@@ -81,6 +98,15 @@ export class GitHubClassroomService {
             throw new ServiceError(
                 `Cohort with ID ${cohortId} not found. Cannot sync GitHub Classroom scores.`,
             );
+        }
+
+        // A switched cohort keeps its classroomId as history, so that check
+        // alone would let Classroom overwrite the in-house scores.
+        if (cohort.assignmentBackend !== AssignmentBackend.CLASSROOM) {
+            this.logger.debug(
+                `Cohort (${cohort.id}) is not on GitHub Classroom, skipping sync`,
+            );
+            return false;
         }
 
         const endDatePlusBuffer = new Date(
