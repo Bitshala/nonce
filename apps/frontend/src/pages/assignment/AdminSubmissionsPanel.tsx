@@ -134,10 +134,13 @@ const StudentCard = ({
   onRetry: () => void;
   retrying: boolean;
 }) => {
-  const bucket = BUCKET_META[submissionBucket(s)];
+  // Same rule as the API's tallies and the student's score: a week passed on
+  // GitHub Classroom before the switch counts as passed unless pinned.
+  const bucket = BUCKET_META[submissionBucket(s, s.passedOnClassroom)];
   const name = s.userName ?? s.userId;
   const run = s.latestRun;
   const summary = [
+    ...(s.passedOnClassroom ? ['passed on GitHub Classroom'] : []),
     s.provisionStatus === ProvisionStatus.READY
       ? 'Repo ready'
       : PROVISION_CHIP[s.provisionStatus].label,
@@ -374,7 +377,8 @@ export const SubmissionsPanel = ({
   const q = search.trim().toLowerCase();
   const visible = (submissions ?? []).filter(
     s =>
-      (filter === 'all' || filter === submissionBucket(s)) &&
+      (filter === 'all' ||
+        filter === submissionBucket(s, s.passedOnClassroom)) &&
       (!q || (s.userName ?? s.userId).toLowerCase().includes(q))
   );
 
@@ -574,6 +578,40 @@ export const SubmissionsPanel = ({
               : 'No students match.'}
           </Typography>
         )}
+
+        {assignment.classroomPassedNotStartedCount > 0 &&
+          (filter === 'all' || filter === 'passed') && (
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, borderStyle: 'dashed', bgcolor: 'transparent' }}
+            >
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{ alignItems: 'center' }}
+              >
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    fontSize: 13,
+                    bgcolor: 'success.dark',
+                  }}
+                >
+                  {assignment.classroomPassedNotStartedCount}
+                </Avatar>
+                <Box>
+                  <Typography sx={{ fontWeight: 600 }}>
+                    Passed on GitHub Classroom
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Before the cohort switched · not started here, and they
+                    don't need to
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          )}
 
         {showNotStarted && (
           <Paper

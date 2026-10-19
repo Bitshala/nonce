@@ -145,6 +145,9 @@ export const AdminAssignmentsPage = () => {
   const slots = live.reduce((n, a) => n + a.enrolledCount, 0);
   const started = live.reduce((n, a) => n + a.submissionCount, 0);
   const graded = total.passedCount + total.failingCount;
+  // Of the passes, those carried over from GitHub Classroom when the cohort
+  // switched: not runs, but they count for the student all the same.
+  const classroomPassed = live.reduce((n, a) => n + a.classroomPassedCount, 0);
 
   const now = Date.now();
   const isPast = (deadline: string | null) =>
@@ -364,7 +367,11 @@ export const AdminAssignmentsPage = () => {
                   }
                   sub={
                     graded > 0
-                      ? `${total.passedCount} of ${graded} graded runs`
+                      ? `${total.passedCount} of ${graded} graded${
+                          classroomPassed > 0
+                            ? ` · ${classroomPassed} from GitHub Classroom`
+                            : ''
+                        }`
                       : 'No graded runs yet'
                   }
                   color={graded > 0 ? 'success.main' : undefined}
@@ -485,7 +492,11 @@ export const AdminAssignmentsPage = () => {
                                       color="text.secondary"
                                     >
                                       {gradedHere > 0
-                                        ? `${a.passedCount} passing · ${a.failingCount} failing`
+                                        ? `${a.passedCount} passing${
+                                            a.classroomPassedCount > 0
+                                              ? ` (${a.classroomPassedCount} on Classroom)`
+                                              : ''
+                                          } · ${a.failingCount} failing`
                                         : 'No graded runs yet'}
                                     </Typography>
                                   </Stack>
@@ -529,8 +540,10 @@ export const AdminAssignmentsPage = () => {
                                     sx={{ mt: 0.5, display: 'block' }}
                                   >
                                     {a.submissionCount === 0
-                                      ? `No one has started · 0 of ${a.enrolledCount}`
+                                      ? `No one has started here · 0 of ${a.enrolledCount}`
                                       : `${a.submissionCount} of ${a.enrolledCount} started`}
+                                    {a.classroomPassedNotStartedCount > 0 &&
+                                      ` · ${a.classroomPassedNotStartedCount} passed on Classroom`}
                                     {a.failedProvisionCount > 0 &&
                                       ` · ${a.failedProvisionCount} setup failed`}
                                   </Typography>

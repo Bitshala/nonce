@@ -237,7 +237,15 @@ export interface AdminAssignmentResponse extends Omit<
   failingCount: number;
   /** Accepted, but no run yet (includes repo still being created). */
   inProgressCount: number;
+  /** Never started here; excludes students already passed on GitHub Classroom. */
   notStartedCount: number;
+  /**
+   * Of `passedCount`, students whose pass came from GitHub Classroom before
+   * the cohort switched rather than from a run here.
+   */
+  classroomPassedCount: number;
+  /** Of those, students who never started the assignment here. */
+  classroomPassedNotStartedCount: number;
   failedProvisionCount: number;
   /** Submissions a re-grade would dispatch for; see isRegradeCandidate. */
   regradableCount: number;
@@ -251,6 +259,8 @@ export interface AdminSubmissionResponse extends SubmissionResponse {
   isPassing: boolean;
   /** Staff pins on the score. Null means that field follows grading. */
   isSubmittedOverride: boolean | null;
+  /** Passed this week on GitHub Classroom before the cohort switched. */
+  passedOnClassroom: boolean;
 }
 
 /**

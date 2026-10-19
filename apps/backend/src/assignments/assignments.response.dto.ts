@@ -150,13 +150,16 @@ export class AdminSubmissionResponseDto
     isSubmitted: boolean;
     isPassing: boolean;
     isSubmittedOverride: boolean | null;
+    passedOnClassroom: boolean;
 
     constructor(
         submission: AssignmentSubmission,
         assignmentId: string,
         score: ExerciseScore | null,
+        passedOnClassroom = false,
     ) {
         super(submission, assignmentId);
+        this.passedOnClassroom = passedOnClassroom;
         this.userId = submission.user.id;
         this.userName = submission.user.name;
         this.repoFullName = submission.repoFullName;
@@ -405,26 +408,52 @@ export class AdminAssignmentResponseDto
     failingCount: number;
     inProgressCount: number;
     notStartedCount: number;
+    classroomPassedCount: number;
+    classroomPassedNotStartedCount: number;
     failedProvisionCount: number;
     regradableCount: number;
 
-    /** `submissions` must already be limited to enrolled students. */
+    /**
+     * `submissions` and `classroomPassers` (students who passed this week on
+     * GitHub Classroom before the cohort switched) must already be limited to
+     * enrolled students.
+     */
     constructor(
         assignment: Assignment,
         submissions: AssignmentSubmission[],
         enrolledCount: number,
+        classroomPassers: ReadonlySet<string> = new Set(),
     ) {
         super(assignment, null);
         const counts = { passed: 0, setupFailed: 0, failing: 0, inProgress: 0 };
-        for (const s of submissions) counts[submissionBucket(s)]++;
+        let passedOnlyOnClassroom = 0;
+        const started = new Set<string>();
+        for (const s of submissions) {
+            started.add(s.user.id);
+            const bucket = submissionBucket(s, classroomPassers.has(s.user.id));
+            counts[bucket]++;
+            if (bucket === 'passed' && submissionBucket(s) !== 'passed') {
+                passedOnlyOnClassroom++;
+            }
+        }
+        // Passed on Classroom and never started here: still a pass, the same
+        // one the student's score and Assignments page show.
+        const classroomNotStarted = [...classroomPassers].filter(
+            (userId) => !started.has(userId),
+        ).length;
 
         this.enrolledCount = enrolledCount;
         this.submissionCount = submissions.length;
-        this.passedCount = counts.passed;
+        this.passedCount = counts.passed + classroomNotStarted;
+        this.classroomPassedCount = passedOnlyOnClassroom + classroomNotStarted;
+        this.classroomPassedNotStartedCount = classroomNotStarted;
         this.failingCount = counts.failing;
         this.inProgressCount = counts.inProgress;
         this.failedProvisionCount = counts.setupFailed;
-        this.notStartedCount = Math.max(0, enrolledCount - submissions.length);
+        this.notStartedCount = Math.max(
+            0,
+            enrolledCount - submissions.length - classroomNotStarted,
+        );
         this.regradableCount = submissions.filter(isRegradeCandidate).length;
     }
 }

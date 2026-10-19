@@ -27,6 +27,7 @@ import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { APITaskStatus, TaskType } from '@/task-processor/task.enums';
 import { APITask } from '@/entities/api-task.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import {
     AssignmentBackend,
     CohortType,
@@ -47,6 +48,7 @@ describe('AdminAssignmentsService', () => {
         getOne: jest.fn(),
     };
     const apiTaskRepository = { createQueryBuilder: jest.fn() };
+    const snapshotRepository = { find: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
@@ -112,6 +114,10 @@ describe('AdminAssignmentsService', () => {
                 {
                     provide: getRepositoryToken(APITask),
                     useValue: apiTaskRepository,
+                },
+                {
+                    provide: getRepositoryToken(ClassroomResultSnapshot),
+                    useValue: snapshotRepository,
                 },
                 { provide: CohortsService, useValue: cohortsService },
                 {
@@ -868,6 +874,71 @@ describe('AdminAssignmentsService', () => {
                 failingCount: 1,
                 inProgressCount: 1,
                 failedProvisionCount: 1,
+                notStartedCount: 1,
+                classroomPassedCount: 0,
+            });
+            // Never switched: no Classroom results to look for.
+            expect(snapshotRepository.find).not.toHaveBeenCalled();
+        });
+
+        it('counts Classroom passes on a switched cohort, so staff see what students see', async () => {
+            const cohort = {
+                id: 'c1',
+                type: 'x',
+                season: 1,
+                switchedFromClassroomAt: new Date('2026-10-01T00:00:00Z'),
+            };
+            const assignment = {
+                id: 'a1',
+                cohortWeek: { id: 'w1', week: 1, cohort },
+                isPastDeadline: () => false,
+                isOpenForSubmission: () => true,
+            };
+            const sub = (userId: string, o: object) => ({
+                assignment: { id: 'a1' },
+                user: { id: userId },
+                bestRun: null,
+                latestRun: null,
+                isPassingOverride: null,
+                provisionStatus: ProvisionStatus.READY,
+                ...o,
+            });
+            assignmentRepository.find.mockResolvedValue([assignment]);
+            submissionRepository.find.mockResolvedValue([
+                // Passed on Classroom, failing a run here: still passed.
+                sub('u1', { latestRun: { id: 'r' } }),
+                // Passed on Classroom, but staff pinned a fail: the pin wins.
+                sub('u2', { isPassingOverride: false }),
+                // Passed here too: an ordinary pass.
+                sub('u3', { bestRun: { id: 'r' } }),
+            ]);
+            membershipRepository.find.mockResolvedValue(
+                ['u1', 'u2', 'u3', 'u4', 'u5'].map((id) => ({
+                    cohort,
+                    user: { id, role: UserRole.STUDENT },
+                })),
+            );
+            // u4 passed on Classroom and never started here; u5 did nothing;
+            // "gone" left the cohort and is not counted.
+            snapshotRepository.find.mockResolvedValue(
+                ['u1', 'u2', 'u3', 'u4', 'gone'].map((id) => ({
+                    user: { id },
+                    cohortWeek: { id: 'w1' },
+                })),
+            );
+
+            const [row] = await service.listAssignments();
+
+            expect(row).toMatchObject({
+                enrolledCount: 5,
+                submissionCount: 3,
+                passedCount: 3,
+                classroomPassedCount: 2,
+                classroomPassedNotStartedCount: 1,
+                // u2: the pin outranks Classroom, and with no run yet that
+                // reads as in progress, not failing.
+                failingCount: 0,
+                inProgressCount: 1,
                 notStartedCount: 1,
             });
         });

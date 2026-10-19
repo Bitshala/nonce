@@ -52,6 +52,7 @@ import {
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
 import { MailService } from '@/mail/mail.service';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { hasGraduated } from '@/cohorts/graduation.util';
 
 /**
@@ -59,6 +60,15 @@ import { hasGraduated } from '@/cohorts/graduation.util';
  * Provisioning takes seconds; this only has to outlast a slow GitHub.
  */
 const PROVISIONING_LEASE_MS = 10 * 60 * 1000;
+
+/** The members of `ids` who are in `enrolled`; empty if either is missing. */
+function onlyEnrolled(
+    ids: ReadonlySet<string> | undefined,
+    enrolled: ReadonlySet<string> | undefined,
+): Set<string> {
+    if (!ids || !enrolled) return new Set();
+    return new Set([...ids].filter((id) => enrolled.has(id)));
+}
 
 /** A reason the switch is refused, with the status the API refuses it with. */
 interface SwitchRefusal extends SwitchBlocker {
@@ -101,6 +111,8 @@ export class AdminAssignmentsService {
         private readonly exerciseScoreRepository: Repository<ExerciseScore>,
         @InjectRepository(APITask)
         private readonly apiTaskRepository: Repository<APITask<any>>,
+        @InjectRepository(ClassroomResultSnapshot)
+        private readonly snapshotRepository: Repository<ClassroomResultSnapshot>,
         private readonly cohortsConfigService: CohortsConfigService,
         private readonly cohortsService: CohortsService,
         private readonly gitHubAppClient: GitHubAppClient,
@@ -583,17 +595,19 @@ export class AdminAssignmentsService {
         if (assignments.length === 0) return [];
 
         // ponytail: loads every submission to tally in memory; switch to a GROUP BY if this grows past a few thousand.
-        const [submissions, studentsByCohort] = await Promise.all([
-            this.submissionRepository.find({
-                relations: {
-                    assignment: true,
-                    user: true,
-                    bestRun: true,
-                    latestRun: true,
-                },
-            }),
-            this.currentStudentsByCohort(),
-        ]);
+        const [submissions, studentsByCohort, classroomPassers] =
+            await Promise.all([
+                this.submissionRepository.find({
+                    relations: {
+                        assignment: true,
+                        user: true,
+                        bestRun: true,
+                        latestRun: true,
+                    },
+                }),
+                this.currentStudentsByCohort(),
+                this.classroomPassersByWeek(assignments),
+            ]);
         const cohortOf = new Map(
             assignments.map((a) => [a.id, a.cohortWeek.cohort.id] as const),
         );
@@ -624,8 +638,41 @@ export class AdminAssignmentsService {
                         byAssignment.get(assignment.id) ?? [],
                         studentsByCohort.get(assignment.cohortWeek.cohort.id)
                             ?.size ?? 0,
+                        onlyEnrolled(
+                            classroomPassers.get(assignment.cohortWeek.id),
+                            studentsByCohort.get(
+                                assignment.cohortWeek.cohort.id,
+                            ),
+                        ),
                     ),
             );
+    }
+
+    /**
+     * Who passed each week on GitHub Classroom before their cohort switched,
+     * keyed by cohort week. Without it, staff would see "no one has started"
+     * on weeks most of the cohort already passed. One query, and only for
+     * cohorts that switched.
+     */
+    private async classroomPassersByWeek(
+        assignments: Assignment[],
+    ): Promise<Map<string, Set<string>>> {
+        const weekIds = assignments
+            .filter((a) => a.cohortWeek.cohort.switchedFromClassroomAt)
+            .map((a) => a.cohortWeek.id);
+        const byWeek = new Map<string, Set<string>>();
+        if (weekIds.length === 0) return byWeek;
+
+        const passes = await this.snapshotRepository.find({
+            where: { cohortWeek: { id: In(weekIds) }, isPassing: true },
+            relations: { user: true, cohortWeek: true },
+        });
+        for (const pass of passes) {
+            const users = byWeek.get(pass.cohortWeek.id) ?? new Set<string>();
+            users.add(pass.user.id);
+            byWeek.set(pass.cohortWeek.id, users);
+        }
+        return byWeek;
     }
 
     async listSubmissions(
@@ -653,6 +700,10 @@ export class AdminAssignmentsService {
             relations: { user: true },
         });
         const scoreByUser = new Map(scores.map((s) => [s.user.id, s] as const));
+        const passers =
+            (await this.classroomPassersByWeek([assignment])).get(
+                assignment.cohortWeek.id,
+            ) ?? new Set<string>();
 
         return submissions.map(
             (submission) =>
@@ -660,6 +711,7 @@ export class AdminAssignmentsService {
                     submission,
                     assignmentId,
                     scoreByUser.get(submission.user.id) ?? null,
+                    passers.has(submission.user.id),
                 ),
         );
     }

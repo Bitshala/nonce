@@ -9,17 +9,24 @@ export type SubmissionBucket =
  * admin UI's per-student chips cannot drift apart.
  *
  * Passing mirrors what the score writeback records: a staff pin wins,
- * otherwise a scoring run must have passed. A failed setup is checked before
- * runs because such a submission cannot have any. "Failing" means it has run
- * and has not passed.
+ * otherwise a scoring run must have passed — or, on a cohort switched from
+ * GitHub Classroom, the week was already passed there (`passedOnClassroom`).
+ * A failed setup is checked before runs because such a submission cannot
+ * have any. "Failing" means it has run and has not passed.
  */
-export function submissionBucket(submission: {
-  isPassingOverride: boolean | null;
-  bestRun: unknown;
-  latestRun: unknown;
-  provisionStatus: ProvisionStatus;
-}): SubmissionBucket {
-  if (submission.isPassingOverride ?? submission.bestRun != null) {
+export function submissionBucket(
+  submission: {
+    isPassingOverride: boolean | null;
+    bestRun: unknown;
+    latestRun: unknown;
+    provisionStatus: ProvisionStatus;
+  },
+  passedOnClassroom = false
+): SubmissionBucket {
+  if (
+    submission.isPassingOverride ??
+    (submission.bestRun != null || passedOnClassroom)
+  ) {
     return 'passed';
   }
   if (submission.provisionStatus === 'FAILED') return 'setupFailed';
