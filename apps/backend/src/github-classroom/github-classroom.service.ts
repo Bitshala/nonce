@@ -289,7 +289,9 @@ export class GitHubClassroomService {
         );
 
         for (const cohortWeek of weeksWithAssignment) {
-            const assignmentId = parseInt(cohortWeek.classroomAssignmentId!);
+            // Already filtered above; repeated so the compiler sees it too.
+            if (!cohortWeek.classroomAssignmentId) continue;
+            const assignmentId = parseInt(cohortWeek.classroomAssignmentId);
             try {
                 const assignment =
                     await this.githubClassroomClient.getAssignment(

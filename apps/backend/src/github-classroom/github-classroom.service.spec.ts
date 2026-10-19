@@ -4,7 +4,6 @@ import { GitHubClassroomService } from '@/github-classroom/github-classroom.serv
 import { GitHubClassroomClient } from '@/github-classroom/client/github-classroom.client';
 import { APITask } from '@/entities/api-task.entity';
 import { Cohort } from '@/entities/cohort.entity';
-import { CohortWeek } from '@/entities/cohort-week.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
