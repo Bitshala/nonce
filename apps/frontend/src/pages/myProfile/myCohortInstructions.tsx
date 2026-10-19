@@ -70,6 +70,8 @@ const MyCohortInstructions: React.FC = () => {
       setActiveWeek={setActiveWeek}
       cohortId={cohortId}
       canPresent={isAdminOrTA}
+      assignmentBackend={cohortData.assignmentBackend}
+      switchedFromClassroomAt={cohortData.switchedFromClassroomAt}
     />
   );
 };

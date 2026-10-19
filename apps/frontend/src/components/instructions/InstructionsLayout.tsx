@@ -16,9 +16,12 @@ import {
   ExternalLink,
   Presentation,
 } from 'lucide-react';
+import { AssignmentBackend } from '@nonce/shared';
 import type { RenderWeek } from '../../types/instructions';
 import Attachment from './Attachment';
 import { useMyAssignments } from '../../hooks/assignmentHooks';
+import { useAuth } from '../../hooks/useAuth';
+import { ClassroomSwitchBanner } from '../assignment/ClassroomSwitchBanner';
 
 interface InstructionsLayoutProps {
   displayName: string;
@@ -30,6 +33,11 @@ interface InstructionsLayoutProps {
   cohortId?: string;
   // Whether to show staff-only affordances (the GD presentation).
   canPresent: boolean;
+  // What grades the cohort's exercises. Decides whether GitHub Classroom
+  // links are shown at all, the same for every viewer.
+  assignmentBackend?: AssignmentBackend;
+  // Set once the cohort has left GitHub Classroom; students get a notice.
+  switchedFromClassroomAt?: string | null;
 }
 
 const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
@@ -40,18 +48,29 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
   setActiveWeek,
   cohortId,
   canPresent,
+  assignmentBackend,
+  switchedFromClassroomAt,
 }) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   const currentWeekData = weeks.find(w => w.week === activeWeek);
   const exerciseWeeks = useMemo(() => weeks.filter(w => w.exercise), [weeks]);
   const hasExercisesTab = exerciseWeeks.length > 0;
 
-  // In-house cohorts have an Assignment per exercise week; Classroom cohorts do
-  // not. Matching on cohort week id lets one instructions page serve both
-  // during the rollout, without threading assignment ids through the cohort DTO.
-  // Scoped to the viewer's own cohorts, so a non-member simply sees no link.
-  const { data: myAssignments } = useMyAssignments();
+  // The cohort's backend, not whether the viewer happens to have an assignment,
+  // decides if Classroom links show: staff are not enrolled, and the list below
+  // is still loading on first paint. Either way a link to a Classroom that no
+  // longer grades anything would be shown.
+  const gradedInHouse = assignmentBackend === AssignmentBackend.INHOUSE;
+
+  // In-house cohorts have an Assignment per exercise week. Matching on cohort
+  // week id finds the viewer's own, without threading assignment ids through
+  // the cohort DTO. Scoped to the viewer's own cohorts, so a non-member simply
+  // sees no button. Signed out it would only 401, so it is not asked.
+  const { data: myAssignments } = useMyAssignments(undefined, {
+    enabled: isAuthenticated && gradedInHouse,
+  });
   const assignmentByWeekId = useMemo(
     () =>
       new Map((myAssignments ?? []).map(a => [a.cohortWeekId, a.id] as const)),
@@ -154,6 +173,23 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
 
       {/* Main Content */}
       <Box sx={{ px: { xs: 2, sm: 3, md: 6 }, py: { xs: 3, md: 5 }, maxWidth: 900, mx: 'auto' }}>
+        {/* Students only: staff switched it, and signed-out readers have no work to lose. */}
+        {switchedFromClassroomAt && cohortId && isAuthenticated && !canPresent && (
+          <ClassroomSwitchBanner
+            cohortId={cohortId}
+            cohortName={displayName}
+            switchedAt={switchedFromClassroomAt}
+            action={
+              <Button
+                size="small"
+                onClick={() => navigate('/assignments')}
+                sx={{ color: '#93c5fd', textTransform: 'none', whiteSpace: 'nowrap' }}
+              >
+                Open my assignments
+              </Button>
+            }
+          />
+        )}
         {activeWeek === 'exercises' ? (
           /* Exercises Content */
           <Box>
@@ -181,6 +217,7 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                         Open Exercise {num}
                       </Button>
                     ) : (
+                      !gradedInHouse &&
                       link && (
                         <Link href={link} target="_blank" rel="noopener noreferrer" underline="hover" sx={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: '1rem' }}>
                           Exercise {num} Assignment <ExternalLink size={14} />
@@ -267,9 +304,10 @@ const InstructionsLayout: React.FC<InstructionsLayoutProps> = ({
                     )}
                   </Box>
 
-                  {/* Assignment — Classroom links only on a week still graded there; an
-                      in-house week links its assignment from the Exercises tab. */}
-                  {!assignmentByWeekId.has(currentWeek.id) && (assignmentLink || currentWeek.classroomInviteLink) && (
+                  {/* Assignment — Classroom links only on a cohort still graded there; an
+                      in-house cohort links its assignments from the Exercises tab. */}
+                  {!gradedInHouse &&
+                    (assignmentLink || currentWeek.classroomInviteLink) && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <Typography variant="body2" sx={{ color: '#a1a1aa', fontWeight: 600, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Assignment

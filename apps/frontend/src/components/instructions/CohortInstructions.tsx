@@ -115,6 +115,8 @@ const CohortInstructions: React.FC<CohortInstructionsProps> = ({ cohortType }) =
       setActiveWeek={setActiveWeek}
       cohortId={apiCohort?.id}
       canPresent={isAdminOrTA}
+      assignmentBackend={apiCohort?.assignmentBackend}
+      switchedFromClassroomAt={apiCohort?.switchedFromClassroomAt}
     />
   );
 };

@@ -38,6 +38,7 @@ import { fontFamilyMono } from '../../components/fellowship/theme.ts';
 import { formatDate } from '../../utils/dateUtils.ts';
 import { byWeek, groupBy } from '../../components/assignment/grouping.ts';
 import { AssignmentBriefDrawer } from './AssignmentBriefDrawer.tsx';
+import { ClassroomSwitchBanner } from '../../components/assignment/ClassroomSwitchBanner.tsx';
 import { readStored, writeStored } from '../../utils/storage.ts';
 import { cohortTypeToName } from '../../helpers/cohortHelpers.ts';
 import { useMyAssignments } from '../../hooks/assignmentHooks.ts';
@@ -197,6 +198,8 @@ export const MyAssignmentsPage = () => {
     activeCourse?.seasons[0] ??
     null;
   const upNext = findUpNext(activeSeason);
+  const switchedAt =
+    activeSeason?.assignments[0]?.cohortSwitchedFromClassroomAt ?? null;
   const doneCount =
     activeSeason?.assignments.filter(a => isDone(rowStateOf(a))).length ?? 0;
 
@@ -265,6 +268,13 @@ export const MyAssignmentsPage = () => {
 
       {activeCourse && (
         <>
+          {activeSeason && switchedAt && (
+            <ClassroomSwitchBanner
+              cohortId={activeSeason.cohortId}
+              cohortName={`${activeCourse.label} Season ${activeSeason.season}`}
+              switchedAt={switchedAt}
+            />
+          )}
           {upNext && (
             <Paper
               variant="outlined"
