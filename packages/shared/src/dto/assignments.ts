@@ -291,7 +291,11 @@ export interface SwitchToInhousePreviewResponse {
   /** The latest week that has started; null before the cohort starts. */
   currentWeek: number | null;
   /** Every exercise week the switch would seed, past weeks included. */
-  weeksToSeed: { week: number; title: string | null; deadline: string | null }[];
+  weeksToSeed: {
+    week: number;
+    title: string | null;
+    deadline: string | null;
+  }[];
   /** When the periodic Classroom sync last finished; the switch reads Classroom again anyway. */
   lastClassroomSyncAt: string | null;
 }
