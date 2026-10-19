@@ -538,11 +538,19 @@ export const AssignmentEditorPage = () => {
   // saves and runs, so the editor says so up front instead of on a 403.
   const isLocked = !assignment.isOpenForSubmission;
   const isRunning = createRun.isPending || (!!run && !isTerminal(run.status));
-  const statusChip = assignment.isPastDeadline
-    ? { label: 'Past due', color: 'warning' as const }
-    : assignment.isOpenForSubmission
-      ? { label: 'Open', color: 'success' as const }
-      : { label: 'Closed', color: 'default' as const };
+  // Already passed — by a scoring run, a staff pin, or on GitHub Classroom
+  // before the cohort switched — says so first: a later failing run cannot
+  // take it away, and the checks panel only shows the latest run.
+  const hasPassed =
+    submission?.isPassingOverride ??
+    (submission?.bestRun != null || !!assignment.priorResult?.isPassing);
+  const statusChip = hasPassed
+    ? { label: 'Passed', color: 'success' as const }
+    : assignment.isPastDeadline
+      ? { label: 'Past due', color: 'warning' as const }
+      : assignment.isOpenForSubmission
+        ? { label: 'Open', color: 'success' as const }
+        : { label: 'Closed', color: 'default' as const };
   const saveLabel = isSaving
     ? 'Saving…'
     : dirtyPaths.size > 0

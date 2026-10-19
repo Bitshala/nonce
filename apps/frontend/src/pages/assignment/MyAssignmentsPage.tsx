@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import {
   type AssignmentSummaryResponse,
+  CIRunConclusion,
   ProvisionStatus,
   submissionBucket,
 } from '@nonce/shared';
@@ -53,7 +54,8 @@ type RowState =
   | 'progress'
   | 'needs'
   | 'passed'
-  | 'priorPassed';
+  | 'priorPassed'
+  | 'passedLate';
 
 // A week passed on GitHub Classroom before the cohort switched already counts
 // towards the score. Showing it as "Available" or "Needs work" would contradict
@@ -76,7 +78,12 @@ const inhouseStateOf = (assignment: AssignmentSummaryResponse): RowState => {
     case 'setupFailed':
       return 'failed';
     case 'failing':
-      return 'needs';
+      // The code passes, but the run came after the deadline and cannot
+      // count. "Needs work" would send the student hunting for a bug.
+      return submission.latestRun?.conclusion === CIRunConclusion.SUCCESS &&
+        !submission.latestRun.countsForScore
+        ? 'passedLate'
+        : 'needs';
     case 'inProgress':
       return isProvisioning(submission.provisionStatus) ? 'setup' : 'progress';
   }
@@ -91,6 +98,7 @@ const BADGE: Record<RowState, { label: string; color: ChipColor }> = {
   needs: { label: 'Needs work', color: 'warning' },
   passed: BUCKET_META.passed,
   priorPassed: { label: 'Passed on GitHub Classroom', color: 'success' },
+  passedLate: { label: 'Passed after the deadline', color: 'default' },
 };
 
 const isDone = (state: RowState) =>
@@ -104,7 +112,8 @@ const VERB: Record<RowState, string | null> = {
   progress: 'Resume',
   needs: 'Fix',
   passed: 'Review',
-  priorPassed: 'Open',
+  priorPassed: 'View',
+  passedLate: 'Review',
 };
 
 /** True once a submission is ready to work in — clicking jumps straight to the editor. */
@@ -420,7 +429,7 @@ export const MyAssignmentsPage = () => {
                           {isClosed
                             ? 'Closed for submission'
                             : assignment.deadline
-                              ? `Due ${formatDate(assignment.deadline)}`
+                              ? `${assignment.isPastDeadline ? 'Was due' : 'Due'} ${formatDate(assignment.deadline)}`
                               : `Week ${assignment.weekNumber}`}
                         </Typography>
                       </TableCell>

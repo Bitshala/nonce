@@ -149,12 +149,22 @@ export const SwitchToInhouseDialog = ({
               sx={{ ...textSx, m: 0, pl: '1.2rem', '& li': { mb: 0.75 } }}
             >
               <li>
-                <strong>{preview.data.studentCount}</strong> student
-                {preview.data.studentCount === 1 ? '' : 's'} move to the
-                in-house classroom
-                {preview.data.currentWeek !== null &&
-                  `, in week ${preview.data.currentWeek}`}
-                . Each gets an email, and a notice on their Assignments page.
+                {preview.data.studentCount === 0 ? (
+                  <>
+                    No students are enrolled yet. Anyone who joins later starts
+                    on the in-house classroom.
+                  </>
+                ) : (
+                  <>
+                    <strong>{preview.data.studentCount}</strong> student
+                    {preview.data.studentCount === 1 ? '' : 's'} move to the
+                    in-house classroom
+                    {preview.data.currentWeek !== null &&
+                      `, in week ${preview.data.currentWeek}`}
+                    . Each gets an email, and a notice on their Assignments
+                    page.
+                  </>
+                )}
               </li>
               <li>
                 GitHub Classroom is read one last time, then every student's
@@ -195,19 +205,56 @@ export const SwitchToInhouseDialog = ({
               </TableBody>
             </Table>
 
-            <Typography sx={{ ...textSx, color: '#fca5a5', fontWeight: 600 }}>
-              This cannot be undone.
-            </Typography>
+            <Alert
+              severity="warning"
+              variant="outlined"
+              sx={{
+                color: '#fde68a',
+                borderColor: 'rgba(251,191,36,0.4)',
+                bgcolor: 'rgba(251,191,36,0.06)',
+                '& .MuiAlert-icon': { color: '#fbbf24' },
+              }}
+            >
+              <strong>This cannot be undone.</strong> The cohort cannot go back
+              to GitHub Classroom.
+            </Alert>
 
-            <TextField
-              label={`Type "${expected}" to confirm`}
-              value={typed}
-              onChange={e => setTyped(e.target.value)}
-              disabled={isPending}
-              autoComplete="off"
-              size="small"
-              sx={inputSx}
-            />
+            {/* The phrase sits outside the field, in full, rather than in its
+                label: a long cohort name would be cut off there, and the label
+                moves away once typing starts. */}
+            <Box>
+              <Typography sx={{ ...textSx, mb: 1 }}>
+                Type{' '}
+                <Box
+                  component="code"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    bgcolor: '#27272a',
+                    border: '1px solid #3f3f46',
+                    color: '#fafafa',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {expected}
+                </Box>{' '}
+                to confirm.
+              </Typography>
+              <TextField
+                fullWidth
+                value={typed}
+                onChange={e => setTyped(e.target.value)}
+                disabled={isPending}
+                autoComplete="off"
+                size="small"
+                placeholder={expected}
+                slotProps={{
+                  htmlInput: { 'aria-label': `Type ${expected} to confirm` },
+                }}
+                sx={inputSx}
+              />
+            </Box>
           </>
         )}
 
