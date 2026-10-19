@@ -251,6 +251,33 @@ export interface SyncAssignmentsResponse {
   updated: number;
 }
 
+/** Why a cohort cannot be switched to the in-house classroom right now. */
+export type SwitchBlockerCode =
+  | 'ALREADY_INHOUSE'
+  | 'NO_EXERCISES'
+  | 'NO_CLASSROOM_ID'
+  | 'GRADUATED'
+  | 'UNCONFIGURED_WEEKS'
+  | 'PAST_DUE_WEEKS';
+
+export interface SwitchBlocker {
+  code: SwitchBlockerCode;
+  /** Names the offending weeks where there are any. */
+  message: string;
+}
+
+export interface SwitchToInhouseResponse {
+  created: number;
+  updated: number;
+  /** Queued Classroom syncs that will now never run. */
+  cancelledTasks: number;
+  /** Scores the final Classroom read wrote just before the switch. */
+  scoresSynced: number;
+  /** Classroom results frozen at the switch. */
+  snapshotRows: number;
+  switchedAt: string;
+}
+
 export interface RegradeResponse {
   dispatched: number;
   skipped: number;

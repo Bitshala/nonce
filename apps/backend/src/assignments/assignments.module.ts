@@ -23,6 +23,7 @@ import { GitHubWebhookGuard } from '@/assignments/github-webhook.guard';
 import { AdminAssignmentsController } from '@/assignments/admin-assignments.controller';
 import { AdminAssignmentsService } from '@/assignments/admin-assignments.service';
 import { ExerciseScoreWritebackModule } from '@/assignments/exercise-score-writeback.module';
+import { GitHubClassroomModule } from '@/github-classroom/github-classroom.module';
 
 @Module({
     imports: [
@@ -39,6 +40,8 @@ import { ExerciseScoreWritebackModule } from '@/assignments/exercise-score-write
         GitHubAppClientModule,
         DbTransactionModule,
         ExerciseScoreWritebackModule,
+        // For the switch to in-house, which drains Classroom first.
+        GitHubClassroomModule,
         // For CohortsConfigService, which owns the config assignments are
         // authored in.
         CohortsModule,

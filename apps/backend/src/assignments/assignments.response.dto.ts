@@ -18,6 +18,7 @@ import type {
     RepoTreeEntryResponse,
     RepoTreeResponse,
     SubmissionResponse,
+    SwitchToInhouseResponse,
     SyncAssignmentsResponse,
 } from '@nonce/shared';
 import {
@@ -312,6 +313,24 @@ export class SyncAssignmentsResponseDto implements SyncAssignmentsResponse {
     constructor(created: number, updated: number) {
         this.created = created;
         this.updated = updated;
+    }
+}
+
+export class SwitchToInhouseResponseDto implements SwitchToInhouseResponse {
+    created: number;
+    updated: number;
+    cancelledTasks: number;
+    scoresSynced: number;
+    snapshotRows: number;
+    switchedAt: string;
+
+    constructor(obj: SwitchToInhouseResponse) {
+        this.created = obj.created;
+        this.updated = obj.updated;
+        this.cancelledTasks = obj.cancelledTasks;
+        this.scoresSynced = obj.scoresSynced;
+        this.snapshotRows = obj.snapshotRows;
+        this.switchedAt = obj.switchedAt;
     }
 }
 

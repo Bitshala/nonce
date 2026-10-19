@@ -5,6 +5,7 @@ import type {
   AdminAssignmentResponse,
   AdminSubmissionResponse,
   RegradeResponse,
+  SwitchToInhouseResponse,
   SyncAssignmentsResponse,
   UpdateSubmissionScoreRequest,
   AssignmentDetailResponse,
@@ -211,12 +212,14 @@ export const useSyncCohortAssignments = createUseMutation<
 });
 
 export const useSwitchCohortToInhouse = createUseMutation<
-  SyncAssignmentsResponse,
+  SwitchToInhouseResponse,
   string
 >(cohortId => assignmentService.switchCohortToInhouse(cohortId), {
   queryInvalidation: async ({ variables: cohortId, queryClient }) => {
     await useCohort.invalidate(cohortId);
     await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+    // Staff see every assignment on /assignments/me, new ones included.
+    await useMyAssignments.invalidate();
     await invalidateAdmin();
   },
 });

@@ -1,4 +1,5 @@
 import {
+    BadGatewayException,
     BadRequestException,
     ConflictException,
     Injectable,
@@ -31,6 +32,8 @@ import {
 import { isUniqueViolation, ServiceError } from '@/common/errors';
 import { isGraduationPassed } from '@nonce/shared/deadline';
 import { isRegradeCandidate } from '@nonce/shared/submission-bucket';
+import type { SwitchBlocker, SwitchBlockerCode } from '@nonce/shared';
+import { GitHubClassroomService } from '@/github-classroom/github-classroom.service';
 import {
     AssignmentBackend,
     AssignmentDeadlineSource,
@@ -43,6 +46,7 @@ import {
     AdminSubmissionResponseDto,
     ArchiveAssignmentResponseDto,
     RegradeResponseDto,
+    SwitchToInhouseResponseDto,
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
@@ -52,6 +56,21 @@ import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.reque
  * Provisioning takes seconds; this only has to outlast a slow GitHub.
  */
 const PROVISIONING_LEASE_MS = 10 * 60 * 1000;
+
+/** A reason the switch is refused, with the status the API refuses it with. */
+interface SwitchRefusal extends SwitchBlocker {
+    status: 400 | 409;
+}
+
+/** What `planSwitch` found: the refusals, and the weeks it would seed. */
+interface SwitchPlan {
+    refusals: SwitchRefusal[];
+    toSeed: {
+        week: CohortWeek;
+        assignment: AssignmentConfig;
+        deadline: Date | null;
+    }[];
+}
 
 /**
  * Staff operations on assignments: repairing provisioning, re-grading, manual
@@ -83,6 +102,7 @@ export class AdminAssignmentsService {
         private readonly runsService: RunsService,
         private readonly scoreWriteback: ExerciseScoreWritebackService,
         private readonly dbTransactionService: DbTransactionService,
+        private readonly githubClassroomService: GitHubClassroomService,
         configService: ConfigService,
     ) {
         this.org = configService.get<string>('githubApp.org') ?? '';
@@ -121,108 +141,95 @@ export class AdminAssignmentsService {
     }
 
     /**
-     * Moves a cohort from GitHub Classroom to the in-house classroom: flips its
-     * backend, stops the Classroom score sync, and seeds an assignment for
-     * every exercise week from config, in one transaction. One-way — going
-     * back would orphan provisioned repos and in-house submissions.
+     * Moves a cohort from GitHub Classroom to the in-house classroom. One-way:
+     * going back would orphan provisioned repos and in-house submissions.
      *
-     * Writes no `ExerciseScore`. Classroom results stay on the rows, and
-     * writeback only ever raises them on a switched cohort
-     * (`isSwitchedFromClassroom`).
+     * Drains Classroom first. The periodic sync runs every six hours, so the
+     * scores on the rows can be that stale; the switch reads Classroom once
+     * more and, in one transaction under the cohort row lock, writes those
+     * results, freezes them in `ClassroomResultSnapshot`, flips the backend,
+     * stops the Classroom sync and seeds an assignment for every exercise
+     * week. From then on writeback derives the cohort's scores from the
+     * snapshot plus in-house work (`isSwitchedFromClassroom`).
      */
     async switchToInhouse(
         cohortId: string,
         actorId: string,
-    ): Promise<SyncAssignmentsResponseDto> {
+    ): Promise<SwitchToInhouseResponseDto> {
         const cohort = await this.cohortRepository.findOne({
             where: { id: cohortId },
             relations: { weeks: true },
         });
         if (!cohort) throw new NotFoundException('Cohort not found');
-        // Fast path only; the compare-and-set below is what decides a race.
-        if (cohort.assignmentBackend !== AssignmentBackend.CLASSROOM) {
-            throw new ConflictException(
-                'This cohort is already on the in-house classroom',
-            );
-        }
-        if (!cohort.hasExercises) {
-            throw new BadRequestException(
-                'This cohort has no exercises, so there is nothing to switch',
-            );
-        }
-        // Without a Classroom to read, there are no Classroom results to keep.
-        if (cohort.classroomId == null) {
-            throw new ConflictException(
-                'This cohort has no GitHub Classroom id, so it cannot be switched',
-            );
-        }
 
-        const graduation = cohort.weeks.find(
-            (week) => week.type === CohortWeekType.GRADUATION,
-        );
-        if (!graduation) {
-            throw new ServiceError(`Cohort ${cohortId} has no graduation week`);
-        }
+        // Read once, outside the transaction. The checks it feeds are at day
+        // granularity (end of day IST), so the moments the transaction then
+        // takes cannot change their answer in practice.
         const now = new Date();
-        // A graduated cohort's scores are final; switching it would expose
-        // them to in-house activity.
-        if (isGraduationPassed(graduation.scheduledDate, now)) {
-            throw new ConflictException(
-                'This cohort has graduated, so its scores are final and it cannot be switched',
-            );
-        }
-
         const config = this.cohortsConfigService.getConfig(cohort.type);
-        const unconfigured: number[] = [];
-        const toSeed: { week: CohortWeek; assignment: AssignmentConfig }[] = [];
-        for (const week of cohort.weeks
-            .filter((w) => w.hasExercise)
-            .sort((a, b) => a.week - b.week)) {
-            const assignment = config.weeks[week.week - 1]?.assignment;
-            if (assignment) toSeed.push({ week, assignment });
-            else unconfigured.push(week.week);
+        const plan = this.planSwitch(cohort, config, now);
+        // The preview shows every refusal; the switch reports the first.
+        const [refusal] = plan.refusals;
+        if (refusal) {
+            throw refusal.status === 400
+                ? new BadRequestException(refusal.message)
+                : new ConflictException(refusal.message);
         }
-        if (unconfigured.length > 0) {
-            throw new BadRequestException(
-                `The ${cohort.type} config has no assignment for exercise week(s) ${unconfigured.join(', ')}`,
+
+        // Network-bound, so before the transaction rather than inside it,
+        // holding the cohort lock for minutes.
+        let fetched: Awaited<
+            ReturnType<GitHubClassroomService['fetchFinalResults']>
+        >;
+        try {
+            fetched =
+                await this.githubClassroomService.fetchFinalResults(cohortId);
+        } catch (error) {
+            throw new BadGatewayException(
+                `Could not read the latest results from GitHub Classroom, so nothing was changed. Try again shortly. (${error.message})`,
             );
         }
 
-        // Past weeks are seeded too, so check that none would open already
-        // past due: no run on it could ever count. Resolved the way seeding
-        // will resolve it, GRADUATION included.
-        const pastDue = toSeed
-            .filter(({ week, assignment }) => {
-                const preview = applyAssignmentConfig(
-                    new Assignment(),
-                    assignment,
-                    week,
-                    cohort.season,
-                );
-                if (
-                    preview.deadlineSource ===
-                    AssignmentDeadlineSource.GRADUATION
-                ) {
-                    preview.deadline = resolveDeadline(
-                        preview.deadlineSource,
-                        week.scheduledDate,
-                        graduation.scheduledDate,
-                        preview.deadlineDaysAfterWeek,
-                    );
-                }
-                return preview.isPastDeadline(now);
-            })
-            .map(({ week }) => week.week);
-        if (pastDue.length > 0) {
-            throw new ConflictException(
-                `Exercise week(s) ${pastDue.join(', ')} would already be past their deadline, so the cohort cannot be switched`,
-            );
-        }
-
-        let result: { created: number; updated: number; cancelled: number };
+        let result: {
+            created: number;
+            updated: number;
+            cancelled: number;
+            scoresSynced: number;
+            snapshotRows: number;
+            switchedAt: Date;
+        };
         try {
             result = await this.dbTransactionService.execute(
                 async (manager) => {
+                    // The same lock the periodic sync takes before it writes,
+                    // so a sync that read Classroom before this switch cannot
+                    // write after it.
+                    const locked = await manager.findOne(Cohort, {
+                        where: { id: cohortId },
+                        lock: { mode: 'for_no_key_update' },
+                    });
+                    if (
+                        locked?.assignmentBackend !==
+                        AssignmentBackend.CLASSROOM
+                    ) {
+                        throw new ConflictException(
+                            'This cohort is already on the in-house classroom',
+                        );
+                    }
+
+                    const scoresSynced =
+                        await this.githubClassroomService.applyFinalResults(
+                            manager,
+                            fetched,
+                        );
+                    const snapshotRows = await this.snapshotClassroomResults(
+                        manager,
+                        cohortId,
+                    );
+
+                    const switchedAt = new Date();
+                    // Still a compare-and-set, so the flip stays safe even if
+                    // the lock above is ever removed.
                     const flipped = await manager.update(
                         Cohort,
                         {
@@ -231,7 +238,7 @@ export class AdminAssignmentsService {
                         },
                         {
                             assignmentBackend: AssignmentBackend.INHOUSE,
-                            switchedFromClassroomAt: new Date(),
+                            switchedFromClassroomAt: switchedAt,
                             switchedFromClassroomBy: { id: actorId },
                         },
                     );
@@ -241,7 +248,10 @@ export class AdminAssignmentsService {
                         );
                     }
 
-                    // FAILED tasks with retries left are picked up again too.
+                    // Only syncs that would still run: one already PROCESSING
+                    // re-reads the backend under the lock and writes nothing,
+                    // and a FAILED one out of retries is left as the record of
+                    // its failure.
                     const cancelled = await manager
                         .createQueryBuilder()
                         .update(APITask)
@@ -249,12 +259,13 @@ export class AdminAssignmentsService {
                         .where('type = :type', {
                             type: TaskType.SYNC_CLASSROOM_SCORES,
                         })
-                        .andWhere('status IN (:...statuses)', {
-                            statuses: [
-                                APITaskStatus.UNPROCESSED,
-                                APITaskStatus.FAILED,
-                            ],
-                        })
+                        .andWhere(
+                            `(status = :unprocessed OR (status = :failed AND "retryCount" < "retryLimit"))`,
+                            {
+                                unprocessed: APITaskStatus.UNPROCESSED,
+                                failed: APITaskStatus.FAILED,
+                            },
+                        )
                         .andWhere("data->>'cohortId' = :cohortId", {
                             cohortId,
                         })
@@ -265,7 +276,13 @@ export class AdminAssignmentsService {
                         cohort,
                         config,
                     );
-                    return { ...seeded, cancelled: cancelled.affected ?? 0 };
+                    return {
+                        ...seeded,
+                        cancelled: cancelled.affected ?? 0,
+                        scoresSynced,
+                        snapshotRows,
+                        switchedAt,
+                    };
                 },
             );
         } catch (error) {
@@ -281,9 +298,148 @@ export class AdminAssignmentsService {
         }
 
         this.logger.log(
-            `Switched cohort to in-house classroom: cohortId=${cohortId} actorId=${actorId} created=${result.created} updated=${result.updated} cancelledTasks=${result.cancelled}`,
+            `Switched cohort to in-house classroom: cohortId=${cohortId} actorId=${actorId} scoresSynced=${result.scoresSynced} snapshotRows=${result.snapshotRows} created=${result.created} updated=${result.updated} cancelledTasks=${result.cancelled}`,
         );
-        return new SyncAssignmentsResponseDto(result.created, result.updated);
+        return new SwitchToInhouseResponseDto({
+            created: result.created,
+            updated: result.updated,
+            cancelledTasks: result.cancelled,
+            scoresSynced: result.scoresSynced,
+            snapshotRows: result.snapshotRows,
+            switchedAt: result.switchedAt.toISOString(),
+        });
+    }
+
+    /**
+     * Everything that would refuse a switch, without writing anything. Shared
+     * by the switch and its preview, so the preview can never promise a
+     * switch the switch then refuses.
+     */
+    private planSwitch(
+        cohort: Cohort,
+        config: CohortConfig,
+        now: Date,
+    ): SwitchPlan {
+        const refusals: SwitchRefusal[] = [];
+        const refuse = (
+            code: SwitchBlockerCode,
+            status: 400 | 409,
+            message: string,
+        ) => refusals.push({ code, status, message });
+
+        if (cohort.assignmentBackend !== AssignmentBackend.CLASSROOM) {
+            refuse(
+                'ALREADY_INHOUSE',
+                409,
+                'This cohort is already on the in-house classroom',
+            );
+        }
+        if (!cohort.hasExercises) {
+            refuse(
+                'NO_EXERCISES',
+                400,
+                'This cohort has no exercises, so there is nothing to switch',
+            );
+        }
+        // Without a Classroom to read, there are no Classroom results to keep.
+        if (cohort.classroomId == null) {
+            refuse(
+                'NO_CLASSROOM_ID',
+                409,
+                'This cohort has no GitHub Classroom id, so it cannot be switched',
+            );
+        }
+
+        const graduation = cohort.weeks.find(
+            (week) => week.type === CohortWeekType.GRADUATION,
+        );
+        if (!graduation) {
+            throw new ServiceError(
+                `Cohort ${cohort.id} has no graduation week`,
+            );
+        }
+        // A graduated cohort's scores are final; switching it would expose
+        // them to in-house activity.
+        if (isGraduationPassed(graduation.scheduledDate, now)) {
+            refuse(
+                'GRADUATED',
+                409,
+                'This cohort has graduated, so its scores are final and it cannot be switched',
+            );
+        }
+
+        const unconfigured: number[] = [];
+        const pastDue: number[] = [];
+        const toSeed: SwitchPlan['toSeed'] = [];
+        for (const week of cohort.weeks
+            .filter((w) => w.hasExercise)
+            .sort((a, b) => a.week - b.week)) {
+            const assignment = config.weeks[week.week - 1]?.assignment;
+            if (!assignment) {
+                unconfigured.push(week.week);
+                continue;
+            }
+            // Resolved the way seeding will resolve it, GRADUATION included.
+            const preview = applyAssignmentConfig(
+                new Assignment(),
+                assignment,
+                week,
+                cohort.season,
+            );
+            if (
+                preview.deadlineSource === AssignmentDeadlineSource.GRADUATION
+            ) {
+                preview.deadline = resolveDeadline(
+                    preview.deadlineSource,
+                    week.scheduledDate,
+                    graduation.scheduledDate,
+                    preview.deadlineDaysAfterWeek,
+                );
+            }
+            toSeed.push({ week, assignment, deadline: preview.deadline });
+            // Past weeks are seeded too, so none may open already past due:
+            // no run on it could ever count.
+            if (preview.isPastDeadline(now)) pastDue.push(week.week);
+        }
+        if (unconfigured.length > 0) {
+            refuse(
+                'UNCONFIGURED_WEEKS',
+                400,
+                `The ${cohort.type} config has no assignment for exercise week(s) ${unconfigured.join(', ')}`,
+            );
+        }
+        if (pastDue.length > 0) {
+            refuse(
+                'PAST_DUE_WEEKS',
+                409,
+                `Exercise week(s) ${pastDue.join(', ')} would already be past their deadline, so the cohort cannot be switched`,
+            );
+        }
+
+        return { refusals, toSeed };
+    }
+
+    /**
+     * Freezes every Classroom result the cohort's score rows now hold. Runs
+     * after the final Classroom read and before the flip, in the switch's
+     * transaction, so the snapshot is exactly what Classroom last reported.
+     */
+    private async snapshotClassroomResults(
+        manager: EntityManager,
+        cohortId: string,
+    ): Promise<number> {
+        const inserted: unknown[] = await manager.query(
+            `INSERT INTO "classroom_result_snapshot"
+                ("userId", "cohortId", "cohortWeekId", "isSubmitted", "isPassing", "classroomRepositoryUrl")
+             SELECT "userId", "cohortId", "cohortWeekId", "isSubmitted", "isPassing", "classroomRepositoryUrl"
+             FROM "exercise_score"
+             WHERE "cohortId" = $1
+               AND "userId" IS NOT NULL
+               AND "cohortWeekId" IS NOT NULL
+             RETURNING "id"`,
+            [cohortId],
+        );
+        return inserted.length;
     }
 
     /**

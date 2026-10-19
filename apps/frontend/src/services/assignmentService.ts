@@ -9,6 +9,7 @@ import type {
   AdminAssignmentResponse,
   AdminSubmissionResponse,
   RegradeResponse,
+  SwitchToInhouseResponse,
   SyncAssignmentsResponse,
   UpdateSubmissionScoreRequest,
   AssignmentDetailResponse,
@@ -284,8 +285,8 @@ class AssignmentService {
   /** One-way: moves a cohort from GitHub Classroom to the in-house classroom. */
   public switchCohortToInhouse = async (
     cohortId: string
-  ): Promise<SyncAssignmentsResponse> => {
-    const { data } = await this.request<SyncAssignmentsResponse>({
+  ): Promise<SwitchToInhouseResponse> => {
+    const { data } = await this.request<SwitchToInhouseResponse>({
       headers: this.getRequestHeaders(),
       method: 'POST',
       url: `/admin/cohorts/${cohortId}/switch-to-inhouse`,

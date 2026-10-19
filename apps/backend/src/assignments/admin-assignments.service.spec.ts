@@ -1,4 +1,5 @@
 import {
+    BadGatewayException,
     BadRequestException,
     ConflictException,
     NotFoundException,
@@ -16,6 +17,7 @@ import { CohortsService } from '@/cohorts/cohorts.service';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
+import { GitHubClassroomService } from '@/github-classroom/github-classroom.service';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
@@ -44,6 +46,10 @@ describe('AdminAssignmentsService', () => {
     const cohortRepository = { findOne: jest.fn() };
     const cohortsService = { syncAssignmentDeadlines: jest.fn() };
     const cohortsConfigService = { getConfig: jest.fn() };
+    const githubClassroomService = {
+        fetchFinalResults: jest.fn(),
+        applyFinalResults: jest.fn(),
+    };
     // Self-referential, so it needs the annotation to be inferrable.
     const queryBuilder: Record<string, jest.Mock> = {
         update: jest.fn(),
@@ -57,6 +63,7 @@ describe('AdminAssignmentsService', () => {
         findOne: jest.fn(),
         update: jest.fn(),
         save: jest.fn(),
+        query: jest.fn(),
         createQueryBuilder: jest.fn(),
     };
     const dbTransactionService = {
@@ -103,6 +110,10 @@ describe('AdminAssignmentsService', () => {
                 {
                     provide: DbTransactionService,
                     useValue: dbTransactionService,
+                },
+                {
+                    provide: GitHubClassroomService,
+                    useValue: githubClassroomService,
                 },
                 { provide: ConfigService, useValue: { get: () => undefined } },
             ],
@@ -238,6 +249,12 @@ describe('AdminAssignmentsService', () => {
         /** Week 1 two weeks ago, graduation two weeks from now. */
         const midway = () => new Date(Date.now() - 14 * DAY_MS);
 
+        const fetched = {
+            cohortId: 'cohort-1',
+            githubUsernameToUserId: new Map(),
+            weeks: [],
+            failedWeekIds: [],
+        };
         const fullConfig = {
             weeks: [
                 {
@@ -263,7 +280,21 @@ describe('AdminAssignmentsService', () => {
             manager.createQueryBuilder.mockReturnValue(queryBuilder);
             manager.update.mockResolvedValue({ affected: 1 });
             manager.find.mockResolvedValue([]);
+            // The cohort row as re-read under the lock.
+            manager.findOne.mockResolvedValue({
+                id: 'cohort-1',
+                assignmentBackend: AssignmentBackend.CLASSROOM,
+            });
+            // Four score rows frozen.
+            manager.query.mockResolvedValue([
+                { id: 's1' },
+                { id: 's2' },
+                { id: 's3' },
+                { id: 's4' },
+            ]);
             cohortsConfigService.getConfig.mockReturnValue(fullConfig);
+            githubClassroomService.fetchFinalResults.mockResolvedValue(fetched);
+            githubClassroomService.applyFinalResults.mockResolvedValue(2);
         });
 
         afterEach(() => jest.useRealTimers());
@@ -271,6 +302,10 @@ describe('AdminAssignmentsService', () => {
         /** Nothing reached the database: no transaction, no score touched. */
         const expectNoWrites = () => {
             expect(dbTransactionService.execute).not.toHaveBeenCalled();
+            expect(
+                githubClassroomService.applyFinalResults,
+            ).not.toHaveBeenCalled();
+            expect(manager.query).not.toHaveBeenCalled();
             expect(manager.update).not.toHaveBeenCalled();
             expect(manager.save).not.toHaveBeenCalled();
             expect(manager.createQueryBuilder).not.toHaveBeenCalled();
@@ -290,7 +325,14 @@ describe('AdminAssignmentsService', () => {
 
             const result = await service.switchToInhouse('cohort-1', 'admin-1');
 
-            expect(result).toEqual({ created: 3, updated: 0 });
+            expect(result).toEqual({
+                created: 3,
+                updated: 0,
+                cancelledTasks: 2,
+                scoresSynced: 2,
+                snapshotRows: 4,
+                switchedAt: expect.any(String),
+            });
             expect(dbTransactionService.execute).toHaveBeenCalledTimes(1);
             // Compare-and-set: only a cohort still on CLASSROOM flips.
             expect(manager.update).toHaveBeenCalledWith(
@@ -313,10 +355,13 @@ describe('AdminAssignmentsService', () => {
             expect(queryBuilder.where).toHaveBeenCalledWith('type = :type', {
                 type: TaskType.SYNC_CLASSROOM_SCORES,
             });
+            // Only syncs that would still run; exhausted failures stay as
+            // the record of what failed.
             expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-                'status IN (:...statuses)',
+                '(status = :unprocessed OR (status = :failed AND "retryCount" < "retryLimit"))',
                 {
-                    statuses: [APITaskStatus.UNPROCESSED, APITaskStatus.FAILED],
+                    unprocessed: APITaskStatus.UNPROCESSED,
+                    failed: APITaskStatus.FAILED,
                 },
             );
             expect(queryBuilder.andWhere).toHaveBeenCalledWith(
@@ -333,13 +378,87 @@ describe('AdminAssignmentsService', () => {
                 manager,
                 'cohort-1',
             );
-            // Only assignments are written; Classroom scores stay as they are.
+            // Besides the final Classroom read, only assignments are written.
             for (const [entities] of manager.save.mock.calls) {
                 for (const entity of entities as unknown[]) {
                     expect(entity).toBeInstanceOf(Assignment);
                 }
             }
             expect(scoreWriteback.sync).not.toHaveBeenCalled();
+        });
+
+        it('drains Classroom, then freezes its results, before the flip', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+
+            await service.switchToInhouse('cohort-1', 'admin-1');
+
+            // Under the lock the periodic sync also takes before it writes.
+            expect(manager.findOne).toHaveBeenCalledWith(Cohort, {
+                where: { id: 'cohort-1' },
+                lock: { mode: 'for_no_key_update' },
+            });
+            expect(
+                githubClassroomService.applyFinalResults,
+            ).toHaveBeenCalledWith(manager, fetched);
+            const [sql, params] = manager.query.mock.calls[0] as [
+                string,
+                unknown[],
+            ];
+            expect(sql).toContain('INSERT INTO "classroom_result_snapshot"');
+            expect(sql).toContain('FROM "exercise_score"');
+            expect(params).toEqual(['cohort-1']);
+            const order = [
+                manager.findOne.mock.invocationCallOrder[0],
+                githubClassroomService.applyFinalResults.mock
+                    .invocationCallOrder[0],
+                manager.query.mock.invocationCallOrder[0],
+                manager.update.mock.invocationCallOrder[0],
+            ];
+            expect(order).toEqual([...order].sort((a, b) => a - b));
+            // The network read happens before the transaction opens.
+            expect(
+                githubClassroomService.fetchFinalResults.mock
+                    .invocationCallOrder[0],
+            ).toBeLessThan(
+                dbTransactionService.execute.mock.invocationCallOrder[0],
+            );
+        });
+
+        it('502s and changes nothing when Classroom cannot be read', async () => {
+            // Switching anyway would freeze up to six hours of stale scores.
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            githubClassroomService.fetchFinalResults.mockRejectedValue(
+                new Error('GitHub Classroom could not report week 2'),
+            );
+
+            const attempt = service.switchToInhouse('cohort-1', 'admin-1');
+
+            await expect(attempt).rejects.toBeInstanceOf(BadGatewayException);
+            await expect(attempt).rejects.toThrow('nothing was changed');
+            expectNoWrites();
+        });
+
+        it('409s, writing nothing, when the cohort switched while Classroom was read', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            manager.findOne.mockResolvedValue({
+                id: 'cohort-1',
+                assignmentBackend: AssignmentBackend.INHOUSE,
+            });
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(ConflictException);
+            expect(
+                githubClassroomService.applyFinalResults,
+            ).not.toHaveBeenCalled();
+            expect(manager.query).not.toHaveBeenCalled();
+            expect(manager.update).not.toHaveBeenCalled();
         });
 
         it('409s when a concurrent switch already flipped the flag, before seeding', async () => {
@@ -460,9 +579,12 @@ describe('AdminAssignmentsService', () => {
             jest.useFakeTimers({ now: new Date('2026-03-30T18:29:59.999Z') });
             await expect(
                 service.switchToInhouse('cohort-1', 'admin-1'),
-            ).resolves.toEqual({ created: 3, updated: 0 });
+            ).resolves.toMatchObject({ created: 3, updated: 0 });
 
             jest.resetAllMocks();
+            dbTransactionService.execute.mockImplementation(
+                async (cb: (m: unknown) => unknown) => cb(manager),
+            );
             cohortRepository.findOne.mockResolvedValue(
                 seedableCohort(AssignmentBackend.CLASSROOM, start),
             );

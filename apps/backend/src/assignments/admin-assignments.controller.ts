@@ -21,6 +21,7 @@ import {
     AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
     RegradeResponseDto,
+    SwitchToInhouseResponseDto,
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
@@ -57,12 +58,12 @@ export class AdminAssignmentsController {
         summary:
             'Move a cohort from GitHub Classroom to the in-house classroom',
         description:
-            'One-way. Stops the Classroom score sync and seeds an assignment for every exercise week from the cohort config. Classroom scores are kept, and in-house work can only raise them. Refused once the cohort has graduated, or if any assignment would open past its deadline.',
+            'One-way. Reads GitHub Classroom one last time, freezes those results, stops the Classroom score sync and seeds an assignment for every exercise week from the cohort config. In-house work can only raise the frozen results. Refused once the cohort has graduated, or if any assignment would open past its deadline; 502 with nothing changed if Classroom cannot be read.',
     })
     async switchToInhouse(
         @Param('cohortId', ParseUUIDPipe) cohortId: string,
         @GetUser() user: User,
-    ): Promise<SyncAssignmentsResponseDto> {
+    ): Promise<SwitchToInhouseResponseDto> {
         return this.adminAssignmentsService.switchToInhouse(cohortId, user.id);
     }
 
