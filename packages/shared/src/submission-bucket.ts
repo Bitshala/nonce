@@ -38,18 +38,24 @@ export function submissionBucket(
  * exists, it has work beyond the template to grade, grading rather than a
  * staff pin decides it, and it has not passed. A pass is never replaced and a
  * pin outranks grading, so re-running either would only spend Actions
- * minutes. The admin re-grade and the count on its button both use this.
+ * minutes — as would re-grading a week already passed on GitHub Classroom
+ * before the cohort switched (`passedOnClassroom`). The admin re-grade and
+ * the count on its button both use this.
  */
-export function isRegradeCandidate(submission: {
-  provisionStatus: ProvisionStatus;
-  hasStudentCommits: boolean;
-  bestRun: unknown;
-  isPassingOverride: boolean | null;
-}): boolean {
+export function isRegradeCandidate(
+  submission: {
+    provisionStatus: ProvisionStatus;
+    hasStudentCommits: boolean;
+    bestRun: unknown;
+    isPassingOverride: boolean | null;
+  },
+  passedOnClassroom = false
+): boolean {
   return (
     submission.provisionStatus === 'READY' &&
     submission.hasStudentCommits &&
     submission.bestRun == null &&
-    submission.isPassingOverride === null
+    submission.isPassingOverride === null &&
+    !passedOnClassroom
   );
 }

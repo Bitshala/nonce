@@ -454,6 +454,8 @@ export class AdminAssignmentResponseDto
             0,
             enrolledCount - submissions.length - classroomNotStarted,
         );
-        this.regradableCount = submissions.filter(isRegradeCandidate).length;
+        this.regradableCount = submissions.filter((s) =>
+            isRegradeCandidate(s, classroomPassers.has(s.user.id)),
+        ).length;
     }
 }

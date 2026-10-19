@@ -793,13 +793,19 @@ export class AdminAssignmentsService {
                 relations: { user: true, bestRun: true },
             })
         ).filter((submission) => students.has(submission.user.id));
+        const passers =
+            (await this.classroomPassersByWeek([assignment])).get(
+                assignment.cohortWeek.id,
+            ) ?? new Set<string>();
 
         let dispatched = 0;
         let skipped = 0;
 
         for (const submission of submissions) {
             // The same rule as the count on the admin's re-grade button.
-            if (!isRegradeCandidate(submission)) {
+            if (
+                !isRegradeCandidate(submission, passers.has(submission.user.id))
+            ) {
                 skipped++;
                 continue;
             }

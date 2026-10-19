@@ -999,6 +999,44 @@ describe('AdminAssignmentsService', () => {
             expect(result).toEqual({ dispatched: 1, skipped: 2 });
         });
 
+        it('does not re-grade a week already passed on GitHub Classroom', async () => {
+            // On a switched cohort that pass already counts; a re-run would
+            // only spend Actions minutes.
+            const assignment = {
+                id: 'a',
+                cohortWeek: {
+                    id: 'week-1',
+                    cohort: {
+                        id: 'cohort-1',
+                        switchedFromClassroomAt: new Date('2026-10-01'),
+                    },
+                },
+            } as unknown as Assignment;
+            assignmentRepository.findOne.mockResolvedValue(assignment);
+            enrolled('classroom-pass', 'still-failing');
+            submissionRepository.find.mockResolvedValue([
+                by('classroom-pass'),
+                by('still-failing'),
+            ]);
+            snapshotRepository.find.mockResolvedValue([
+                {
+                    user: { id: 'classroom-pass' },
+                    cohortWeek: { id: 'week-1' },
+                },
+            ]);
+            runsService.dispatchRegrade.mockResolvedValue({ id: 'run-1' });
+
+            const result = await service.regrade('a', staff);
+
+            expect(runsService.dispatchRegrade).toHaveBeenCalledTimes(1);
+            expect(runsService.dispatchRegrade).toHaveBeenCalledWith(
+                expect.objectContaining({ id: 'still-failing' }),
+                assignment,
+                staff,
+            );
+            expect(result).toEqual({ dispatched: 1, skipped: 1 });
+        });
+
         it('counts a failed dispatch as skipped rather than aborting the rest', async () => {
             assignmentRepository.findOne.mockResolvedValue(inCohort('a'));
             enrolled('s1', 's2');
