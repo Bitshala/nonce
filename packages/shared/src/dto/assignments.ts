@@ -266,6 +266,20 @@ export interface SwitchBlocker {
   message: string;
 }
 
+/** GET …/switch-to-inhouse/preview — what a switch would do, without doing it. */
+export interface SwitchToInhousePreviewResponse {
+  /** True exactly when `blockers` is empty. */
+  canSwitch: boolean;
+  blockers: SwitchBlocker[];
+  studentCount: number;
+  /** The latest week that has started; null before the cohort starts. */
+  currentWeek: number | null;
+  /** Every exercise week the switch would seed, past weeks included. */
+  weeksToSeed: { week: number; title: string | null; deadline: string | null }[];
+  /** When the periodic Classroom sync last finished; the switch reads Classroom again anyway. */
+  lastClassroomSyncAt: string | null;
+}
+
 export interface SwitchToInhouseResponse {
   created: number;
   updated: number;

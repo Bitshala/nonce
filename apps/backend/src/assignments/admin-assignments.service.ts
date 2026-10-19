@@ -46,6 +46,7 @@ import {
     AdminSubmissionResponseDto,
     ArchiveAssignmentResponseDto,
     RegradeResponseDto,
+    SwitchToInhousePreviewResponseDto,
     SwitchToInhouseResponseDto,
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
@@ -96,6 +97,8 @@ export class AdminAssignmentsService {
         private readonly membershipRepository: Repository<CohortMembership>,
         @InjectRepository(ExerciseScore)
         private readonly exerciseScoreRepository: Repository<ExerciseScore>,
+        @InjectRepository(APITask)
+        private readonly apiTaskRepository: Repository<APITask<any>>,
         private readonly cohortsConfigService: CohortsConfigService,
         private readonly cohortsService: CohortsService,
         private readonly gitHubAppClient: GitHubAppClient,
@@ -307,6 +310,60 @@ export class AdminAssignmentsService {
             scoresSynced: result.scoresSynced,
             snapshotRows: result.snapshotRows,
             switchedAt: result.switchedAt.toISOString(),
+        });
+    }
+
+    /**
+     * What a switch would do to this cohort right now, and what would refuse
+     * it, so the admin sees the impact before an irreversible action and the
+     * UI only offers the switch when it can succeed. Writes nothing.
+     */
+    async previewSwitchToInhouse(
+        cohortId: string,
+    ): Promise<SwitchToInhousePreviewResponseDto> {
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+            relations: { weeks: true },
+        });
+        if (!cohort) throw new NotFoundException('Cohort not found');
+
+        const now = new Date();
+        const config = this.cohortsConfigService.getConfig(cohort.type);
+        const plan = this.planSwitch(cohort, config, now);
+
+        const studentCount = await this.membershipRepository.count({
+            where: { cohort: { id: cohortId } },
+        });
+        const started = cohort.weeks
+            .filter((week) => week.scheduledDate <= now)
+            .sort((a, b) => b.week - a.week);
+        // Task rows are pruned after 30 days, so an old cohort can read null.
+        const lastSync = await this.apiTaskRepository
+            .createQueryBuilder('task')
+            .where('task.type = :type', {
+                type: TaskType.SYNC_CLASSROOM_SCORES,
+            })
+            .andWhere('task.status = :status', {
+                status: APITaskStatus.PROCESSED,
+            })
+            .andWhere("task.data->>'cohortId' = :cohortId", { cohortId })
+            .orderBy('task.updatedAt', 'DESC')
+            .getOne();
+
+        return new SwitchToInhousePreviewResponseDto({
+            canSwitch: plan.refusals.length === 0,
+            blockers: plan.refusals.map(({ code, message }) => ({
+                code,
+                message,
+            })),
+            studentCount,
+            currentWeek: started[0]?.week ?? null,
+            weeksToSeed: plan.toSeed.map(({ week, deadline }) => ({
+                week: week.week,
+                title: week.title ?? null,
+                deadline: deadline?.toISOString() ?? null,
+            })),
+            lastClassroomSyncAt: lastSync?.updatedAt.toISOString() ?? null,
         });
     }
 

@@ -38,7 +38,14 @@ describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
 
     const assignmentRepository = { findOne: jest.fn(), find: jest.fn() };
-    const membershipRepository = { find: jest.fn() };
+    const membershipRepository = { find: jest.fn(), count: jest.fn() };
+    const lastSyncQuery: Record<string, jest.Mock> = {
+        where: jest.fn(),
+        andWhere: jest.fn(),
+        orderBy: jest.fn(),
+        getOne: jest.fn(),
+    };
+    const apiTaskRepository = { createQueryBuilder: jest.fn() };
     const submissionRepository = { find: jest.fn(), findOne: jest.fn() };
     const runsService = { dispatchRegrade: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
@@ -95,6 +102,10 @@ describe('AdminAssignmentsService', () => {
                 {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
+                },
+                {
+                    provide: getRepositoryToken(APITask),
+                    useValue: apiTaskRepository,
                 },
                 { provide: CohortsService, useValue: cohortsService },
                 {
@@ -459,6 +470,89 @@ describe('AdminAssignmentsService', () => {
             ).not.toHaveBeenCalled();
             expect(manager.query).not.toHaveBeenCalled();
             expect(manager.update).not.toHaveBeenCalled();
+        });
+
+        describe('preview', () => {
+            beforeEach(() => {
+                for (const step of ['where', 'andWhere', 'orderBy']) {
+                    lastSyncQuery[step].mockReturnValue(lastSyncQuery);
+                }
+                lastSyncQuery.getOne.mockResolvedValue({
+                    updatedAt: new Date('2026-10-19T06:00:00.000Z'),
+                });
+                apiTaskRepository.createQueryBuilder.mockReturnValue(
+                    lastSyncQuery,
+                );
+                membershipRepository.count.mockResolvedValue(24);
+            });
+
+            it('shows the impact of a switch that would succeed, writing nothing', async () => {
+                cohortRepository.findOne.mockResolvedValue(
+                    seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+                );
+
+                const preview =
+                    await service.previewSwitchToInhouse('cohort-1');
+
+                expect(preview).toMatchObject({
+                    canSwitch: true,
+                    blockers: [],
+                    studentCount: 24,
+                    // Week 2 is scheduled for today; week 3 is next week.
+                    currentWeek: 2,
+                    lastClassroomSyncAt: '2026-10-19T06:00:00.000Z',
+                });
+                expect(preview.weeksToSeed.map((w) => w.week)).toEqual([
+                    1, 2, 3,
+                ]);
+                // GRADUATION deadlines are resolved, as seeding would.
+                for (const week of preview.weeksToSeed) {
+                    expect(week.deadline).toEqual(expect.any(String));
+                }
+                expectNoWrites();
+                expect(
+                    githubClassroomService.fetchFinalResults,
+                ).not.toHaveBeenCalled();
+            });
+
+            it('lists every refusal at once, so the admin can fix them together', async () => {
+                // Like Building Bitcoin in Rust: exercise weeks, no assignment
+                // blocks in config.
+                cohortRepository.findOne.mockResolvedValue(
+                    Object.assign(
+                        seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+                        { classroomId: null },
+                    ),
+                );
+                cohortsConfigService.getConfig.mockReturnValue({
+                    weeks: [
+                        { hasExercise: true },
+                        { hasExercise: true },
+                        { hasExercise: true },
+                    ],
+                });
+
+                const preview =
+                    await service.previewSwitchToInhouse('cohort-1');
+
+                expect(preview.canSwitch).toBe(false);
+                expect(preview.blockers.map((b) => b.code)).toEqual([
+                    'NO_CLASSROOM_ID',
+                    'UNCONFIGURED_WEEKS',
+                ]);
+                expect(preview.blockers[1].message).toContain(
+                    'exercise week(s) 1, 2, 3',
+                );
+                expectNoWrites();
+            });
+
+            it('404s for a cohort that does not exist', async () => {
+                cohortRepository.findOne.mockResolvedValue(null);
+
+                await expect(
+                    service.previewSwitchToInhouse('cohort-1'),
+                ).rejects.toBeInstanceOf(NotFoundException);
+            });
         });
 
         it('409s when a concurrent switch already flipped the flag, before seeding', async () => {

@@ -18,6 +18,8 @@ import type {
     RepoTreeEntryResponse,
     RepoTreeResponse,
     SubmissionResponse,
+    SwitchBlocker,
+    SwitchToInhousePreviewResponse,
     SwitchToInhouseResponse,
     SyncAssignmentsResponse,
 } from '@nonce/shared';
@@ -313,6 +315,28 @@ export class SyncAssignmentsResponseDto implements SyncAssignmentsResponse {
     constructor(created: number, updated: number) {
         this.created = created;
         this.updated = updated;
+    }
+}
+
+export class SwitchToInhousePreviewResponseDto implements SwitchToInhousePreviewResponse {
+    canSwitch: boolean;
+    blockers: SwitchBlocker[];
+    studentCount: number;
+    currentWeek: number | null;
+    weeksToSeed: {
+        week: number;
+        title: string | null;
+        deadline: string | null;
+    }[];
+    lastClassroomSyncAt: string | null;
+
+    constructor(obj: SwitchToInhousePreviewResponse) {
+        this.canSwitch = obj.canSwitch;
+        this.blockers = obj.blockers;
+        this.studentCount = obj.studentCount;
+        this.currentWeek = obj.currentWeek;
+        this.weeksToSeed = obj.weeksToSeed;
+        this.lastClassroomSyncAt = obj.lastClassroomSyncAt;
     }
 }
 

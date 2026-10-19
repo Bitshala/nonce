@@ -21,6 +21,7 @@ import {
     AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
     RegradeResponseDto,
+    SwitchToInhousePreviewResponseDto,
     SwitchToInhouseResponseDto,
     SyncAssignmentsResponseDto,
 } from '@/assignments/assignments.response.dto';
@@ -49,6 +50,19 @@ export class AdminAssignmentsController {
         @Param('cohortId', ParseUUIDPipe) cohortId: string,
     ): Promise<SyncAssignmentsResponseDto> {
         return this.adminAssignmentsService.syncAssignments(cohortId);
+    }
+
+    @Get('cohorts/:cohortId/switch-to-inhouse/preview')
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({
+        summary: 'Preview switching a cohort to the in-house classroom',
+        description:
+            'Writes nothing. Lists everything that would refuse the switch, the weeks it would seed with their deadlines, the number of students and when Classroom was last synced.',
+    })
+    async previewSwitchToInhouse(
+        @Param('cohortId', ParseUUIDPipe) cohortId: string,
+    ): Promise<SwitchToInhousePreviewResponseDto> {
+        return this.adminAssignmentsService.previewSwitchToInhouse(cohortId);
     }
 
     @Post('cohorts/:cohortId/switch-to-inhouse')
