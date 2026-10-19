@@ -64,6 +64,14 @@ export const AssignmentBriefBody = ({
         />
       )}
 
+      {assignment.priorResult?.isPassing && (
+        <Alert severity="success">
+          You passed this week on GitHub Classroom, and that result already
+          counts towards your score. You can still work on it here; nothing you
+          do here can lower it.
+        </Alert>
+      )}
+
       {assignment.isPastDeadline && (
         <Alert severity="warning">
           The deadline has passed.{' '}

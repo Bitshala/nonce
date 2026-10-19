@@ -97,6 +97,18 @@ export interface SubmissionResponse {
 
 // --- Assignments -----------------------------------------------------------
 
+/**
+ * A week's GitHub Classroom result, frozen when the cohort switched to the
+ * in-house classroom. It already counts towards the student's score.
+ */
+export interface PriorClassroomResult {
+  source: 'CLASSROOM';
+  isSubmitted: boolean;
+  isPassing: boolean;
+  /** When it was frozen: the moment the cohort switched. */
+  capturedAt: string;
+}
+
 export interface AssignmentSummaryResponse {
   id: string;
   slug: string;
@@ -115,6 +127,10 @@ export interface AssignmentSummaryResponse {
   maxRunsPerDay: number;
   /** Null until the student accepts. */
   submission: SubmissionResponse | null;
+  /** When this assignment's cohort left GitHub Classroom; null if it never did. */
+  cohortSwitchedFromClassroomAt: string | null;
+  /** The student's Classroom result for this week, on a switched cohort. */
+  priorResult: PriorClassroomResult | null;
 }
 
 export interface AssignmentDetailResponse extends AssignmentSummaryResponse {

@@ -17,6 +17,7 @@ import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { User } from '@/entities/user.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { TaskType } from '@/task-processor/task.enums';
@@ -55,6 +56,8 @@ export class AssignmentsService {
         private readonly ciRunRepository: Repository<CIRun>,
         @InjectRepository(CohortMembership)
         private readonly membershipRepository: Repository<CohortMembership>,
+        @InjectRepository(ClassroomResultSnapshot)
+        private readonly snapshotRepository: Repository<ClassroomResultSnapshot>,
         private readonly dbTransactionService: DbTransactionService,
     ) {}
 
@@ -101,6 +104,7 @@ export class AssignmentsService {
         const byAssignment = new Map(
             submissions.map((s) => [s.assignment.id, s]),
         );
+        const priorByWeek = await this.priorResultsByWeek(user.id, assignments);
 
         return assignments
             .sort(
@@ -113,6 +117,8 @@ export class AssignmentsService {
                     new AssignmentSummaryResponseDto(
                         assignment,
                         byAssignment.get(assignment.id) ?? null,
+                        0,
+                        priorByWeek.get(assignment.cohortWeek.id) ?? null,
                     ),
             );
     }
@@ -128,11 +134,38 @@ export class AssignmentsService {
             ? await this.countRunsToday(submission)
             : 0;
 
+        const priorByWeek = await this.priorResultsByWeek(user.id, [
+            assignment,
+        ]);
+
         return new AssignmentDetailResponseDto(
             assignment,
             submission,
             runsToday,
+            priorByWeek.get(assignment.cohortWeek.id) ?? null,
         );
+    }
+
+    /**
+     * The student's frozen Classroom results for these assignments' weeks,
+     * keyed by week. Without them a week already passed on Classroom reads
+     * as "Available" on a switched cohort while the score says passed.
+     * One query; skipped entirely when no cohort here ever switched.
+     */
+    private async priorResultsByWeek(
+        userId: string,
+        assignments: Assignment[],
+    ): Promise<Map<string, ClassroomResultSnapshot>> {
+        const weekIds = assignments
+            .filter((a) => a.cohortWeek.cohort.switchedFromClassroomAt)
+            .map((a) => a.cohortWeek.id);
+        if (weekIds.length === 0) return new Map();
+
+        const snapshots = await this.snapshotRepository.find({
+            where: { user: { id: userId }, cohortWeek: { id: In(weekIds) } },
+            relations: { cohortWeek: true },
+        });
+        return new Map(snapshots.map((snap) => [snap.cohortWeek.id, snap]));
     }
 
     /**

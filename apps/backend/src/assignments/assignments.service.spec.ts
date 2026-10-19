@@ -7,6 +7,7 @@ import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { User } from '@/entities/user.entity';
 import { AssignmentStatus, UserRole } from '@/common/enum';
 
@@ -16,10 +17,11 @@ import { AssignmentStatus, UserRole } from '@/common/enum';
 describe('AssignmentsService', () => {
     let service: AssignmentsService;
 
-    const assignmentRepository = { findOne: jest.fn() };
-    const submissionRepository = { findOne: jest.fn() };
+    const assignmentRepository = { findOne: jest.fn(), find: jest.fn() };
+    const submissionRepository = { findOne: jest.fn(), find: jest.fn() };
     const ciRunRepository = { count: jest.fn() };
-    const membershipRepository = { findOne: jest.fn() };
+    const membershipRepository = { findOne: jest.fn(), find: jest.fn() };
+    const snapshotRepository = { find: jest.fn() };
 
     const student = { id: 'student-1', role: UserRole.STUDENT } as User;
     const staff = { id: 'ta-1', role: UserRole.TEACHING_ASSISTANT } as User;
@@ -53,6 +55,10 @@ describe('AssignmentsService', () => {
                 {
                     provide: getRepositoryToken(CohortMembership),
                     useValue: membershipRepository,
+                },
+                {
+                    provide: getRepositoryToken(ClassroomResultSnapshot),
+                    useValue: snapshotRepository,
                 },
                 { provide: DbTransactionService, useValue: {} },
             ],
@@ -112,6 +118,79 @@ describe('AssignmentsService', () => {
             await expect(
                 service.resolveSubmissionForViewer('submission-1', student),
             ).rejects.toThrow(ForbiddenException);
+        });
+    });
+
+    describe('listMyAssignments on a cohort switched from GitHub Classroom', () => {
+        const switchedAt = new Date('2026-10-01T09:00:00.000Z');
+        const assignmentFor = (
+            week: number,
+            switchedFromClassroomAt: Date | null,
+        ) =>
+            Object.assign(new Assignment(), {
+                id: `assignment-${week}`,
+                status: AssignmentStatus.PUBLISHED,
+                deadline: null,
+                allowLateSubmission: false,
+                protectedPaths: [],
+                cohortWeek: {
+                    id: `week-${week}`,
+                    week,
+                    cohort: {
+                        id: 'cohort-1',
+                        season: 3,
+                        switchedFromClassroomAt,
+                    },
+                },
+            });
+
+        beforeEach(() => {
+            membershipRepository.find.mockResolvedValue([
+                { cohort: { id: 'cohort-1' } },
+            ]);
+            submissionRepository.find.mockResolvedValue([]);
+        });
+
+        it('carries the frozen Classroom result for weeks the student did there', async () => {
+            // Without it the week reads "Available" while the score says
+            // passed.
+            assignmentRepository.find.mockResolvedValue([
+                assignmentFor(1, switchedAt),
+                assignmentFor(2, switchedAt),
+            ]);
+            snapshotRepository.find.mockResolvedValue([
+                {
+                    cohortWeek: { id: 'week-1' },
+                    isSubmitted: true,
+                    isPassing: true,
+                    createdAt: switchedAt,
+                },
+            ]);
+
+            const [week1, week2] = await service.listMyAssignments(student);
+
+            expect(week1.priorResult).toEqual({
+                source: 'CLASSROOM',
+                isSubmitted: true,
+                isPassing: true,
+                capturedAt: switchedAt.toISOString(),
+            });
+            expect(week1.cohortSwitchedFromClassroomAt).toBe(
+                switchedAt.toISOString(),
+            );
+            expect(week2.priorResult).toBeNull();
+        });
+
+        it('does not look for Classroom results on a cohort that never switched', async () => {
+            assignmentRepository.find.mockResolvedValue([
+                assignmentFor(1, null),
+            ]);
+
+            const [week1] = await service.listMyAssignments(student);
+
+            expect(week1.priorResult).toBeNull();
+            expect(week1.cohortSwitchedFromClassroomAt).toBeNull();
+            expect(snapshotRepository.find).not.toHaveBeenCalled();
         });
     });
 

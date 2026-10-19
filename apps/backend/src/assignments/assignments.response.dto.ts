@@ -13,6 +13,7 @@ import type {
     CreateCommitResponse,
     DraftResponse,
     GradingReportResponse,
+    PriorClassroomResult,
     RegradeResponse,
     RepoFileResponse,
     RepoTreeEntryResponse,
@@ -35,6 +36,7 @@ import {
     ProvisionStatus,
 } from '@/common/enum';
 import { Assignment } from '@/entities/assignment.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CIRunLog } from '@/entities/ci-run-log.entity';
@@ -180,6 +182,8 @@ export class AssignmentSummaryResponseDto implements AssignmentSummaryResponse {
     isOpenForSubmission: boolean;
     maxRunsPerDay: number;
     submission: SubmissionResponse | null;
+    cohortSwitchedFromClassroomAt: string | null;
+    priorResult: PriorClassroomResult | null;
 
     /**
      * Requires `assignment.cohortWeek.cohort` to be loaded — the response
@@ -190,6 +194,7 @@ export class AssignmentSummaryResponseDto implements AssignmentSummaryResponse {
         assignment: Assignment,
         submission: AssignmentSubmission | null,
         runsToday = 0,
+        priorResult: ClassroomResultSnapshot | null = null,
     ) {
         const week = assignment.cohortWeek;
         this.id = assignment.id;
@@ -209,6 +214,16 @@ export class AssignmentSummaryResponseDto implements AssignmentSummaryResponse {
         this.submission = submission
             ? new SubmissionResponseDto(submission, assignment.id, runsToday)
             : null;
+        this.cohortSwitchedFromClassroomAt =
+            week.cohort.switchedFromClassroomAt?.toISOString() ?? null;
+        this.priorResult = priorResult
+            ? {
+                  source: 'CLASSROOM',
+                  isSubmitted: priorResult.isSubmitted,
+                  isPassing: priorResult.isPassing,
+                  capturedAt: priorResult.createdAt.toISOString(),
+              }
+            : null;
     }
 }
 
@@ -224,8 +239,9 @@ export class AssignmentDetailResponseDto
         assignment: Assignment,
         submission: AssignmentSubmission | null,
         runsToday = 0,
+        priorResult: ClassroomResultSnapshot | null = null,
     ) {
-        super(assignment, submission, runsToday);
+        super(assignment, submission, runsToday, priorResult);
         this.exercise = assignment.cohortWeek.exercise;
         this.protectedPaths = assignment.protectedPaths;
         this.runTimeoutMinutes = assignment.runTimeoutMinutes;

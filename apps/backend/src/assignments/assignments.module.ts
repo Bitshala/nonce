@@ -5,6 +5,7 @@ import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
 import { CIRunLog } from '@/entities/ci-run-log.entity';
 import { Cohort } from '@/entities/cohort.entity';
+import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { APITask } from '@/entities/api-task.entity';
@@ -35,6 +36,7 @@ import { MailModule } from '@/mail/mail.module';
             CIRun,
             CIRunLog,
             Cohort,
+            ClassroomResultSnapshot,
             CohortMembership,
             ExerciseScore,
         ]),

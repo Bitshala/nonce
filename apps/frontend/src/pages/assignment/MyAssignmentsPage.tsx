@@ -45,9 +45,26 @@ import { extractErrorMessage } from '../../utils/errorUtils.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 
 type RowState =
-  'available' | 'closed' | 'setup' | 'failed' | 'progress' | 'needs' | 'passed';
+  | 'available'
+  | 'closed'
+  | 'setup'
+  | 'failed'
+  | 'progress'
+  | 'needs'
+  | 'passed'
+  | 'priorPassed';
 
+// A week passed on GitHub Classroom before the cohort switched already counts
+// towards the score. Showing it as "Available" or "Needs work" would contradict
+// the student's score page and send them to redo it.
 const rowStateOf = (assignment: AssignmentSummaryResponse): RowState => {
+  const state = inhouseStateOf(assignment);
+  return state !== 'passed' && assignment.priorResult?.isPassing
+    ? 'priorPassed'
+    : state;
+};
+
+const inhouseStateOf = (assignment: AssignmentSummaryResponse): RowState => {
   const submission = assignment.submission;
   if (!submission) {
     return assignment.isOpenForSubmission ? 'available' : 'closed';
@@ -72,7 +89,11 @@ const BADGE: Record<RowState, { label: string; color: ChipColor }> = {
   progress: BUCKET_META.inProgress,
   needs: { label: 'Needs work', color: 'warning' },
   passed: BUCKET_META.passed,
+  priorPassed: { label: 'Passed on GitHub Classroom', color: 'success' },
 };
+
+const isDone = (state: RowState) =>
+  state === 'passed' || state === 'priorPassed';
 
 const VERB: Record<RowState, string | null> = {
   available: 'Start',
@@ -82,6 +103,7 @@ const VERB: Record<RowState, string | null> = {
   progress: 'Resume',
   needs: 'Fix',
   passed: 'Review',
+  priorPassed: 'Open',
 };
 
 /** True once a submission is ready to work in — clicking jumps straight to the editor. */
@@ -176,8 +198,7 @@ export const MyAssignmentsPage = () => {
     null;
   const upNext = findUpNext(activeSeason);
   const doneCount =
-    activeSeason?.assignments.filter(a => rowStateOf(a) === 'passed').length ??
-    0;
+    activeSeason?.assignments.filter(a => isDone(rowStateOf(a))).length ?? 0;
 
   const selectCourse = (cohortType: string) => {
     setSelectedCourse(cohortType);
@@ -371,7 +392,7 @@ export const MyAssignmentsPage = () => {
                           size="small"
                           label={`W${assignment.weekNumber}`}
                           color={
-                            state === 'passed'
+                            isDone(state)
                               ? 'success'
                               : upNext?.id === assignment.id
                                 ? 'primary'
