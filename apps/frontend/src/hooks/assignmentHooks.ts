@@ -1,5 +1,6 @@
 import assignmentService from '../services/assignmentService.ts';
 import { createUseMutation, createUseQuery } from '../http';
+import { useCohort } from './cohortHooks.ts';
 import type {
   AdminAssignmentResponse,
   AdminSubmissionResponse,
@@ -207,6 +208,17 @@ export const useSyncCohortAssignments = createUseMutation<
   string
 >(cohortId => assignmentService.syncCohortAssignments(cohortId), {
   queryInvalidation: invalidateAdmin,
+});
+
+export const useSwitchCohortToInhouse = createUseMutation<
+  SyncAssignmentsResponse,
+  string
+>(cohortId => assignmentService.switchCohortToInhouse(cohortId), {
+  queryInvalidation: async ({ variables: cohortId, queryClient }) => {
+    await useCohort.invalidate(cohortId);
+    await queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+    await invalidateAdmin();
+  },
 });
 
 export const useArchiveCohortRepos = createUseMutation<void, string>(

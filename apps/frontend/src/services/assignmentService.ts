@@ -281,6 +281,18 @@ class AssignmentService {
     return data;
   };
 
+  /** One-way: moves a cohort from GitHub Classroom to the in-house classroom. */
+  public switchCohortToInhouse = async (
+    cohortId: string
+  ): Promise<SyncAssignmentsResponse> => {
+    const { data } = await this.request<SyncAssignmentsResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'POST',
+      url: `/admin/cohorts/${cohortId}/switch-to-inhouse`,
+    });
+    return data;
+  };
+
   public archiveCohortRepos = async (cohortId: string): Promise<void> => {
     await this.request<void>({
       headers: this.getRequestHeaders(),
