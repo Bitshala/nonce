@@ -1,4 +1,9 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    NotFoundException,
+} from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -17,7 +22,8 @@ import { Cohort } from '@/entities/cohort.entity';
 import { CohortWeek } from '@/entities/cohort-week.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
-import { TaskType } from '@/task-processor/task.enums';
+import { APITaskStatus, TaskType } from '@/task-processor/task.enums';
+import { APITask } from '@/entities/api-task.entity';
 import {
     AssignmentBackend,
     CohortType,
@@ -38,11 +44,20 @@ describe('AdminAssignmentsService', () => {
     const cohortRepository = { findOne: jest.fn() };
     const cohortsService = { syncAssignmentDeadlines: jest.fn() };
     const cohortsConfigService = { getConfig: jest.fn() };
+    // Self-referential, so it needs the annotation to be inferrable.
+    const queryBuilder: Record<string, jest.Mock> = {
+        update: jest.fn(),
+        set: jest.fn(),
+        where: jest.fn(),
+        andWhere: jest.fn(),
+        execute: jest.fn(),
+    };
     const manager = {
         find: jest.fn(),
         findOne: jest.fn(),
         update: jest.fn(),
         save: jest.fn(),
+        createQueryBuilder: jest.fn(),
     };
     const dbTransactionService = {
         execute: jest.fn(async (cb: (m: unknown) => unknown) => cb(manager)),
@@ -125,6 +140,7 @@ describe('AdminAssignmentsService', () => {
             id: 'cohort-1',
             type: CohortType.PROGRAMMING_BITCOIN,
             season: 3,
+            hasExercises: true,
             classroomId: '243620',
             assignmentBackend,
             weeks: [
@@ -214,6 +230,282 @@ describe('AdminAssignmentsService', () => {
                 service.syncAssignments('cohort-1'),
             ).rejects.toBeInstanceOf(NotFoundException);
             expect(manager.save).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('switchToInhouse', () => {
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        /** Week 1 two weeks ago, graduation two weeks from now. */
+        const midway = () => new Date(Date.now() - 14 * DAY_MS);
+
+        const fullConfig = {
+            weeks: [
+                {
+                    hasExercise: true,
+                    assignment: assignmentConfig('pb-week-1'),
+                },
+                {
+                    hasExercise: true,
+                    assignment: assignmentConfig('pb-week-2'),
+                },
+                {
+                    hasExercise: true,
+                    assignment: assignmentConfig('pb-week-3'),
+                },
+            ],
+        };
+
+        beforeEach(() => {
+            for (const step of ['update', 'set', 'where', 'andWhere']) {
+                queryBuilder[step].mockReturnValue(queryBuilder);
+            }
+            queryBuilder.execute.mockResolvedValue({ affected: 2 });
+            manager.createQueryBuilder.mockReturnValue(queryBuilder);
+            manager.update.mockResolvedValue({ affected: 1 });
+            manager.find.mockResolvedValue([]);
+            cohortsConfigService.getConfig.mockReturnValue(fullConfig);
+        });
+
+        afterEach(() => jest.useRealTimers());
+
+        /** Nothing reached the database: no transaction, no score touched. */
+        const expectNoWrites = () => {
+            expect(dbTransactionService.execute).not.toHaveBeenCalled();
+            expect(manager.update).not.toHaveBeenCalled();
+            expect(manager.save).not.toHaveBeenCalled();
+            expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+            expect(
+                cohortsService.syncAssignmentDeadlines,
+            ).not.toHaveBeenCalled();
+            expect(scoreWriteback.sync).not.toHaveBeenCalled();
+            for (const fn of Object.values(exerciseScoreRepository)) {
+                expect(fn).not.toHaveBeenCalled();
+            }
+        };
+
+        it('flips the backend, cancels Classroom sync and seeds every exercise week in one transaction', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+
+            const result = await service.switchToInhouse('cohort-1', 'admin-1');
+
+            expect(result).toEqual({ created: 3, updated: 0 });
+            expect(dbTransactionService.execute).toHaveBeenCalledTimes(1);
+            // Compare-and-set: only a cohort still on CLASSROOM flips.
+            expect(manager.update).toHaveBeenCalledWith(
+                Cohort,
+                {
+                    id: 'cohort-1',
+                    assignmentBackend: AssignmentBackend.CLASSROOM,
+                },
+                { assignmentBackend: AssignmentBackend.INHOUSE },
+            );
+            expect(queryBuilder.update).toHaveBeenCalledWith(APITask);
+            expect(queryBuilder.set).toHaveBeenCalledWith({
+                status: APITaskStatus.CANCELLED,
+            });
+            expect(queryBuilder.where).toHaveBeenCalledWith('type = :type', {
+                type: TaskType.SYNC_CLASSROOM_SCORES,
+            });
+            expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+                'status IN (:...statuses)',
+                {
+                    statuses: [APITaskStatus.UNPROCESSED, APITaskStatus.FAILED],
+                },
+            );
+            expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+                "data->>'cohortId' = :cohortId",
+                { cohortId: 'cohort-1' },
+            );
+            const [saved] = manager.save.mock.calls[0] as [Assignment[]];
+            expect(saved.map((a) => a.slug)).toEqual([
+                'pb-week-1-s3',
+                'pb-week-2-s3',
+                'pb-week-3-s3',
+            ]);
+            expect(cohortsService.syncAssignmentDeadlines).toHaveBeenCalledWith(
+                manager,
+                'cohort-1',
+            );
+            // Only assignments are written; Classroom scores stay as they are.
+            for (const [entities] of manager.save.mock.calls) {
+                for (const entity of entities as unknown[]) {
+                    expect(entity).toBeInstanceOf(Assignment);
+                }
+            }
+            expect(scoreWriteback.sync).not.toHaveBeenCalled();
+        });
+
+        it('409s when a concurrent switch already flipped the flag, before seeding', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            manager.update.mockResolvedValue({ affected: 0 });
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(ConflictException);
+            expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+            expect(manager.save).not.toHaveBeenCalled();
+        });
+
+        it('409s, naming the slug, when an assignment slug is already taken', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            manager.save.mockRejectedValue(
+                new QueryFailedError(
+                    'INSERT INTO "assignment"',
+                    [],
+                    Object.assign(new Error('duplicate key'), {
+                        code: '23505',
+                        detail: 'Key (slug)=(pb-week-1-s3) already exists.',
+                    }),
+                ),
+            );
+
+            const attempt = service.switchToInhouse('cohort-1', 'admin-1');
+
+            await expect(attempt).rejects.toBeInstanceOf(ConflictException);
+            await expect(attempt).rejects.toThrow('pb-week-1-s3');
+        });
+
+        it('lets any other database failure through unchanged', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            const failure = new Error('connection reset');
+            manager.save.mockRejectedValue(failure);
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBe(failure);
+        });
+
+        it('404s for a cohort that does not exist', async () => {
+            cohortRepository.findOne.mockResolvedValue(null);
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(NotFoundException);
+            expectNoWrites();
+        });
+
+        it('409s for a cohort already on the in-house classroom', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.INHOUSE, midway()),
+            );
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(ConflictException);
+            expectNoWrites();
+        });
+
+        it('400s for a cohort with no exercises', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                Object.assign(
+                    seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+                    { hasExercises: false },
+                ),
+            );
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(BadRequestException);
+            expectNoWrites();
+        });
+
+        it('409s for a cohort with no Classroom id, which would lose its score protection', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                Object.assign(
+                    seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+                    { classroomId: null },
+                ),
+            );
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toBeInstanceOf(ConflictException);
+            expectNoWrites();
+        });
+
+        it('409s for a graduated cohort and writes nothing, scores included', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(
+                    AssignmentBackend.CLASSROOM,
+                    new Date(Date.now() - 70 * DAY_MS),
+                ),
+            );
+
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toThrow('graduated');
+            expectNoWrites();
+        });
+
+        it('treats graduation day as open until its end in IST, like a deadline', async () => {
+            // Graduation (week 4) is 30 March; its deadline 18:29:59.999 UTC.
+            const start = new Date('2026-03-02T00:00:00.000Z');
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, start),
+            );
+
+            jest.useFakeTimers({ now: new Date('2026-03-30T18:29:59.999Z') });
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).resolves.toEqual({ created: 3, updated: 0 });
+
+            jest.resetAllMocks();
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, start),
+            );
+            cohortsConfigService.getConfig.mockReturnValue(fullConfig);
+            jest.setSystemTime(new Date('2026-03-30T18:30:00.000Z'));
+            await expect(
+                service.switchToInhouse('cohort-1', 'admin-1'),
+            ).rejects.toThrow('graduated');
+            expectNoWrites();
+        });
+
+        it('400s, listing the weeks, when the config has no assignment for an exercise week', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            cohortsConfigService.getConfig.mockReturnValue(partialConfig);
+
+            const attempt = service.switchToInhouse('cohort-1', 'admin-1');
+
+            await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
+            await expect(attempt).rejects.toThrow('exercise week(s) 3');
+            expectNoWrites();
+        });
+
+        it('409s, listing the weeks, when an assignment would open already past its deadline', async () => {
+            // Week 1 was two weeks ago; due three days after it.
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM, midway()),
+            );
+            cohortsConfigService.getConfig.mockReturnValue({
+                weeks: [
+                    {
+                        hasExercise: true,
+                        assignment: {
+                            ...assignmentConfig('pb-week-1'),
+                            deadline: undefined,
+                            deadlineDaysAfterWeek: 3,
+                        },
+                    },
+                    ...fullConfig.weeks.slice(1),
+                ],
+            });
+
+            const attempt = service.switchToInhouse('cohort-1', 'admin-1');
+
+            await expect(attempt).rejects.toBeInstanceOf(ConflictException);
+            await expect(attempt).rejects.toThrow('week(s) 1 would');
+            expectNoWrites();
         });
     });
 

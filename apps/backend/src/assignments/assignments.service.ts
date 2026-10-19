@@ -12,7 +12,7 @@ import {
     MoreThanOrEqual,
     Repository,
 } from 'typeorm';
-import { QueryFailedError } from 'typeorm';
+import { isUniqueViolation } from '@/common/errors';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CIRun } from '@/entities/ci-run.entity';
@@ -28,9 +28,6 @@ import {
     AssignmentSummaryResponseDto,
     SubmissionResponseDto,
 } from '@/assignments/assignments.response.dto';
-
-/** Postgres unique-violation SQLSTATE. */
-const UNIQUE_VIOLATION = '23505';
 
 /** What a student may see. A DRAFT is staff-only until it is published. */
 const STUDENT_VISIBLE_STATUSES = [
@@ -186,11 +183,7 @@ export class AssignmentsService {
             return new SubmissionResponseDto(submission, assignmentId);
         } catch (error) {
             // Two concurrent Accepts: the loser reads the winner's row.
-            if (
-                error instanceof QueryFailedError &&
-                (error.driverError as { code?: string })?.code ===
-                    UNIQUE_VIOLATION
-            ) {
+            if (isUniqueViolation(error)) {
                 const raced = await this.findSubmission(assignmentId, user.id);
                 if (raced) {
                     return new SubmissionResponseDto(raced, assignmentId);

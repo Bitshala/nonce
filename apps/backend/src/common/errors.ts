@@ -1,5 +1,17 @@
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { QueryFailedError } from 'typeorm';
+
+/** Postgres unique-violation SQLSTATE. */
+const UNIQUE_VIOLATION = '23505';
+
+/** Whether a query failed because it broke a unique constraint. */
+export function isUniqueViolation(error: unknown): error is QueryFailedError {
+    return (
+        error instanceof QueryFailedError &&
+        (error.driverError as { code?: string })?.code === UNIQUE_VIOLATION
+    );
+}
 
 interface ErrorResponseMeta {
     errorCode?: string;

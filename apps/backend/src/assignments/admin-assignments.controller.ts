@@ -50,6 +50,22 @@ export class AdminAssignmentsController {
         return this.adminAssignmentsService.syncAssignments(cohortId);
     }
 
+    @Post('cohorts/:cohortId/switch-to-inhouse')
+    // Changes what grades a live cohort, and cannot be undone.
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({
+        summary:
+            'Move a cohort from GitHub Classroom to the in-house classroom',
+        description:
+            'One-way. Stops the Classroom score sync and seeds an assignment for every exercise week from the cohort config. Classroom scores are kept, and in-house work can only raise them. Refused once the cohort has graduated, or if any assignment would open past its deadline.',
+    })
+    async switchToInhouse(
+        @Param('cohortId', ParseUUIDPipe) cohortId: string,
+        @GetUser() user: User,
+    ): Promise<SyncAssignmentsResponseDto> {
+        return this.adminAssignmentsService.switchToInhouse(cohortId, user.id);
+    }
+
     @Get('assignments')
     @ApiOperation({
         summary: 'Every assignment across all cohorts, with submission tallies',

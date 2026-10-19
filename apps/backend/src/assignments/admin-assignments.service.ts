@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     ConflictException,
     Injectable,
     Logger,
@@ -14,17 +15,29 @@ import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { User } from '@/entities/user.entity';
-import { TaskType } from '@/task-processor/task.enums';
+import { APITaskStatus, TaskType } from '@/task-processor/task.enums';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
-import { CohortConfig } from '@/cohorts/cohorts.config.model';
+import { AssignmentConfig, CohortConfig } from '@/cohorts/cohorts.config.model';
+import { CohortWeek } from '@/entities/cohort-week.entity';
 import { CohortsService } from '@/cohorts/cohorts.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
 import { ExerciseScoreWritebackService } from '@/assignments/exercise-score-writeback.service';
-import { applyAssignmentConfig } from '@/assignments/assignment-seed.util';
+import {
+    applyAssignmentConfig,
+    resolveDeadline,
+} from '@/assignments/assignment-seed.util';
+import { isUniqueViolation, ServiceError } from '@/common/errors';
+import { isGraduationPassed } from '@nonce/shared/deadline';
 import { isRegradeCandidate } from '@nonce/shared/submission-bucket';
-import { AssignmentBackend, ProvisionStatus, UserRole } from '@/common/enum';
+import {
+    AssignmentBackend,
+    AssignmentDeadlineSource,
+    CohortWeekType,
+    ProvisionStatus,
+    UserRole,
+} from '@/common/enum';
 import {
     AdminAssignmentResponseDto,
     AdminSubmissionResponseDto,
@@ -105,6 +118,170 @@ export class AdminAssignmentsService {
             `Synced assignments for cohort ${cohortId}: ${created} created, ${updated} updated`,
         );
         return new SyncAssignmentsResponseDto(created, updated);
+    }
+
+    /**
+     * Moves a cohort from GitHub Classroom to the in-house classroom: flips its
+     * backend, stops the Classroom score sync, and seeds an assignment for
+     * every exercise week from config, in one transaction. One-way — going
+     * back would orphan provisioned repos and in-house submissions.
+     *
+     * Writes no `ExerciseScore`. Classroom results stay on the rows, and
+     * writeback only ever raises them on a switched cohort
+     * (`isSwitchedFromClassroom`).
+     */
+    async switchToInhouse(
+        cohortId: string,
+        actorId: string,
+    ): Promise<SyncAssignmentsResponseDto> {
+        const cohort = await this.cohortRepository.findOne({
+            where: { id: cohortId },
+            relations: { weeks: true },
+        });
+        if (!cohort) throw new NotFoundException('Cohort not found');
+        // Fast path only; the compare-and-set below is what decides a race.
+        if (cohort.assignmentBackend !== AssignmentBackend.CLASSROOM) {
+            throw new ConflictException(
+                'This cohort is already on the in-house classroom',
+            );
+        }
+        if (!cohort.hasExercises) {
+            throw new BadRequestException(
+                'This cohort has no exercises, so there is nothing to switch',
+            );
+        }
+        // The switch keeps classroomId as the mark of a switched cohort.
+        // Without one, the cohort would read as natively in-house and
+        // writeback would stop protecting its Classroom results.
+        if (cohort.classroomId == null) {
+            throw new ConflictException(
+                'This cohort has no GitHub Classroom id, so it cannot be switched',
+            );
+        }
+
+        const graduation = cohort.weeks.find(
+            (week) => week.type === CohortWeekType.GRADUATION,
+        );
+        if (!graduation) {
+            throw new ServiceError(`Cohort ${cohortId} has no graduation week`);
+        }
+        const now = new Date();
+        // A graduated cohort's scores are final; switching it would expose
+        // them to in-house activity.
+        if (isGraduationPassed(graduation.scheduledDate, now)) {
+            throw new ConflictException(
+                'This cohort has graduated, so its scores are final and it cannot be switched',
+            );
+        }
+
+        const config = this.cohortsConfigService.getConfig(cohort.type);
+        const unconfigured: number[] = [];
+        const toSeed: { week: CohortWeek; assignment: AssignmentConfig }[] = [];
+        for (const week of cohort.weeks
+            .filter((w) => w.hasExercise)
+            .sort((a, b) => a.week - b.week)) {
+            const assignment = config.weeks[week.week - 1]?.assignment;
+            if (assignment) toSeed.push({ week, assignment });
+            else unconfigured.push(week.week);
+        }
+        if (unconfigured.length > 0) {
+            throw new BadRequestException(
+                `The ${cohort.type} config has no assignment for exercise week(s) ${unconfigured.join(', ')}`,
+            );
+        }
+
+        // Past weeks are seeded too, so check that none would open already
+        // past due: no run on it could ever count. Resolved the way seeding
+        // will resolve it, GRADUATION included.
+        const pastDue = toSeed
+            .filter(({ week, assignment }) => {
+                const preview = applyAssignmentConfig(
+                    new Assignment(),
+                    assignment,
+                    week,
+                    cohort.season,
+                );
+                if (
+                    preview.deadlineSource ===
+                    AssignmentDeadlineSource.GRADUATION
+                ) {
+                    preview.deadline = resolveDeadline(
+                        preview.deadlineSource,
+                        week.scheduledDate,
+                        graduation.scheduledDate,
+                        preview.deadlineDaysAfterWeek,
+                    );
+                }
+                return preview.isPastDeadline(now);
+            })
+            .map(({ week }) => week.week);
+        if (pastDue.length > 0) {
+            throw new ConflictException(
+                `Exercise week(s) ${pastDue.join(', ')} would already be past their deadline, so the cohort cannot be switched`,
+            );
+        }
+
+        let result: { created: number; updated: number; cancelled: number };
+        try {
+            result = await this.dbTransactionService.execute(
+                async (manager) => {
+                    const flipped = await manager.update(
+                        Cohort,
+                        {
+                            id: cohortId,
+                            assignmentBackend: AssignmentBackend.CLASSROOM,
+                        },
+                        { assignmentBackend: AssignmentBackend.INHOUSE },
+                    );
+                    if (flipped.affected !== 1) {
+                        throw new ConflictException(
+                            'This cohort is already on the in-house classroom',
+                        );
+                    }
+
+                    // FAILED tasks with retries left are picked up again too.
+                    const cancelled = await manager
+                        .createQueryBuilder()
+                        .update(APITask)
+                        .set({ status: APITaskStatus.CANCELLED })
+                        .where('type = :type', {
+                            type: TaskType.SYNC_CLASSROOM_SCORES,
+                        })
+                        .andWhere('status IN (:...statuses)', {
+                            statuses: [
+                                APITaskStatus.UNPROCESSED,
+                                APITaskStatus.FAILED,
+                            ],
+                        })
+                        .andWhere("data->>'cohortId' = :cohortId", {
+                            cohortId,
+                        })
+                        .execute();
+
+                    const seeded = await this.seedFromConfig(
+                        manager,
+                        cohort,
+                        config,
+                    );
+                    return { ...seeded, cancelled: cancelled.affected ?? 0 };
+                },
+            );
+        } catch (error) {
+            // Most likely an assignment slug another cohort already uses.
+            if (isUniqueViolation(error)) {
+                const detail = (error.driverError as { detail?: string })
+                    .detail;
+                throw new ConflictException(
+                    `Seeding this cohort's assignments would duplicate an existing one: ${detail ?? error.message}`,
+                );
+            }
+            throw error;
+        }
+
+        this.logger.log(
+            `Switched cohort to in-house classroom: cohortId=${cohortId} actorId=${actorId} created=${result.created} updated=${result.updated} cancelledTasks=${result.cancelled}`,
+        );
+        return new SyncAssignmentsResponseDto(result.created, result.updated);
     }
 
     /**
