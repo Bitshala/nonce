@@ -202,6 +202,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
                             id: 'cohort-1',
                             assignmentBackend: AssignmentBackend.INHOUSE,
                             classroomId: '243620',
+                            switchedFromClassroomAt: new Date(),
                         },
                     },
                 } as never,
@@ -296,7 +297,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
     });
 
     it('follows grading alone on a native in-house cohort, even down', async () => {
-        // No classroomId: nothing Classroom-derived to protect, so today's
+        // Never switched: nothing Classroom-derived to protect, so today's
         // rule applies unchanged.
         const row = (await runSync(
             buildSubmission({
@@ -307,6 +308,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
                             id: 'cohort-1',
                             assignmentBackend: AssignmentBackend.INHOUSE,
                             classroomId: null,
+                            switchedFromClassroomAt: null,
                         },
                     },
                 } as never,

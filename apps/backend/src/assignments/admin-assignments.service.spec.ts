@@ -299,7 +299,12 @@ describe('AdminAssignmentsService', () => {
                     id: 'cohort-1',
                     assignmentBackend: AssignmentBackend.CLASSROOM,
                 },
-                { assignmentBackend: AssignmentBackend.INHOUSE },
+                {
+                    assignmentBackend: AssignmentBackend.INHOUSE,
+                    // The audit record of who switched it, and when.
+                    switchedFromClassroomAt: expect.any(Date),
+                    switchedFromClassroomBy: { id: 'admin-1' },
+                },
             );
             expect(queryBuilder.update).toHaveBeenCalledWith(APITask);
             expect(queryBuilder.set).toHaveBeenCalledWith({

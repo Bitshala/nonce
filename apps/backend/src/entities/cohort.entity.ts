@@ -3,6 +3,7 @@ import {
     PrimaryGeneratedColumn,
     Column,
     OneToMany,
+    ManyToOne,
     Unique,
 } from 'typeorm';
 import { CohortWeek } from '@/entities/cohort-week.entity';
@@ -14,6 +15,7 @@ import { AssignmentBackend, CohortType, UserRole } from '@/common/enum';
 import { Certificate } from '@/entities/certificate.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ServiceError } from '@/common/errors';
+import { User } from '@/entities/user.entity';
 
 export interface Link {
     label: string;
@@ -24,19 +26,17 @@ export interface Link {
 
 /**
  * A cohort that GitHub Classroom graded before it was switched to the in-house
- * classroom. Its Classroom results stay on its scores, so in-house grading
- * must only add to them.
+ * classroom. Its Classroom results are frozen in `ClassroomResultSnapshot`,
+ * and in-house grading may only add to them.
  *
- * `classroomId` is set only on cohorts created on CLASSROOM, and the switch
- * keeps it, so a native in-house cohort never matches.
+ * Read from the explicit switch record rather than inferred from
+ * `assignmentBackend` and `classroomId`: those are ordinary fields a restore
+ * or a manual fix could change, and this flag changes how scores are derived.
  */
 export function isSwitchedFromClassroom(
-    cohort: Pick<Cohort, 'assignmentBackend' | 'classroomId'>,
+    cohort: Pick<Cohort, 'switchedFromClassroomAt'>,
 ): boolean {
-    return (
-        cohort.assignmentBackend === AssignmentBackend.INHOUSE &&
-        cohort.classroomId != null
-    );
+    return cohort.switchedFromClassroomAt != null;
 }
 
 @Entity()
@@ -71,6 +71,16 @@ export class Cohort extends BaseEntity {
         default: AssignmentBackend.CLASSROOM,
     })
     assignmentBackend!: AssignmentBackend;
+
+    // The audit record of the one-way switch from GitHub Classroom, set in the
+    // switch's own transaction. Null on cohorts that never switched, including
+    // native in-house ones.
+    @Column('timestamptz', { nullable: true })
+    switchedFromClassroomAt!: Date | null;
+
+    // Who switched it. Kept if that admin's account goes, minus the link.
+    @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+    switchedFromClassroomBy!: User | null;
 
     // Instruction-sheet links (global + course-specific). Seeded from config at
     // creation, editable per cohort. minRole gates visibility (filtered at read).

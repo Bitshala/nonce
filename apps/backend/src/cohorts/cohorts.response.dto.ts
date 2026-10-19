@@ -67,6 +67,7 @@ export class GetCohortResponseDto implements GetCohortResponse {
     hasExercises!: boolean;
     classroomId!: string | null;
     assignmentBackend!: AssignmentBackend;
+    switchedFromClassroomAt!: string | null;
     links!: CohortLink[];
     weeks!: GetCohortWeekResponseDto[];
 
@@ -81,6 +82,7 @@ export class GetCohortResponseDto implements GetCohortResponse {
         this.hasExercises = obj.hasExercises;
         this.classroomId = obj.classroomId;
         this.assignmentBackend = obj.assignmentBackend;
+        this.switchedFromClassroomAt = obj.switchedFromClassroomAt;
         this.links = obj.links;
         this.weeks = obj.weeks
             .map((week) => new GetCohortWeekResponseDto(week))
@@ -108,6 +110,8 @@ export class GetCohortResponseDto implements GetCohortResponse {
             hasExercises: cohort.hasExercises,
             classroomId: isAnonymous ? null : (cohort.classroomId ?? null),
             assignmentBackend: cohort.assignmentBackend,
+            switchedFromClassroomAt:
+                cohort.switchedFromClassroomAt?.toISOString() ?? null,
             // Links are filtered by role; minRole is dropped from the response.
             links: filterLinksByRole(cohort.links ?? [], role).map((link) => ({
                 label: link.label,

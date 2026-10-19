@@ -150,9 +150,7 @@ export class AdminAssignmentsService {
                 'This cohort has no exercises, so there is nothing to switch',
             );
         }
-        // The switch keeps classroomId as the mark of a switched cohort.
-        // Without one, the cohort would read as natively in-house and
-        // writeback would stop protecting its Classroom results.
+        // Without a Classroom to read, there are no Classroom results to keep.
         if (cohort.classroomId == null) {
             throw new ConflictException(
                 'This cohort has no GitHub Classroom id, so it cannot be switched',
@@ -231,7 +229,11 @@ export class AdminAssignmentsService {
                             id: cohortId,
                             assignmentBackend: AssignmentBackend.CLASSROOM,
                         },
-                        { assignmentBackend: AssignmentBackend.INHOUSE },
+                        {
+                            assignmentBackend: AssignmentBackend.INHOUSE,
+                            switchedFromClassroomAt: new Date(),
+                            switchedFromClassroomBy: { id: actorId },
+                        },
                     );
                     if (flipped.affected !== 1) {
                         throw new ConflictException(

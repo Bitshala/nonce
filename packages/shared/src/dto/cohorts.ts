@@ -57,6 +57,8 @@ export interface GetCohortResponse {
   classroomId: string | null;
   /** Which system grades this cohort's exercises. */
   assignmentBackend: AssignmentBackend;
+  /** When the cohort left GitHub Classroom for the in-house classroom; null if it never did. */
+  switchedFromClassroomAt: string | null;
   links: CohortLink[];
   weeks: GetCohortWeekResponse[];
 }
