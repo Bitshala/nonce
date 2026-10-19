@@ -96,6 +96,7 @@ const CohortTable = ({
   const hasProgress = cohorts.some((c) => c.completedWeeks !== undefined);
   const hasParticipants = cohorts.some((c) => c.participants !== undefined);
   const hasApplications = cohorts.some((c) => c.applications !== undefined);
+  const hasExercises = cohorts.some((c) => c.exercises !== undefined);
 
   return (
     <TableContainer>
@@ -115,6 +116,9 @@ const CohortTable = ({
             )}
             {hasApplications && (
               <TableCell sx={{ ...headerCellSx, display: { xs: 'none', sm: 'table-cell' } }}>Applications</TableCell>
+            )}
+            {hasExercises && (
+              <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>Exercises</TableCell>
             )}
             <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>Start Date</TableCell>
             <TableCell sx={{ ...headerCellSx, display: { xs: 'none', md: 'table-cell' } }}>End Date</TableCell>
@@ -193,6 +197,13 @@ const CohortTable = ({
                 <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', sm: 'table-cell' } }}>
                   <Typography variant="body2" sx={{ color: '#d4d4d8' }}>
                     {cohort.applications !== undefined ? cohort.applications : '-'}
+                  </Typography>
+                </TableCell>
+              )}
+              {hasExercises && (
+                <TableCell sx={{ ...bodyCellSx, display: { xs: 'none', md: 'table-cell' } }}>
+                  <Typography variant="body2" sx={{ color: '#a1a1aa', whiteSpace: 'nowrap' }}>
+                    {cohort.exercises ?? '-'}
                   </Typography>
                 </TableCell>
               )}

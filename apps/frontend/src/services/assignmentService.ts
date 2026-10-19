@@ -9,6 +9,7 @@ import type {
   AdminAssignmentResponse,
   AdminSubmissionResponse,
   RegradeResponse,
+  SwitchToInhousePreviewResponse,
   SwitchToInhouseResponse,
   SyncAssignmentsResponse,
   UpdateSubmissionScoreRequest,
@@ -278,6 +279,18 @@ class AssignmentService {
       headers: this.getRequestHeaders(),
       method: 'POST',
       url: `/admin/cohorts/${cohortId}/sync-assignments`,
+    });
+    return data;
+  };
+
+  /** What a switch would do, and what would refuse it. Writes nothing. */
+  public previewSwitchToInhouse = async (
+    cohortId: string
+  ): Promise<SwitchToInhousePreviewResponse> => {
+    const { data } = await this.request<SwitchToInhousePreviewResponse>({
+      headers: this.getRequestHeaders(),
+      method: 'GET',
+      url: `/admin/cohorts/${cohortId}/switch-to-inhouse/preview`,
     });
     return data;
   };

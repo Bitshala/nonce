@@ -12,6 +12,8 @@ export type CohortRow = {
   completedWeeks?: number;
   participants?: number;
   applications?: number;
+  /** What grades the cohort's exercises; staff views only. */
+  exercises?: string;
   raw?: unknown;
 };
 

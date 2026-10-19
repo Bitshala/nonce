@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  DialogContentText,
   TextField,
+  Menu,
   MenuItem,
   Select,
   FormControl,
@@ -33,11 +33,12 @@ import {
   CheckCircle2,
   Minus,
   ArrowRightLeft,
+  MoreVertical,
 } from 'lucide-react';
 import { Tooltip } from '@mui/material';
 import { useCohorts, useCreateCohort, useUpdateCohort } from '../hooks/cohortHooks';
 import { useUser } from '../hooks/userHooks';
-import { useSwitchCohortToInhouse } from '../hooks/assignmentHooks';
+import { SwitchToInhouseDialog } from '../components/cohort/SwitchToInhouseDialog';
 import { useGenerateCohortCertificates, useCohortCertificates, usePreviewCohortCertificates } from '../hooks/certificateHooks';
 import type { CertificatePreviewResponseDto } from '../types/api';
 import apiService from '../services/apiService';
@@ -49,6 +50,7 @@ import {
   isGraduationPassed,
 } from '@nonce/shared';
 import type { GetCohortResponseDto } from '../types/api';
+import type { SwitchToInhouseResponse } from '@nonce/shared';
 import type { CohortStatus } from '../types/cohort';
 import Tabs from '../components/ui/Tabs';
 import CohortTable from '../components/ui/CohortTable';
@@ -57,59 +59,74 @@ import { cohortTypeToName } from '../helpers/cohortHelpers';
 import { COHORT_TYPES, groupCohortsByStatus, toCohortRow, toCohortStatusTabs } from '../utils/cohortUtils';
 import { getTodayDate, calculateRegistrationDeadline, formatDateForInput } from '../utils/dateUtils';
 import { downloadCSV } from '../utils/csvUtils';
-import { extractErrorMessage } from '../utils/errorUtils';
 
 /**
- * Whether this cohort can still move from GitHub Classroom to the in-house
- * classroom. Graduation is judged by the instant the API refuses at (end of
- * the day in IST), not the viewer-local cut-off of the Completed tab, so the
- * button never offers a switch the API would turn down for that reason.
+ * Whether to offer the switch from GitHub Classroom to the in-house classroom
+ * at all. The checks the client can make; the dialog's preview runs the rest
+ * (config, deadlines) on the server before confirming is possible. Graduation
+ * is judged by the instant the API refuses at (end of the day in IST), not the
+ * viewer-local cut-off of the Completed tab.
  */
 const canSwitchToInhouse = (cohort: GetCohortResponseDto, now: Date): boolean => {
-  if (!cohort.hasExercises || cohort.assignmentBackend !== AssignmentBackend.CLASSROOM) {
+  if (
+    !cohort.hasExercises ||
+    cohort.assignmentBackend !== AssignmentBackend.CLASSROOM ||
+    cohort.classroomId === null
+  ) {
     return false;
   }
   const graduation = cohort.weeks.find((w) => w.type === CohortWeekType.GRADUATION);
   return graduation !== undefined && !isGraduationPassed(new Date(graduation.scheduledDate), now);
 };
 
-/** Which classroom grades the cohort, and the admin-only switch off GitHub Classroom. */
-const AssignmentBackendControls = ({
-  cohort,
-  row,
-  canSwitch,
-  onSwitch,
-}: {
-  cohort: GetCohortResponseDto | undefined;
-  row: CohortRow;
-  canSwitch: boolean;
-  onSwitch: () => void;
-}) => {
-  if (!cohort?.hasExercises) return null;
+/** What grades a cohort's exercises, for the Exercises column. */
+const exercisesLabel = (cohort: GetCohortResponseDto | undefined): string | undefined => {
+  if (!cohort) return undefined;
+  if (!cohort.hasExercises) return '—';
+  if (cohort.assignmentBackend === AssignmentBackend.CLASSROOM) return 'GitHub Classroom';
+  return cohort.switchedFromClassroomAt ? 'In-house (from Classroom)' : 'In-house';
+};
+
+/**
+ * Rare, consequential actions, kept out of the row's everyday icons so the
+ * one-way switch never sits one mis-click away from Edit.
+ */
+const CohortOverflowMenu = ({ onSwitch }: { onSwitch: () => void }) => {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   return (
     <>
-      <Chip
-        size="small"
-        label={cohort.assignmentBackend === AssignmentBackend.INHOUSE ? 'In-house' : 'Classroom'}
-        sx={{ height: 22, fontSize: '0.7rem', color: '#a1a1aa', border: '1px solid #3f3f46', bgcolor: 'transparent' }}
-      />
-      {canSwitch && row.status !== 'Completed' && canSwitchToInhouse(cohort, new Date()) && (
-        <Tooltip title="Switch to in-house classroom" placement="top">
-          <IconButton
-            size="small"
-            onClick={(e) => { e.stopPropagation(); onSwitch(); }}
-            sx={{
-              color: '#d4d4d8',
-              border: '1px solid #52525b',
-              borderRadius: 1,
-              p: 0.75,
-              '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
-            }}
-          >
-            <ArrowRightLeft size={14} />
-          </IconButton>
-        </Tooltip>
-      )}
+      <Tooltip title="More actions" placement="top">
+        <IconButton
+          size="small"
+          aria-label="More actions"
+          aria-haspopup="menu"
+          onClick={(e) => { e.stopPropagation(); setAnchor(e.currentTarget); }}
+          sx={{
+            color: '#d4d4d8',
+            border: '1px solid #52525b',
+            borderRadius: 1,
+            p: 0.75,
+            '&:hover': { borderColor: '#71717a', bgcolor: 'rgba(255,255,255,0.04)' },
+          }}
+        >
+          <MoreVertical size={14} />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={anchor}
+        open={anchor !== null}
+        onClose={() => setAnchor(null)}
+        onClick={(e) => e.stopPropagation()}
+        slotProps={{ paper: { sx: { bgcolor: '#18181b', border: '1px solid #3f3f46', color: '#fafafa' } } }}
+      >
+        <MenuItem
+          onClick={() => { setAnchor(null); onSwitch(); }}
+          sx={{ color: '#fca5a5', fontSize: '0.85rem', gap: 1, '&:hover': { bgcolor: 'rgba(239,68,68,0.1)' } }}
+        >
+          <ArrowRightLeft size={14} />
+          Switch to in-house classroom…
+        </MenuItem>
+      </Menu>
     </>
   );
 };
@@ -464,7 +481,6 @@ export const CohortSelection = () => {
   const createCohortMutation = useCreateCohort();
   const updateCohortMutation = useUpdateCohort();
   const { mutate: generateCertificates, isPending: isGeneratingCerts } = useGenerateCohortCertificates();
-  const switchToInhouse = useSwitchCohortToInhouse();
   // Switching changes what grades a live cohort; the API allows admins only.
   const isFullAdmin = user?.role === UserRole.ADMIN;
   const [switchTarget, setSwitchTarget] = useState<{ id: string; name: string; season: number } | null>(null);
@@ -499,7 +515,15 @@ export const CohortSelection = () => {
   }, [formStartDate, isEditMode]);
 
   // Table data
-  const cohorts = useMemo(() => (data?.records ?? []).map((cohort) => toCohortRow(cohort)), [data]);
+  const cohorts = useMemo(
+    () =>
+      (data?.records ?? []).map((cohort) => ({
+        ...toCohortRow(cohort),
+        // Staff only; students never see this table.
+        exercises: isAdmin ? exercisesLabel(cohort) : undefined,
+      })),
+    [data, isAdmin],
+  );
   const cohortById = useMemo(() => new Map((data?.records ?? []).map((r) => [r.id, r])), [data]);
 
   const grouped = useMemo(() => groupCohortsByStatus(cohorts), [cohorts]);
@@ -567,22 +591,14 @@ export const CohortSelection = () => {
     );
   };
 
-  const confirmSwitchToInhouse = () => {
+  const handleSwitched = ({ snapshotRows, created, updated }: SwitchToInhouseResponse) => {
     if (!switchTarget) return;
-    const { id, name, season } = switchTarget;
-    switchToInhouse.mutate(id, {
-      onSuccess: ({ created }) => {
-        setSwitchTarget(null);
-        setSnackbar({
-          open: true,
-          message: `${name} S${season} is on the in-house classroom: ${created} assignment${created === 1 ? '' : 's'} created.`,
-          severity: 'success',
-        });
-      },
-      onError: (error) => {
-        setSwitchTarget(null);
-        setSnackbar({ open: true, message: extractErrorMessage(error), severity: 'error' });
-      },
+    const { name, season } = switchTarget;
+    setSwitchTarget(null);
+    setSnackbar({
+      open: true,
+      message: `${name} S${season} is on the in-house classroom. ${snapshotRows} Classroom result${snapshotRows === 1 ? '' : 's'} frozen; ${created} assignment${created === 1 ? '' : 's'} created, ${updated} updated.`,
+      severity: 'success',
     });
   };
 
@@ -758,12 +774,6 @@ export const CohortSelection = () => {
             emptyMessage={`No ${activeTab.toLowerCase()} cohorts found.`}
             actions={isAdmin ? (cohort) => (
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                <AssignmentBackendControls
-                  cohort={cohortById.get(cohort.id)}
-                  row={cohort}
-                  canSwitch={isFullAdmin}
-                  onSwitch={() => setSwitchTarget({ id: cohort.id, name: cohort.name, season: cohort.season })}
-                />
                 {cohort.status !== 'Completed' && (
                   <Tooltip title="Edit cohort" placement="top">
                     <IconButton
@@ -802,6 +812,14 @@ export const CohortSelection = () => {
                   cohortId={cohort.id}
                   onError={(msg) => setSnackbar({ open: true, message: msg, severity: 'error' })}
                 />
+                {(() => {
+                  const dto = cohortById.get(cohort.id);
+                  return isFullAdmin && dto && cohort.status !== 'Completed' && canSwitchToInhouse(dto, new Date()) ? (
+                    <CohortOverflowMenu
+                      onSwitch={() => setSwitchTarget({ id: cohort.id, name: cohort.name, season: cohort.season })}
+                    />
+                  ) : null;
+                })()}
               </Box>
             ) : undefined}
           />
@@ -923,40 +941,16 @@ export const CohortSelection = () => {
         </form>
       </Dialog>
 
-      {/* Switch to in-house confirmation */}
-      <Dialog
-        open={switchTarget !== null}
-        onClose={() => { if (!switchToInhouse.isPending) setSwitchTarget(null); }}
-        maxWidth="sm"
-        PaperProps={{ sx: { bgcolor: '#1c1c1e', backgroundImage: 'none', borderRadius: 3, border: '1px solid #3f3f46' } }}
-      >
-        <DialogTitle sx={{ color: '#fafafa', fontWeight: 700 }}>
-          Switch {switchTarget?.name} S{switchTarget?.season} to the in-house classroom?
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText component="div" sx={{ color: '#d4d4d8' }}>
-            <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-              <li>GitHub Classroom score sync stops for this cohort.</li>
-              <li>Every exercise week gets an in-house assignment, past weeks included.</li>
-              <li>Scores already synced from Classroom are kept. In-house work can raise them but never lower them.</li>
-              <li>This cannot be undone.</li>
-            </ul>
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setSwitchTarget(null)} disabled={switchToInhouse.isPending} sx={{ color: '#d4d4d8', textTransform: 'none' }}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={confirmSwitchToInhouse}
-            disabled={switchToInhouse.isPending}
-            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea580c' }, textTransform: 'none', boxShadow: 'none' }}
-          >
-            {switchToInhouse.isPending ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Switch'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Switch to in-house: impact preview and confirmation */}
+      {switchTarget && (
+        <SwitchToInhouseDialog
+          cohortId={switchTarget.id}
+          name={switchTarget.name}
+          season={switchTarget.season}
+          onClose={() => setSwitchTarget(null)}
+          onSwitched={handleSwitched}
+        />
+      )}
 
       {/* Certificate Preview Modal */}
       {previewCohort && (

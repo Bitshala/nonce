@@ -5,6 +5,7 @@ import type {
   AdminAssignmentResponse,
   AdminSubmissionResponse,
   RegradeResponse,
+  SwitchToInhousePreviewResponse,
   SwitchToInhouseResponse,
   SyncAssignmentsResponse,
   UpdateSubmissionScoreRequest,
@@ -210,6 +211,14 @@ export const useSyncCohortAssignments = createUseMutation<
 >(cohortId => assignmentService.syncCohortAssignments(cohortId), {
   queryInvalidation: invalidateAdmin,
 });
+
+export const useSwitchToInhousePreview = createUseQuery<
+  SwitchToInhousePreviewResponse,
+  string
+>(
+  cohortId => ['admin', 'cohorts', cohortId, 'switch-to-inhouse-preview'],
+  cohortId => () => assignmentService.previewSwitchToInhouse(cohortId)
+);
 
 export const useSwitchCohortToInhouse = createUseMutation<
   SwitchToInhouseResponse,
