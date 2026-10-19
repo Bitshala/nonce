@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
@@ -17,6 +17,7 @@ import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
 import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { CohortsConfigService } from '@/cohorts/cohorts.config.service';
+import { CohortConfig } from '@/cohorts/cohorts.config.model';
 import { CohortsService } from '@/cohorts/cohorts.service';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { RunsService } from '@/assignments/runs.service';
@@ -94,7 +95,30 @@ export class AdminAssignmentsService {
         }
 
         const config = this.cohortsConfigService.getConfig(cohort.type);
-        const existing = await this.assignmentRepository.find({
+        // One transaction, so a failure cannot leave assignments saved with
+        // GRADUATION deadlines still unresolved.
+        const { created, updated } = await this.dbTransactionService.execute(
+            (manager) => this.seedFromConfig(manager, cohort, config),
+        );
+
+        this.logger.log(
+            `Synced assignments for cohort ${cohortId}: ${created} created, ${updated} updated`,
+        );
+        return new SyncAssignmentsResponseDto(created, updated);
+    }
+
+    /**
+     * Upserts one `Assignment` per exercise week that has an `assignment`
+     * block in config, then resolves their deadlines. Runs in the caller's
+     * transaction: both the re-sync and the switch to in-house need the rows
+     * and their deadlines to land together.
+     */
+    private async seedFromConfig(
+        manager: EntityManager,
+        cohort: Cohort,
+        config: CohortConfig,
+    ): Promise<{ created: number; updated: number }> {
+        const existing = await manager.find(Assignment, {
             where: { cohortWeek: { id: In(cohort.weeks.map((w) => w.id)) } },
             relations: { cohortWeek: true },
         });
@@ -126,23 +150,16 @@ export class AdminAssignmentsService {
         }
 
         if (toSave.length > 0) {
-            // One transaction, so a failure cannot leave assignments saved
-            // with GRADUATION deadlines still unresolved.
-            await this.dbTransactionService.execute(async (manager) => {
-                await manager.save(toSave);
-                // applyAssignmentConfig cannot resolve a GRADUATION deadline —
-                // it sees one week, not the calendar.
-                await this.cohortsService.syncAssignmentDeadlines(
-                    manager,
-                    cohortId,
-                );
-            });
+            await manager.save(toSave);
+            // applyAssignmentConfig cannot resolve a GRADUATION deadline — it
+            // sees one week, not the calendar.
+            await this.cohortsService.syncAssignmentDeadlines(
+                manager,
+                cohort.id,
+            );
         }
 
-        this.logger.log(
-            `Synced assignments for cohort ${cohortId}: ${created} created, ${updated} updated`,
-        );
-        return new SyncAssignmentsResponseDto(created, updated);
+        return { created, updated };
     }
 
     /** Every assignment in every cohort, drafts included, with submission tallies. */
