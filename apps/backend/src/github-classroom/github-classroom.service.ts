@@ -12,11 +12,9 @@ import { AssignmentBackend } from '@/common/enum';
 import { GitHubClassroomClient } from '@/github-classroom/client/github-classroom.client';
 import { AcceptedAssignment } from '@/github-classroom/client/response';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
+import { graduationCutoff, hasGraduated } from '@/cohorts/graduation.util';
 import { isLastRetry } from '@/task-processor/task-processor.utils';
-import {
-    SIX_HOURS_MS,
-    TWENTY_FOUR_HOURS_MS,
-} from '@/common/durations.constants';
+import { SIX_HOURS_MS } from '@/common/durations.constants';
 
 /** One week as GitHub Classroom reported it, read before any database write. */
 interface ClassroomWeekResult {
@@ -39,6 +37,10 @@ export interface FetchedClassroomResults {
     failedWeekIds: string[];
 }
 
+// How long before the graduation cut-off the last sync runs: enough for a slow
+// Classroom read to finish before scores freeze.
+const FINAL_SYNC_LEAD_MS = 15 * 60 * 1000;
+
 @Injectable()
 export class GitHubClassroomService {
     private readonly logger = new Logger(GitHubClassroomService.name);
@@ -58,23 +60,41 @@ export class GitHubClassroomService {
         // Re-read rather than trust the cohort this run loaded: a switch to the
         // in-house classroom may have committed mid-run, and the switch's task
         // cancellation cannot reach a task that is already running.
-        const stillOnClassroom = await this.cohortRepository.exists({
+        const cohort = await this.cohortRepository.findOne({
             where: {
                 id: data.cohortId,
                 assignmentBackend: AssignmentBackend.CLASSROOM,
             },
+            relations: { weeks: true },
         });
-        if (!stillOnClassroom) {
+        if (!cohort) {
             this.logger.debug(
                 `Cohort (${data.cohortId}) is no longer on GitHub Classroom, not rescheduling sync`,
             );
             return;
         }
 
+        const now = Date.now();
+        let executeOnTime = new Date(now + SIX_HOURS_MS);
+        // Graduated cohorts are frozen, so the sync stops at graduation. Its
+        // last run is pulled forward to just before the cut-off rather than
+        // left up to six hours earlier, so work pushed on the final day is
+        // still picked up.
+        const cutoff = graduationCutoff(cohort.weeks);
+        if (cutoff && executeOnTime >= cutoff) {
+            executeOnTime = new Date(cutoff.getTime() - FINAL_SYNC_LEAD_MS);
+            if (executeOnTime.getTime() <= now) {
+                this.logger.log(
+                    `Cohort (${data.cohortId}) reaches graduation before another sync could run; Classroom sync ends here`,
+                );
+                return;
+            }
+        }
+
         const entity = this.apiTaskRepository.create({
             type: TaskType.SYNC_CLASSROOM_SCORES,
             data: data,
-            executeOnTime: new Date(Date.now() + SIX_HOURS_MS),
+            executeOnTime,
         });
         await this.apiTaskRepository.save(entity);
     }
@@ -117,10 +137,15 @@ export class GitHubClassroomService {
             return false;
         }
 
-        const endDatePlusBuffer = new Date(
-            cohort.getEndDate().getTime() + TWENTY_FOUR_HOURS_MS,
-        );
-        const hasCohortEnded = endDatePlusBuffer < new Date();
+        // Graduated cohorts are frozen: their scores feed certificates. The
+        // recurrence is wound down before graduation (scheduleNextSync); this
+        // catches a task that was already queued.
+        if (hasGraduated(cohort.weeks)) {
+            this.logger.log(
+                `Cohort (${cohort.id}) has graduated; its scores are final, so Classroom sync stops`,
+            );
+            return false;
+        }
 
         if (!cohort.classroomId) {
             this.logger.log(
@@ -131,10 +156,8 @@ export class GitHubClassroomService {
 
         const fetched = await this.fetchResults(cohort, { strict: false });
         if (fetched.weeks.length === 0 && fetched.failedWeekIds.length === 0) {
-            // If the cohort has ended, we can stop scheduling syncs.
-            // If it hasn't ended, we keep scheduling in case assignments or
-            // users are added later.
-            return !hasCohortEnded;
+            // Keep scheduling in case assignments or users are added later.
+            return true;
         }
 
         const applied = await this.dbTransactionService.execute(
@@ -152,14 +175,18 @@ export class GitHubClassroomService {
                     lock: { mode: 'for_no_key_update' },
                 });
                 if (locked?.assignmentBackend !== AssignmentBackend.CLASSROOM) {
-                    return null;
+                    return 'switched' as const;
                 }
+                // The fetch can straddle the graduation cut-off too.
+                if (hasGraduated(cohort.weeks)) return 'graduated' as const;
                 return this.applyResults(manager, fetched, { strict: false });
             },
         );
-        if (applied === null) {
+        if (applied === 'switched' || applied === 'graduated') {
             this.logger.log(
-                `Cohort (${cohort.id}) left GitHub Classroom during the sync; discarded its results`,
+                applied === 'switched'
+                    ? `Cohort (${cohort.id}) left GitHub Classroom during the sync; discarded its results`
+                    : `Cohort (${cohort.id}) graduated during the sync; its scores are final, so the results were discarded`,
             );
             return false;
         }
@@ -168,9 +195,9 @@ export class GitHubClassroomService {
             `Cohort (${cohort.id}) sync complete: ${applied.syncedWeeks} succeeded, ${applied.failedWeeks + fetched.failedWeekIds.length} failed`,
         );
 
-        // If the cohort has ended, we can stop scheduling syncs.
-        // If it hasn't ended, we keep scheduling in case of late submissions or new assignments.
-        return !hasCohortEnded;
+        // Keep scheduling for late submissions and new assignments; the
+        // recurrence ends itself at graduation.
+        return true;
     }
 
     /**

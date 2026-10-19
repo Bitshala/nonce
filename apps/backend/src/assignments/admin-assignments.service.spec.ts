@@ -202,6 +202,9 @@ describe('AdminAssignmentsService', () => {
     };
 
     describe('syncAssignments', () => {
+        /** Starts tomorrow, so graduation is weeks away. */
+        const upcoming = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+
         // Week 1 already has its row; week 2 does not.
         let existing: Assignment;
 
@@ -217,7 +220,7 @@ describe('AdminAssignmentsService', () => {
 
         it('upserts a row per configured exercise week, then resolves deadlines in the same transaction', async () => {
             cohortRepository.findOne.mockResolvedValue(
-                seedableCohort(AssignmentBackend.INHOUSE),
+                seedableCohort(AssignmentBackend.INHOUSE, upcoming()),
             );
 
             const result = await service.syncAssignments('cohort-1');
@@ -239,6 +242,18 @@ describe('AdminAssignmentsService', () => {
                 cohortsService.syncAssignmentDeadlines.mock
                     .invocationCallOrder[0],
             ).toBeGreaterThan(manager.save.mock.invocationCallOrder[0]);
+        });
+
+        it('409s for a graduated cohort, whose assignments are final', async () => {
+            // The default fixture starts in March 2026, long graduated.
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.INHOUSE),
+            );
+
+            await expect(service.syncAssignments('cohort-1')).rejects.toThrow(
+                'graduated',
+            );
+            expect(manager.save).not.toHaveBeenCalled();
         });
 
         it('refuses a cohort that is not on the in-house backend', async () => {
@@ -1120,14 +1135,30 @@ describe('AdminAssignmentsService', () => {
     });
 
     describe('overrideScore', () => {
-        beforeEach(() => {
-            submissionRepository.findOne.mockResolvedValue({
-                id: 'submission-1',
-                user: { id: 'user-1' },
-                assignment: {
-                    cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
+        const submissionIn = (graduatedDaysAgo: number) => ({
+            id: 'submission-1',
+            user: { id: 'user-1' },
+            assignment: {
+                cohortWeek: {
+                    id: 'week-1',
+                    cohort: {
+                        id: 'cohort-1',
+                        weeks: [
+                            {
+                                type: CohortWeekType.GRADUATION,
+                                scheduledDate: new Date(
+                                    Date.now() - graduatedDaysAgo * 86_400_000,
+                                ),
+                            },
+                        ],
+                    },
                 },
-            });
+            },
+        });
+
+        beforeEach(() => {
+            // Graduation a week ahead.
+            submissionRepository.findOne.mockResolvedValue(submissionIn(-7));
             exerciseScoreRepository.exists.mockResolvedValue(true);
         });
 
@@ -1155,6 +1186,18 @@ describe('AdminAssignmentsService', () => {
                 { id: 'submission-1' },
                 { isSubmittedOverride: null },
             );
+        });
+
+        it('409s on a graduated cohort without storing the pin', async () => {
+            // A pin that writeback then declines to apply would show staff an
+            // override that changed nothing.
+            submissionRepository.findOne.mockResolvedValue(submissionIn(2));
+
+            await expect(
+                service.overrideScore('submission-1', { isPassing: false }),
+            ).rejects.toThrow('graduated');
+            expect(manager.update).not.toHaveBeenCalled();
+            expect(scoreWriteback.sync).not.toHaveBeenCalled();
         });
 
         it('404s when enrollment never seeded a score row', async () => {

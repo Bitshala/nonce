@@ -8,7 +8,7 @@ import { CohortWeek } from '@/entities/cohort-week.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
-import { AssignmentBackend } from '@/common/enum';
+import { AssignmentBackend, CohortWeekType } from '@/common/enum';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { ServiceError } from '@/common/errors';
 
@@ -19,7 +19,7 @@ describe('GitHubClassroomService', () => {
         create: jest.fn((task: unknown) => task),
         save: jest.fn(),
     };
-    const cohortRepository = { findOne: jest.fn(), exists: jest.fn() };
+    const cohortRepository = { findOne: jest.fn() };
     // Scores and week links are written through the transaction's manager;
     // findOne is the backend re-read under the cohort row lock.
     const manager = {
@@ -87,10 +87,15 @@ describe('GitHubClassroomService', () => {
 
     afterEach(() => jest.resetAllMocks());
 
-    /** A cohort whose only week ends `endsInDays` from now (negative: ended). */
+    /**
+     * A cohort with one Classroom-graded week and a graduation week
+     * `graduatesInDays` from now (negative: graduated), or exactly at
+     * `graduationDate` when given.
+     */
     function cohort(
         assignmentBackend: AssignmentBackend,
-        endsInDays: number,
+        graduatesInDays: number,
+        graduationDate?: Date,
     ): Cohort {
         return Object.assign(new Cohort(), {
             id: 'cohort-1',
@@ -107,8 +112,19 @@ describe('GitHubClassroomService', () => {
             weeks: [
                 {
                     id: 'week-1',
+                    type: CohortWeekType.GROUP_DISCUSSION,
                     classroomAssignmentId: '42',
-                    scheduledDate: new Date(Date.now() + endsInDays * DAY_MS),
+                    scheduledDate: new Date(
+                        Date.now() + (graduatesInDays - 7) * DAY_MS,
+                    ),
+                },
+                {
+                    id: 'graduation',
+                    type: CohortWeekType.GRADUATION,
+                    classroomAssignmentId: null,
+                    scheduledDate:
+                        graduationDate ??
+                        new Date(Date.now() + graduatesInDays * DAY_MS),
                 },
             ],
         });
@@ -146,20 +162,21 @@ describe('GitHubClassroomService', () => {
     });
 
     it('does not reschedule a cohort switched to in-house while its sync was running', async () => {
-        // Loaded as CLASSROOM; the switch commits before the reschedule.
-        cohortRepository.findOne.mockResolvedValue(
-            cohort(AssignmentBackend.CLASSROOM, 30),
-        );
+        // Loaded as CLASSROOM; the switch commits before the reschedule, so
+        // the re-read (filtered on CLASSROOM) finds nothing.
+        cohortRepository.findOne
+            .mockResolvedValueOnce(cohort(AssignmentBackend.CLASSROOM, 30))
+            .mockResolvedValueOnce(null);
         manager.find.mockResolvedValue([storedScore()]);
-        cohortRepository.exists.mockResolvedValue(false);
 
         await service.handleSyncClassroomTask(task());
 
-        expect(cohortRepository.exists).toHaveBeenCalledWith({
+        expect(cohortRepository.findOne).toHaveBeenLastCalledWith({
             where: {
                 id: 'cohort-1',
                 assignmentBackend: AssignmentBackend.CLASSROOM,
             },
+            relations: { weeks: true },
         });
         expect(apiTaskRepository.save).not.toHaveBeenCalled();
     });
@@ -193,7 +210,6 @@ describe('GitHubClassroomService', () => {
             cohort(AssignmentBackend.CLASSROOM, 30),
         );
         manager.find.mockResolvedValue([storedScore()]);
-        cohortRepository.exists.mockResolvedValue(true);
 
         await service.handleSyncClassroomTask(task());
 
@@ -210,7 +226,6 @@ describe('GitHubClassroomService', () => {
             cohort(AssignmentBackend.CLASSROOM, 30),
         );
         manager.find.mockResolvedValue([storedScore()]);
-        cohortRepository.exists.mockResolvedValue(true);
 
         await service.handleSyncClassroomTask(task());
 
@@ -223,37 +238,92 @@ describe('GitHubClassroomService', () => {
         );
     });
 
-    it('syncs a graduated Classroom cohort exactly as before: same writes, no reschedule', async () => {
-        cohortRepository.findOne.mockResolvedValue(
-            cohort(AssignmentBackend.CLASSROOM, -30),
-        );
-        manager.find.mockResolvedValue([storedScore()]);
+    describe('graduated cohorts are frozen', () => {
+        afterEach(() => jest.useRealTimers());
 
-        await service.handleSyncClassroomTask(task());
+        // Graduation on 2026-11-25: scores freeze at 18:29:59.999 UTC, the
+        // end of that day in IST.
+        const graduation = new Date('2026-11-25T00:00:00.000Z');
+        const cutoff = new Date('2026-11-25T18:29:59.999Z');
 
-        expect(manager.update).toHaveBeenCalledWith(CohortWeek, 'week-1', {
-            classroomInviteLink: 'https://classroom.github.com/a/invite',
-            classroomAssignmentUrl:
-                'https://classroom.github.com/classrooms/1/assignments/week-1',
+        it('neither syncs nor reschedules a graduated cohort', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, -2),
+            );
+
+            await service.handleSyncClassroomTask(task());
+
+            expect(githubClassroomClient.getAssignment).not.toHaveBeenCalled();
+            expect(dbTransactionService.execute).not.toHaveBeenCalled();
+            expect(manager.save).not.toHaveBeenCalled();
+            expect(apiTaskRepository.save).not.toHaveBeenCalled();
         });
-        expect(manager.save).toHaveBeenCalledWith([
-            expect.objectContaining({
-                id: 'score-1',
-                isSubmitted: true,
-                isPassing: true,
-                classroomRepositoryUrl: 'https://github.com/org/week-1-alice',
-            }),
-        ]);
-        // Ended: the recurrence stops without consulting the backend flag.
-        expect(cohortRepository.exists).not.toHaveBeenCalled();
-        expect(apiTaskRepository.save).not.toHaveBeenCalled();
+
+        it('pulls the last sync forward to just before the cut-off', async () => {
+            // Six hours from 14:00 UTC would land after the cut-off.
+            jest.useFakeTimers({ now: new Date('2026-11-25T14:00:00.000Z') });
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 0, graduation),
+            );
+            manager.find.mockResolvedValue([storedScore()]);
+
+            await service.handleSyncClassroomTask(task());
+
+            expect(apiTaskRepository.save).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    executeOnTime: new Date(cutoff.getTime() - 15 * 60 * 1000),
+                }),
+            );
+        });
+
+        it('ends the recurrence when no sync could run before the cut-off', async () => {
+            jest.useFakeTimers({ now: new Date('2026-11-25T18:20:00.000Z') });
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 0, graduation),
+            );
+            manager.find.mockResolvedValue([storedScore()]);
+
+            await service.handleSyncClassroomTask(task());
+
+            // Its own results still land: graduation day is still open.
+            expect(manager.save).toHaveBeenCalledTimes(1);
+            expect(apiTaskRepository.save).not.toHaveBeenCalled();
+        });
+
+        it('discards results if graduation passes while Classroom is read', async () => {
+            jest.useFakeTimers({ now: new Date('2026-11-25T18:25:00.000Z') });
+            cohortRepository.findOne.mockResolvedValue(
+                cohort(AssignmentBackend.CLASSROOM, 0, graduation),
+            );
+            manager.find.mockResolvedValue([storedScore()]);
+            githubClassroomClient.fetchAcceptedAssignments.mockImplementation(
+                async () => {
+                    jest.setSystemTime(new Date('2026-11-25T18:31:00.000Z'));
+                    return [
+                        {
+                            students: [{ login: 'Alice' }],
+                            commit_count: 3,
+                            passing: true,
+                            repository: {
+                                html_url: 'https://github.com/org/week-1-alice',
+                            },
+                        },
+                    ];
+                },
+            );
+
+            await service.handleSyncClassroomTask(task());
+
+            expect(manager.save).not.toHaveBeenCalled();
+            expect(manager.update).not.toHaveBeenCalled();
+            expect(apiTaskRepository.save).not.toHaveBeenCalled();
+        });
     });
 
     it('still reschedules a Classroom cohort after its last failed retry', async () => {
-        cohortRepository.findOne.mockRejectedValue(
-            new Error('connection reset'),
-        );
-        cohortRepository.exists.mockResolvedValue(true);
+        cohortRepository.findOne
+            .mockRejectedValueOnce(new Error('connection reset'))
+            .mockResolvedValueOnce(cohort(AssignmentBackend.CLASSROOM, 30));
 
         await expect(
             service.handleSyncClassroomTask({

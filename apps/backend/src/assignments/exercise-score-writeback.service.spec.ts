@@ -5,7 +5,7 @@ import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { ServiceError } from '@/common/errors';
-import { AssignmentBackend } from '@/common/enum';
+import { AssignmentBackend, CohortWeekType } from '@/common/enum';
 
 // This service is the only thing that writes the two booleans the leaderboard
 // and certificates read. The invariant worth pinning is that it re-reads the
@@ -33,7 +33,10 @@ describe('ExerciseScoreWritebackService — sync', () => {
             lastCommitSha: 'b'.repeat(40),
             bestRun: null,
             assignment: {
-                cohortWeek: { id: 'week-1', cohort: { id: 'cohort-1' } },
+                cohortWeek: {
+                    id: 'week-1',
+                    cohort: { id: 'cohort-1', weeks: [] },
+                },
             },
             get hasStudentCommits() {
                 return (
@@ -209,6 +212,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
                         id: 'week-1',
                         cohort: {
                             id: 'cohort-1',
+                            weeks: [],
                             assignmentBackend: AssignmentBackend.INHOUSE,
                             classroomId: '243620',
                             switchedFromClassroomAt: new Date(),
@@ -237,7 +241,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
             expect(row.isSubmitted).toBe(true);
         });
 
-        it('keeps a Classroom pass after graduation, when no run can count', async () => {
+        it('keeps a Classroom pass after the deadline, when no run can count', async () => {
             // Past the deadline runs do not count, so bestRun stays null.
             const row = await runSync(
                 switched({}, new Date(Date.now() - 86_400_000)),
@@ -357,6 +361,71 @@ describe('ExerciseScoreWritebackService — sync', () => {
         });
     });
 
+    // Graduated cohorts are frozen: certificates already read their scores.
+    describe('on a graduated cohort', () => {
+        const graduated = (overrides: Partial<AssignmentSubmission> = {}) =>
+            buildSubmission({
+                assignment: {
+                    cohortWeek: {
+                        id: 'week-1',
+                        cohort: {
+                            id: 'cohort-1',
+                            weeks: [
+                                {
+                                    type: CohortWeekType.GRADUATION,
+                                    scheduledDate: new Date(
+                                        Date.now() - 2 * 86_400_000,
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                } as never,
+                ...overrides,
+            });
+
+        it('writes nothing, even for a run that passed', async () => {
+            manager.findOne.mockResolvedValueOnce(
+                graduated({ bestRun: { id: 'run-1' } as never }),
+            );
+
+            await service.sync(
+                manager as unknown as EntityManager,
+                'submission-1',
+            );
+
+            // Not even read: the score row is never looked up.
+            expect(manager.findOne).toHaveBeenCalledTimes(1);
+            expect(manager.save).not.toHaveBeenCalled();
+        });
+
+        it('still writes while graduation is ahead', async () => {
+            const row = await runSync(
+                buildSubmission({
+                    bestRun: { id: 'run-1' } as never,
+                    assignment: {
+                        cohortWeek: {
+                            id: 'week-1',
+                            cohort: {
+                                id: 'cohort-1',
+                                weeks: [
+                                    {
+                                        type: CohortWeekType.GRADUATION,
+                                        scheduledDate: new Date(
+                                            Date.now() + 2 * 86_400_000,
+                                        ),
+                                    },
+                                ],
+                            },
+                        },
+                    } as never,
+                }),
+            );
+
+            expect(row.isPassing).toBe(true);
+        });
+    });
+
     it('follows grading alone on a native in-house cohort, even down', async () => {
         // Never switched: nothing Classroom-derived to protect, so today's
         // rule applies unchanged.
@@ -367,6 +436,7 @@ describe('ExerciseScoreWritebackService — sync', () => {
                         id: 'week-1',
                         cohort: {
                             id: 'cohort-1',
+                            weeks: [],
                             assignmentBackend: AssignmentBackend.INHOUSE,
                             classroomId: null,
                             switchedFromClassroomAt: null,
@@ -390,7 +460,8 @@ describe('ExerciseScoreWritebackService — sync', () => {
 
 describe('ExerciseScoreWritebackService — restoreClassroomResults', () => {
     let service: ExerciseScoreWritebackService;
-    const manager = { find: jest.fn(), save: jest.fn() };
+    // findOne is the graduation-week lookup.
+    const manager = { find: jest.fn(), findOne: jest.fn(), save: jest.fn() };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -443,6 +514,22 @@ describe('ExerciseScoreWritebackService — restoreClassroomResults', () => {
             'cohort-1',
         );
 
+        expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('restores nothing on a graduated cohort', async () => {
+        manager.findOne.mockResolvedValueOnce({
+            type: CohortWeekType.GRADUATION,
+            scheduledDate: new Date(Date.now() - 2 * 86_400_000),
+        });
+
+        await service.restoreClassroomResults(
+            manager as unknown as EntityManager,
+            'user-1',
+            'cohort-1',
+        );
+
+        expect(manager.find).not.toHaveBeenCalled();
         expect(manager.save).not.toHaveBeenCalled();
     });
 });

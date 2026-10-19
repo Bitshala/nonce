@@ -52,6 +52,7 @@ import {
 } from '@/assignments/assignments.response.dto';
 import { UpdateSubmissionScoreRequestDto } from '@/assignments/assignments.request.dto';
 import { MailService } from '@/mail/mail.service';
+import { hasGraduated } from '@/cohorts/graduation.util';
 
 /**
  * How long a PROVISIONING row is presumed to have a live worker behind it.
@@ -129,6 +130,13 @@ export class AdminAssignmentsService {
         if (cohort.assignmentBackend !== AssignmentBackend.INHOUSE) {
             throw new NotFoundException(
                 'This cohort is not on the in-house assignment backend',
+            );
+        }
+        // Graduated cohorts are frozen; new or reopened assignments would
+        // invite work whose grading could only move final scores.
+        if (hasGraduated(cohort.weeks)) {
+            throw new ConflictException(
+                'This cohort has graduated, so its assignments and scores are final',
             );
         }
 
@@ -782,7 +790,7 @@ export class AdminAssignmentsService {
             where: { id: submissionId },
             relations: {
                 user: true,
-                assignment: { cohortWeek: { cohort: true } },
+                assignment: { cohortWeek: { cohort: { weeks: true } } },
             },
         });
         if (!submission) throw new NotFoundException('Submission not found');
@@ -798,6 +806,14 @@ export class AdminAssignmentsService {
         if (!hasScore) {
             throw new NotFoundException(
                 'No exercise score row exists for this student and week',
+            );
+        }
+
+        // Refused rather than stored: a pin writeback then declined to apply
+        // would show staff an override that changed nothing.
+        if (hasGraduated(week.cohort.weeks)) {
+            throw new ConflictException(
+                'This cohort has graduated, so its scores are final',
             );
         }
 

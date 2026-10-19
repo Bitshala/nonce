@@ -6,6 +6,7 @@ import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { ClassroomResultSnapshot } from '@/entities/classroom-result-snapshot.entity';
 import { isSwitchedFromClassroom } from '@/entities/cohort.entity';
 import { ServiceError } from '@/common/errors';
+import { hasCohortGraduated, hasGraduated } from '@/cohorts/graduation.util';
 
 /**
  * Writes the in-house classroom's results onto `ExerciseScore`.
@@ -31,7 +32,8 @@ export class ExerciseScoreWritebackService {
             relations: {
                 user: true,
                 bestRun: true,
-                assignment: { cohortWeek: { cohort: true } },
+                // Weeks for the graduation check below.
+                assignment: { cohortWeek: { cohort: { weeks: true } } },
             },
         });
         if (!submission) {
@@ -42,6 +44,17 @@ export class ExerciseScoreWritebackService {
 
         const week = submission.assignment.cohortWeek;
         const cohort = week.cohort;
+
+        // Graduated cohorts are frozen: certificates already read these
+        // scores. A commit pushed, or a run finishing, after graduation must
+        // not move them. Logged at warn so a late-finishing run that would
+        // have counted is still visible to staff.
+        if (hasGraduated(cohort.weeks)) {
+            this.logger.warn(
+                `Cohort ${cohort.id} has graduated; not writing ExerciseScore for submission ${submission.id} (bestRun=${submission.bestRun?.id ?? 'none'})`,
+            );
+            return;
+        }
 
         const score = await manager.findOne(ExerciseScore, {
             where: {
@@ -138,6 +151,9 @@ export class ExerciseScoreWritebackService {
         userId: string,
         cohortId: string,
     ): Promise<void> {
+        // Frozen; and joining closes long before graduation anyway.
+        if (await hasCohortGraduated(manager, cohortId)) return;
+
         const snapshots = await manager.find(ClassroomResultSnapshot, {
             where: { user: { id: userId }, cohort: { id: cohortId } },
             relations: { cohortWeek: true },
