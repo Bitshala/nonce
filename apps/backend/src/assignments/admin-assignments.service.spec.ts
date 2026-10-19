@@ -14,10 +14,17 @@ import { GitHubAppClient } from '@/github-app/client/github-app.client';
 import { Assignment } from '@/entities/assignment.entity';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { Cohort } from '@/entities/cohort.entity';
+import { CohortWeek } from '@/entities/cohort-week.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
 import { User } from '@/entities/user.entity';
 import { TaskType } from '@/task-processor/task.enums';
-import { ProvisionStatus, UserRole } from '@/common/enum';
+import {
+    AssignmentBackend,
+    CohortType,
+    CohortWeekType,
+    ProvisionStatus,
+    UserRole,
+} from '@/common/enum';
 
 describe('AdminAssignmentsService', () => {
     let service: AdminAssignmentsService;
@@ -28,7 +35,11 @@ describe('AdminAssignmentsService', () => {
     const runsService = { dispatchRegrade: jest.fn() };
     const exerciseScoreRepository = { exists: jest.fn(), find: jest.fn() };
     const scoreWriteback = { sync: jest.fn() };
+    const cohortRepository = { findOne: jest.fn() };
+    const cohortsService = { syncAssignmentDeadlines: jest.fn() };
+    const cohortsConfigService = { getConfig: jest.fn() };
     const manager = {
+        find: jest.fn(),
         findOne: jest.fn(),
         update: jest.fn(),
         save: jest.fn(),
@@ -51,7 +62,10 @@ describe('AdminAssignmentsService', () => {
                     provide: getRepositoryToken(AssignmentSubmission),
                     useValue: submissionRepository,
                 },
-                { provide: getRepositoryToken(Cohort), useValue: {} },
+                {
+                    provide: getRepositoryToken(Cohort),
+                    useValue: cohortRepository,
+                },
                 {
                     provide: getRepositoryToken(CohortMembership),
                     useValue: membershipRepository,
@@ -60,8 +74,11 @@ describe('AdminAssignmentsService', () => {
                     provide: getRepositoryToken(ExerciseScore),
                     useValue: exerciseScoreRepository,
                 },
-                { provide: CohortsService, useValue: {} },
-                { provide: CohortsConfigService, useValue: {} },
+                { provide: CohortsService, useValue: cohortsService },
+                {
+                    provide: CohortsConfigService,
+                    useValue: cohortsConfigService,
+                },
                 { provide: GitHubAppClient, useValue: {} },
                 { provide: RunsService, useValue: runsService },
                 {
@@ -83,6 +100,121 @@ describe('AdminAssignmentsService', () => {
         dbTransactionService.execute.mockImplementation(
             async (cb: (m: unknown) => unknown) => cb(manager),
         );
+    });
+
+    /**
+     * A cohort as `syncAssignments` and `switchToInhouse` load it: orientation,
+     * three exercise weeks (the third without an `assignment` block in config)
+     * and graduation, a week apart from `start`.
+     */
+    function seedableCohort(
+        assignmentBackend: AssignmentBackend,
+        start = new Date('2026-03-02T00:00:00.000Z'),
+    ): Cohort {
+        const at = (week: number) =>
+            new Date(start.getTime() + week * 7 * 24 * 60 * 60 * 1000);
+        const week = (n: number, type: CohortWeekType, hasExercise: boolean) =>
+            Object.assign(new CohortWeek(), {
+                id: `week-${n}`,
+                week: n,
+                type,
+                hasExercise,
+                scheduledDate: at(n),
+            });
+        return Object.assign(new Cohort(), {
+            id: 'cohort-1',
+            type: CohortType.PROGRAMMING_BITCOIN,
+            season: 3,
+            classroomId: '243620',
+            assignmentBackend,
+            weeks: [
+                week(0, CohortWeekType.ORIENTATION, false),
+                week(1, CohortWeekType.GROUP_DISCUSSION, true),
+                week(2, CohortWeekType.GROUP_DISCUSSION, true),
+                week(3, CohortWeekType.GROUP_DISCUSSION, true),
+                week(4, CohortWeekType.GRADUATION, false),
+            ],
+        });
+    }
+
+    function assignmentConfig(slug: string) {
+        return {
+            slug,
+            templateOwner: 'Bitshala-Classrooms',
+            templateRepo: `${slug}-template`,
+            graderTestPath: 'tests',
+            deadline: 'GRADUATION' as const,
+        };
+    }
+
+    /** Week 3 has an exercise but no `assignment` block. */
+    const partialConfig = {
+        weeks: [
+            { hasExercise: true, assignment: assignmentConfig('pb-week-1') },
+            { hasExercise: true, assignment: assignmentConfig('pb-week-2') },
+            { hasExercise: true },
+        ],
+    };
+
+    describe('syncAssignments', () => {
+        // Week 1 already has its row; week 2 does not.
+        let existing: Assignment;
+
+        beforeEach(() => {
+            existing = Object.assign(new Assignment(), {
+                id: 'assignment-1',
+                slug: 'stale-slug',
+                cohortWeek: { id: 'week-1' },
+            });
+            cohortsConfigService.getConfig.mockReturnValue(partialConfig);
+            manager.find.mockResolvedValue([existing]);
+        });
+
+        it('upserts a row per configured exercise week, then resolves deadlines in the same transaction', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.INHOUSE),
+            );
+
+            const result = await service.syncAssignments('cohort-1');
+
+            expect(result).toEqual({ created: 1, updated: 1 });
+            expect(dbTransactionService.execute).toHaveBeenCalledTimes(1);
+            const [saved] = manager.save.mock.calls[0] as [Assignment[]];
+            expect(saved).toHaveLength(2);
+            // The existing row is updated in place, not duplicated.
+            expect(saved[0]).toBe(existing);
+            expect(saved[0].slug).toBe('pb-week-1-s3');
+            expect(saved[1].cohortWeek.id).toBe('week-2');
+            expect(saved[1].slug).toBe('pb-week-2-s3');
+            expect(cohortsService.syncAssignmentDeadlines).toHaveBeenCalledWith(
+                manager,
+                'cohort-1',
+            );
+            expect(
+                cohortsService.syncAssignmentDeadlines.mock
+                    .invocationCallOrder[0],
+            ).toBeGreaterThan(manager.save.mock.invocationCallOrder[0]);
+        });
+
+        it('refuses a cohort that is not on the in-house backend', async () => {
+            cohortRepository.findOne.mockResolvedValue(
+                seedableCohort(AssignmentBackend.CLASSROOM),
+            );
+
+            await expect(
+                service.syncAssignments('cohort-1'),
+            ).rejects.toBeInstanceOf(NotFoundException);
+            expect(manager.save).not.toHaveBeenCalled();
+        });
+
+        it('404s for a cohort that does not exist', async () => {
+            cohortRepository.findOne.mockResolvedValue(null);
+
+            await expect(
+                service.syncAssignments('cohort-1'),
+            ).rejects.toBeInstanceOf(NotFoundException);
+            expect(manager.save).not.toHaveBeenCalled();
+        });
     });
 
     describe('listAssignments', () => {
