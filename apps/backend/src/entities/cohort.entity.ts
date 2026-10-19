@@ -22,6 +22,23 @@ export interface Link {
     minRole?: UserRole;
 }
 
+/**
+ * A cohort that GitHub Classroom graded before it was switched to the in-house
+ * classroom. Its Classroom results stay on its scores, so in-house grading
+ * must only add to them.
+ *
+ * `classroomId` is set only on cohorts created on CLASSROOM, and the switch
+ * keeps it, so a native in-house cohort never matches.
+ */
+export function isSwitchedFromClassroom(
+    cohort: Pick<Cohort, 'assignmentBackend' | 'classroomId'>,
+): boolean {
+    return (
+        cohort.assignmentBackend === AssignmentBackend.INHOUSE &&
+        cohort.classroomId != null
+    );
+}
+
 @Entity()
 @Unique(['type', 'season'])
 export class Cohort extends BaseEntity {

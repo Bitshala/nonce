@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { AssignmentSubmission } from '@/entities/assignment-submission.entity';
 import { CohortMembership } from '@/entities/cohort-membership.entity';
 import { ExerciseScore } from '@/entities/exercise-score.entity';
+import { isSwitchedFromClassroom } from '@/entities/cohort.entity';
 import { ServiceError } from '@/common/errors';
 
 /**
@@ -72,14 +73,31 @@ export class ExerciseScoreWritebackService {
             );
         }
 
-        // A staff pin wins, field by field; without one, grading decides.
-        score.isSubmitted =
-            submission.isSubmittedOverride ?? submission.hasStudentCommits;
-        // bestRun is the first score-eligible run that passed, and is never
-        // cleared — breaking your code after passing does not un-pass you.
-        score.isPassing =
-            submission.isPassingOverride ?? submission.bestRun != null;
-        score.classroomRepositoryUrl = submission.repoHtmlUrl;
+        if (isSwitchedFromClassroom(cohort)) {
+            // Classroom graded this week before the cohort switched, and its
+            // result is already on this row. In-house work may add to it but
+            // never take it away: a save with no passing run yet must not undo
+            // a Classroom pass, which after the deadline no run could restore.
+            // A staff pin still wins either way.
+            score.isSubmitted =
+                submission.isSubmittedOverride ??
+                (submission.hasStudentCommits || score.isSubmitted);
+            score.isPassing =
+                submission.isPassingOverride ??
+                (submission.bestRun != null || score.isPassing);
+            // The Classroom repo is the evidence for a Classroom result.
+            score.classroomRepositoryUrl =
+                score.classroomRepositoryUrl ?? submission.repoHtmlUrl;
+        } else {
+            // A staff pin wins, field by field; without one, grading decides.
+            score.isSubmitted =
+                submission.isSubmittedOverride ?? submission.hasStudentCommits;
+            // bestRun is the first score-eligible run that passed, and is never
+            // cleared — breaking your code after passing does not un-pass you.
+            score.isPassing =
+                submission.isPassingOverride ?? submission.bestRun != null;
+            score.classroomRepositoryUrl = submission.repoHtmlUrl;
+        }
 
         await manager.save(score);
 
