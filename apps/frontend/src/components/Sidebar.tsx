@@ -81,6 +81,7 @@ const awardedFellowshipStudentLinks: NavItem[] = [
 ];
 
 const adminFellowshipLinks = [
+  { label: 'Overview', path: '/admin/fellowships/overview', icon: BarChartOutlined },
   { label: 'Applications', path: '/admin/fellowships/applications', icon: DescriptionOutlined },
   { label: 'Manage', path: '/admin/fellowships', icon: WorkspacePremiumOutlined },
   { label: 'Reports', path: '/admin/fellowships/reports', icon: AssignmentOutlined },

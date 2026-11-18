@@ -115,6 +115,11 @@ class FellowshipService {
     return data;
   };
 
+  public fetchAllApplications = (
+    query: Omit<ListFellowshipApplicationsQueryDto, 'page' | 'pageSize'>,
+  ): Promise<GetFellowshipApplicationResponseDto[]> =>
+    this.fetchAllPages(this.listApplications, query);
+
   public getApplication = async (id: string): Promise<GetFellowshipApplicationResponseDto> => {
     const { data } = await this.request<GetFellowshipApplicationResponseDto>({
       headers: this.getRequestHeaders(),
