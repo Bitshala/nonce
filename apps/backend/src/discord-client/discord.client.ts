@@ -178,6 +178,46 @@ export class DiscordClient {
         });
     }
 
+    /**
+     * Every member of the guild, paged by user id (Discord caps a page at
+     * 1000). Needs the bot's privileged Server Members intent; without it
+     * Discord rejects the request rather than returning a partial list.
+     */
+    async listGuildMembers(): Promise<GuildMember[]> {
+        const PAGE_SIZE = 1000;
+        const members: GuildMember[] = [];
+        let after = '0';
+        for (;;) {
+            const page = await this.executeRequest<GuildMember[]>({
+                method: 'GET',
+                url: `/guilds/${this.guildId}/members`,
+                params: { limit: PAGE_SIZE, after },
+                headers: {
+                    Authorization: `Bot ${this.botToken}`,
+                },
+            });
+            members.push(...page);
+            const lastId = page[page.length - 1]?.user?.id;
+            if (page.length < PAGE_SIZE || !lastId) {
+                return members;
+            }
+            after = lastId;
+        }
+    }
+
+    async removeRoleFromMember(
+        discordUserId: string,
+        roleId: string,
+    ): Promise<void> {
+        await this.executeRequest({
+            method: 'DELETE',
+            url: `/guilds/${this.guildId}/members/${discordUserId}/roles/${roleId}`,
+            headers: {
+                Authorization: `Bot ${this.botToken}`,
+            },
+        });
+    }
+
     async attachRoleToMember(
         discordUserId: string,
         roleId: string,
