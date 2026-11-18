@@ -26,6 +26,7 @@ import { addMonths, escapeLikePattern } from '@/common/common';
 import { DbTransactionService } from '@/db-transaction/db-transaction.service';
 import { TaskType } from '@/task-processor/task.enums';
 import { isLastRetry } from '@/task-processor/task-processor.utils';
+import { FellowDiscordRolesService } from '@/fellowships/fellow-discord-roles.service';
 
 // The sweep runs daily at this UTC hour.
 const COMPLETE_ENDED_FELLOWSHIPS_HOUR_UTC = 4;
@@ -47,6 +48,7 @@ export class FellowshipsService {
         @InjectRepository(APITask)
         private readonly apiTaskRepository: Repository<APITask<any>>,
         private readonly dbTransactionService: DbTransactionService,
+        private readonly fellowDiscordRolesService: FellowDiscordRolesService,
     ) {}
 
     async startContract(
@@ -252,6 +254,10 @@ export class FellowshipsService {
                 );
             }
 
+            // After the sweep, so a fellowship completed this run loses its
+            // role in the same run.
+            await this.syncFellowDiscordRoles();
+
             await this.scheduleNextCompleteEndedFellowships();
         } catch (error) {
             this.logger.error(
@@ -265,6 +271,26 @@ export class FellowshipsService {
             }
 
             throw error;
+        }
+    }
+
+    // Best-effort: a Discord outage or a missing bot permission must not fail
+    // the sweep, whose retries would re-run it for nothing. The next daily run
+    // recomputes every role from scratch, so a skipped run self-heals.
+    private async syncFellowDiscordRoles(): Promise<void> {
+        try {
+            const { granted, removed, failed, notInGuild } =
+                await this.fellowDiscordRolesService.syncFellowRoles();
+            if (granted || removed || failed || notInGuild) {
+                this.logger.log(
+                    `Fellow Discord roles: ${granted} granted, ${removed} removed, ${failed} failed, ${notInGuild} active fellow(s) not in the guild`,
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to sync fellow Discord roles: ${error?.message}`,
+                error?.stack,
+            );
         }
     }
 

@@ -104,6 +104,21 @@ class DiscordRolesConfig {
 
     @IsNumberString({ no_symbols: true })
     alumniBuildingBitcoinInRust: string;
+
+    // Fellow roles, one per FellowshipType, kept in sync with ACTIVE
+    // fellowships by the daily fellowship job. Optional so a deploy whose
+    // config predates them still boots; an unset role is skipped, not synced.
+    @IsOptional()
+    @IsNumberString({ no_symbols: true })
+    devFellow?: string;
+
+    @IsOptional()
+    @IsNumberString({ no_symbols: true })
+    eduFellow?: string;
+
+    @IsOptional()
+    @IsNumberString({ no_symbols: true })
+    designFellow?: string;
 }
 
 class DiscordInviteUrlsConfig {
