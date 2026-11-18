@@ -6,14 +6,17 @@ import { FellowshipsService } from '@/fellowships/fellowships.service';
 import { FellowshipsController } from '@/fellowships/fellowships.controller';
 import { FellowshipDocumentsModule } from '@/fellowship-documents/fellowship-documents.module';
 import { DbTransactionModule } from '@/db-transaction/db-transaction.module';
+import { DiscordClientModule } from '@/discord-client/discord.client.module';
+import { FellowDiscordRolesService } from '@/fellowships/fellow-discord-roles.service';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Fellowship, APITask]),
         FellowshipDocumentsModule,
         DbTransactionModule,
+        DiscordClientModule,
     ],
-    providers: [FellowshipsService],
+    providers: [FellowshipsService, FellowDiscordRolesService],
     controllers: [FellowshipsController],
     exports: [FellowshipsService],
 })
