@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { AlertTriangle } from 'lucide-react';
 import { useUser, useUpdateUser } from '../../hooks/userHooks';
+import { LOCATION_PROBLEM_MESSAGES, locationProblem } from '@nonce/shared';
 
 interface UserProfile {
   id: string;
@@ -128,6 +129,12 @@ const StudentProfileData: React.FC = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showEmailPopup, setShowEmailPopup] = useState(false);
+  // Location problems show once the user leaves the field or tries to save, so
+  // typing "Indore" doesn't flash a country-only error at "In". The exception
+  // is a saved "India": that shows straight away, so someone sent here by the
+  // join gate sees which field needs fixing.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [locationBlurred, setLocationBlurred] = useState(false);
   const [notification, setNotification] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
     show: false,
     message: '',
@@ -169,6 +176,13 @@ const StudentProfileData: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    setSubmitAttempted(true);
+
+    const locationIssue = locationProblem(profile.location);
+    if (locationIssue) {
+      setNotification({ show: true, message: LOCATION_PROBLEM_MESSAGES[locationIssue], type: 'error' });
+      return;
+    }
 
     if (profile.skills.length === 0) {
       setNotification({ show: true, message: 'Please select at least one skill', type: 'error' });
@@ -207,6 +221,13 @@ const StudentProfileData: React.FC = () => {
     );
   }
 
+  const locationIssue = locationProblem(profile.location);
+  const isSavedLocation = (profile.location ?? '') === (userData?.location ?? '');
+  const shownLocationIssue =
+    submitAttempted || locationBlurred || (locationIssue === 'countryOnly' && isSavedLocation)
+      ? locationIssue
+      : null;
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#000', p: { xs: 2, sm: 3 } }}>
       <Box sx={{ maxWidth: 900, mx: 'auto' }}>
@@ -244,11 +265,23 @@ const StudentProfileData: React.FC = () => {
                   name="location"
                   value={profile.location || ''}
                   onChange={handleInputChange}
-                  required
+                  onBlur={() => setLocationBlurred(true)}
+                  // No native `required`: the browser would block submit on an
+                  // empty field before handleSubmit runs, so our "Please enter
+                  // your city." message would never show. Keep the a11y hint.
+                  slotProps={{ htmlInput: { 'aria-required': true } }}
                   size="small"
                   placeholder="City, Country"
+                  error={shownLocationIssue !== null}
                   sx={inputSx}
                 />
+                {shownLocationIssue ? (
+                  <Typography role="alert" sx={{ ...hintSx, color: '#f87171' }}>
+                    {LOCATION_PROBLEM_MESSAGES[shownLocationIssue]}
+                  </Typography>
+                ) : (
+                  <Typography sx={hintSx}>Your city lets us invite you to Bitshala meetups near you.</Typography>
+                )}
               </Box>
               <Box>
                 <Typography variant="body2" sx={labelSx}>Email*</Typography>

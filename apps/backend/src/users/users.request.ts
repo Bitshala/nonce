@@ -1,3 +1,4 @@
+import { IsCityLocation } from '@/validators/is-city-location';
 import {
     IsArray,
     IsDateString,
@@ -97,10 +98,11 @@ export class UpdateUserRequest {
     @Max(168)
     weeklyCohortCommitmentHours?: number;
 
-    /** Free-form location (e.g., "Bengaluru, IN") */
+    /** Free-form location (e.g., "Bengaluru, IN"); must name a city. */
     @IsOptional()
     @IsString()
     @MaxLength(255)
+    @IsCityLocation()
     location?: string;
 
     @IsOptional()

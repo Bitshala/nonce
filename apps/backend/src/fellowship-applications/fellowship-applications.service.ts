@@ -1,3 +1,4 @@
+import { LOCATION_PROBLEM_MESSAGES, locationProblem } from '@nonce/shared';
 import {
     BadRequestException,
     ForbiddenException,
@@ -446,12 +447,13 @@ export class FellowshipApplicationsService {
         }
 
         // Location lives on the applicant's profile rather than the
-        // application, but is still required to submit.
-        if (
-            !application.applicant?.location ||
-            !application.applicant.location.trim()
-        ) {
+        // application, but is still required to submit, and must name a city:
+        // a profile saved before that rule may still say just "India".
+        const locationIssue = locationProblem(application.applicant?.location);
+        if (locationIssue === 'blank') {
             errors.push('Location is required');
+        } else if (locationIssue === 'countryOnly') {
+            errors.push(LOCATION_PROBLEM_MESSAGES.countryOnly);
         }
 
         if (application.graduationYear == null) {

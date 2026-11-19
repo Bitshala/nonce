@@ -60,7 +60,7 @@ import {
   FellowshipType,
   type FellowshipApplicationProposalWriteDto,
 } from '../../types/fellowship';
-import { CohortType, EducationCategory } from '@nonce/shared';
+import { CohortType, EducationCategory, LOCATION_PROBLEM_MESSAGES, locationProblem } from '@nonce/shared';
 import { cohortTypeToName } from '../../helpers/cohortHelpers';
 import { COHORT_TYPES } from '../../utils/cohortUtils';
 import fellowshipService from '../../services/fellowshipService';
@@ -228,7 +228,11 @@ const makeApplicationSchema = (type: FellowshipType | null) => {
         .string()
         .trim()
         .min(1, { message: 'Location is required.' })
-        .max(LOCATION_LIMIT, { message: `Keep this under ${LOCATION_LIMIT} characters.` }),
+        .max(LOCATION_LIMIT, { message: `Keep this under ${LOCATION_LIMIT} characters.` })
+        // Same rule as the profile form and the API: name a city, not just "India".
+        .refine((value) => locationProblem(value) !== 'countryOnly', {
+          message: LOCATION_PROBLEM_MESSAGES.countryOnly,
+        }),
       certificateName: z
         .string()
         .trim()

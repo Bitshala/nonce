@@ -355,6 +355,20 @@ describe('FellowshipApplicationsService — submit validation', () => {
             });
             expect(await submitError(app)).toContain('Location is required');
         });
+
+        it('rejects a profile location that names only the country', async () => {
+            const app = buildApplication({
+                applicant: {
+                    id: 'user-1',
+                    displayName: 'Alice',
+                    location: 'India',
+                    email: 'alice@example.com',
+                } as unknown as User,
+            });
+            expect(await submitError(app)).toContain(
+                'Please enter your city, not just the country',
+            );
+        });
     });
 
     describe('DEVELOPER / DESIGNER — regression (must stay unchanged)', () => {
