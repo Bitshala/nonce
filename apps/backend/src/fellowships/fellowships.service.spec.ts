@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
-import { EntityManager, LessThan } from 'typeorm';
+import { EntityManager, IsNull, LessThan, Not } from 'typeorm';
 import { FellowshipsService } from '@/fellowships/fellowships.service';
 import { FellowshipResponseDto } from '@/fellowships/fellowships.response.dto';
 import { Fellowship } from '@/entities/fellowship.entity';
@@ -138,6 +138,9 @@ describe('FellowshipsService — listPublicFellows', () => {
         type: FellowshipType.DEVELOPER,
         kind: FellowshipKind.STARTER_GRANT,
         status: FellowshipStatus.ACTIVE,
+        startDate: new Date('2026-02-01T00:00:00.000Z'),
+        endDate: new Date('2026-08-01T00:00:00.000Z'),
+        amountUsd: '6000.00',
         createdAt: new Date('2026-01-01'),
         updatedAt: new Date('2026-01-01'),
         user: {
@@ -150,6 +153,8 @@ describe('FellowshipsService — listPublicFellows', () => {
         application: {
             id: 'app-1',
             type: FellowshipType.DESIGNER,
+            github: 'alice-dev',
+            title: 'Proposal title',
             projectName: 'Project',
             projectGithubLink: 'https://github.com/alice/project',
             mentorContact: 'mentor@example.com',
@@ -188,13 +193,17 @@ describe('FellowshipsService — listPublicFellows', () => {
 
     afterEach(() => jest.resetAllMocks());
 
-    it('queries ACTIVE fellowships with user/application relations and pagination', async () => {
+    it('queries ACTIVE fellowships that have contract dates, with user/application relations and pagination', async () => {
         fellowshipRepository.findAndCount.mockResolvedValue([[], 0]);
 
         await service.listPublicFellows({ page: 2, pageSize: 20 });
 
         expect(fellowshipRepository.findAndCount).toHaveBeenCalledWith({
-            where: { status: FellowshipStatus.ACTIVE },
+            where: {
+                status: FellowshipStatus.ACTIVE,
+                startDate: Not(IsNull()),
+                endDate: Not(IsNull()),
+            },
             relations: { user: true, application: true },
             order: { createdAt: 'DESC', id: 'ASC' },
             skip: 40,
@@ -213,13 +222,62 @@ describe('FellowshipsService — listPublicFellows', () => {
         expect({ ...result.records[0] }).toStrictEqual({
             id: fellowship.id,
             displayName: fellowship.user.displayName,
-            githubProfileUrl: fellowship.user.githubProfileUrl,
+            // The profile URL wins over the application's older handle.
+            githubUsername: 'alice',
+            githubProfileUrl: 'https://github.com/alice',
             projectName: fellowship.application.projectName,
             projectGithubLink: fellowship.application.projectGithubLink,
             type: fellowship.type,
             kind: fellowship.kind,
+            startDate: '2026-02-01T00:00:00.000Z',
+            endDate: '2026-08-01T00:00:00.000Z',
         });
     });
+
+    it('passes a missing project name through as null, without falling back to the proposal title', async () => {
+        const noProject = {
+            ...fellowship,
+            application: { ...fellowship.application, projectName: null },
+        };
+        fellowshipRepository.findAndCount.mockResolvedValue([[noProject], 1]);
+
+        const result = await service.listPublicFellows({
+            page: 0,
+            pageSize: 20,
+        });
+
+        expect(result.records[0].projectName).toBeNull();
+    });
+
+    // githubUsername and githubProfileUrl must always name the same account.
+    it.each([
+        // [profile URL, application handle, expected username]
+        ['https://GitHub.com/Alice/', 'alice-dev', 'Alice'],
+        ['https://github.com/alice/project', 'alice-dev', 'alice-dev'],
+        [null, 'alice-dev', 'alice-dev'],
+        ['https://gitlab.com/alice', null, null],
+        [null, null, null],
+    ])(
+        'derives one GitHub identity from profile %s and handle %s',
+        async (githubProfileUrl, github, expected) => {
+            const row = {
+                ...fellowship,
+                user: { ...fellowship.user, githubProfileUrl },
+                application: { ...fellowship.application, github },
+            };
+            fellowshipRepository.findAndCount.mockResolvedValue([[row], 1]);
+
+            const result = await service.listPublicFellows({
+                page: 0,
+                pageSize: 20,
+            });
+
+            expect(result.records[0].githubUsername).toBe(expected);
+            expect(result.records[0].githubProfileUrl).toBe(
+                expected ? `https://github.com/${expected}` : null,
+            );
+        },
+    );
 });
 
 describe('FellowshipsService — completeEndedFellowships', () => {

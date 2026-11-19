@@ -6,7 +6,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, LessThan, Repository } from 'typeorm';
+import { Brackets, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { Fellowship } from '@/entities/fellowship.entity';
 import { APITask } from '@/entities/api-task.entity';
 import { User } from '@/entities/user.entity';
@@ -292,12 +292,20 @@ export class FellowshipsService {
         await this.apiTaskRepository.save(nextTask);
     }
 
+    // The public contract promises a start and end date on every fellow.
+    // startContract sets both when it moves a fellowship to ACTIVE, but the
+    // columns are nullable, so an ACTIVE row without them (legacy or hand-edited
+    // data) is left off the list rather than breaking the response for everyone.
     async listPublicFellows(
         query: PaginatedQueryDto,
     ): Promise<PaginatedDataDto<PublicFellowResponseDto>> {
         const [records, totalRecords] =
             await this.fellowshipRepository.findAndCount({
-                where: { status: FellowshipStatus.ACTIVE },
+                where: {
+                    status: FellowshipStatus.ACTIVE,
+                    startDate: Not(IsNull()),
+                    endDate: Not(IsNull()),
+                },
                 relations: { user: true, application: true },
                 order: { createdAt: 'DESC', id: 'ASC' },
                 skip: query.page * query.pageSize,

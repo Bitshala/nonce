@@ -20,7 +20,7 @@ export const MAX_GRADUATION_YEAR = 2100;
 // alphanumeric or hyphen, 1..39 chars. Intentionally as permissive as the FE
 // regex (allows `--` and a trailing `-`).
 export const GITHUB_USERNAME_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]){0,38}$/;
-const GITHUB_URL_RE =
+export const GITHUB_URL_RE =
     /^https?:\/\/(www\.)?github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]){0,38})\/?$/i;
 
 // A link must start with http(s)://, contain a dot, and have no whitespace.
