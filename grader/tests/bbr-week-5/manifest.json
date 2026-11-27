@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "network": "full",
+  "toolchains": { "rust": "stable" },
+  "services": false,
+  "timeoutMinutes": 10
+}

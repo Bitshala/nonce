@@ -1,0 +1,11 @@
+[package]
+name = "week_04_errors_traits"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+sha256 = "1.5"
+thiserror = "1"
+uuid = { version = "1", features = ["v4", "serde"] }

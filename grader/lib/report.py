@@ -73,9 +73,10 @@ def write(path, passed, tests):
     # The log is the only place a TA can see why a run scored what it did
     # without pulling the artifact down.
     failed = [t for t in tests if t['status'] == 'failed']
+    passed_count = sum(t['status'] == 'passed' for t in tests)
     print(
         f"report: {'PASS' if passed else 'FAIL'} "
-        f"({len(tests) - len(failed)}/{len(tests)} passed)"
+        f"({passed_count}/{len(tests)} passed)"
     )
     for test in failed:
         print(f"  FAILED  {test['name']}")

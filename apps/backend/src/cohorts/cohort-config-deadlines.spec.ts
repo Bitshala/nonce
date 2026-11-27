@@ -25,6 +25,7 @@ describe('cohort configs — exercise deadlines follow graduation', () => {
         'bitcoin-protocol-development.json',
         'mastering-lightning-network.json',
         'programming-bitcoin.json',
+        'building-bitcoin-in-rust.json',
     ];
 
     const load = (file: string) =>

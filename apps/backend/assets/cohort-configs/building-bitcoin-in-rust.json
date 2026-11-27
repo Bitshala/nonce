@@ -1,16 +1,53 @@
 {
   "$schema": "./cohort-config.schema.json",
+  "assignmentBackend": "INHOUSE",
   "gdSessions": 8,
-  "classroomId": "999999",
   "links": [
     {
-      "label": "Assignments Repository",
-      "url": "https://github.com/0xEgao/rust-lang-cohort-assignments"
+      "label": "Week 1 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-1-assignment"
+    },
+    {
+      "label": "Week 2 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-2-assignment"
+    },
+    {
+      "label": "Week 3 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-3-assignment"
+    },
+    {
+      "label": "Week 4 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-4-assignment"
+    },
+    {
+      "label": "Week 5 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-5-assignment"
+    },
+    {
+      "label": "Week 6 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-6-assignment"
+    },
+    {
+      "label": "Week 7 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-7-assignment"
+    },
+    {
+      "label": "Week 8 Assignment Repository",
+      "url": "https://github.com/Bitshala-Classrooms/RUST-week-8-assignment"
     }
   ],
   "weeks": [
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-1",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-1-assignment",
+        "graderTestPath": "tests/bbr-week-1",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Rust Setup, Syntax, Data Structures, and Bitcoin Context",
       "readingMaterial": [
         {
@@ -62,7 +99,7 @@
       "exercise": {
         "title": "Mock Transactions with Vectors and HashMaps",
         "concepts": "Cargo basics, variables and mutability, control flow, Vec, HashMap, iteration and filtering",
-        "problem": "Using mock transactions, store transactions in vectors and hashmaps, filter and iterate over transactions, and practice mutability and basic control flow. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-01",
+        "problem": "Using mock transactions, store transactions in vectors and hashmaps, filter and iterate over transactions, and practice mutability and basic control flow. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-1-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -73,6 +110,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-2",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-2-assignment",
+        "graderTestPath": "tests/bbr-week-2",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Functions, Ownership, Borrowing, Structs, Enums, Pattern Matching",
       "readingMaterial": [
         {
@@ -132,7 +178,7 @@
       "exercise": {
         "title": "Ownership and Borrowing Utility Functions",
         "concepts": "Ownership, borrowing, mutable references, String vs &str, functions, pattern matching",
-        "problem": "Implement small utility functions such as palindrome checks, simple hashing, fee calculation, and borrowed string helpers. The assignment is designed to make you think carefully about when to own data and when to borrow it. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-02",
+        "problem": "Implement small utility functions such as palindrome checks, simple hashing, fee calculation, and borrowed string helpers. The assignment is designed to make you think carefully about when to own data and when to borrow it. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-2-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -143,6 +189,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-3",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-3-assignment",
+        "graderTestPath": "tests/bbr-week-3",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Bitcoin Library Architecture and Domain Modeling",
       "readingMaterial": [
         {
@@ -190,7 +245,7 @@
       "exercise": {
         "title": "Bitcoin Data Structures for btclib",
         "concepts": "Structs, enums, methods, domain modeling, static vs dynamic dispatch, Serde and UUID crates",
-        "problem": "Create basic Bitcoin data structures including Transaction, TxInput, TxOutput, BlockHeader, Block, Network, and ValidationError. Implement methods such as total output calculation, transaction counting, and block lookup. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-03",
+        "problem": "Create basic Bitcoin data structures including Transaction, TxInput, TxOutput, BlockHeader, Block, Network, and ValidationError. Implement methods such as total output calculation, transaction counting, and block lookup. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-3-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -201,6 +256,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-4",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-4-assignment",
+        "graderTestPath": "tests/bbr-week-4",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Error Handling, Traits, Generics, and Iterators",
       "readingMaterial": [
         {
@@ -256,7 +320,7 @@
       "exercise": {
         "title": "Traits, Generics, and Validation for btclib",
         "concepts": "Traits, trait bounds, generics, iterators, Option and Result error handling",
-        "problem": "Extend the Bitcoin library by implementing traits such as Hashable, Validate, or SerializablePreview. Add generic helper functions, custom validation errors, iterator-based calculations, and simple validation rules for transactions and blocks. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-04",
+        "problem": "Extend the Bitcoin library by implementing traits such as Hashable, Validate, or SerializablePreview. Add generic helper functions, custom validation errors, iterator-based calculations, and simple validation rules for transactions and blocks. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-4-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -267,6 +331,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-5",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-5-assignment",
+        "graderTestPath": "tests/bbr-week-5",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Testing, Tooling, Closures, Macros, and Serialization",
       "readingMaterial": [
         {
@@ -322,7 +395,7 @@
       "exercise": {
         "title": "Modules, Tests, and Serialization",
         "concepts": "Modules, unit testing, closures, macros, dependency management, Serde serialization/deserialization",
-        "problem": "Reorganize your Bitcoin code into modules, add tests, serialize and deserialize blocks or transactions, and optionally create a small utility binary that reads a JSON block file and prints a summary. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-05",
+        "problem": "Reorganize your Bitcoin code into modules, add tests, serialize and deserialize blocks or transactions, and optionally create a small utility binary that reads a JSON block file and prints a summary. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-5-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -333,6 +406,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-6",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-6-assignment",
+        "graderTestPath": "tests/bbr-week-6",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Smart Pointers, Interior Mutability, and CPU Mining",
       "readingMaterial": [
         {
@@ -384,7 +466,7 @@
       "exercise": {
         "title": "Toy CPU Miner with UTXO Set and Worker Threads",
         "concepts": "Box, Rc, Arc, Cell, RefCell, threads, shared state, channels, proof-of-work",
-        "problem": "Build a toy CPU miner that reuses the earlier btclib model. First, implement a UtxoSet that applies valid transactions, rejects invalid spends, constructs candidate blocks from pending transactions, and mines them through a single-threaded proof-of-work loop. Then extend the miner into a multi-threaded version, coordinating workers through shared state or channels, stopping all workers once a valid nonce is found, and validating the winning block before adding it to the chain. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-06",
+        "problem": "Build a toy CPU miner that reuses the earlier btclib model. First, implement a UtxoSet that applies valid transactions, rejects invalid spends, constructs candidate blocks from pending transactions, and mines them through a single-threaded proof-of-work loop. Then extend the miner into a multi-threaded version, coordinating workers through shared state or channels, stopping all workers once a valid nonce is found, and validating the winning block before adding it to the chain. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-6-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -395,6 +477,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-7",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-7-assignment",
+        "graderTestPath": "tests/bbr-week-7",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Async Rust, Tokio, Networking, and Node Foundations",
       "readingMaterial": [
         {
@@ -442,7 +533,7 @@
       "exercise": {
         "title": "Toy Async Bitcoin Node",
         "concepts": "Futures, async/await, Tokio runtime, async tasks and channels, TCP networking",
-        "problem": "Build a toy async Bitcoin node. The node accepts simple commands such as ping, height, and submit_block. It keeps an in-memory blockchain state and allows the miner from Week 6 to submit a block. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-07",
+        "problem": "Build a toy async Bitcoin node. The node accepts simple commands such as ping, height, and submit_block. It keeps an in-memory blockchain state and allows the miner from Week 6 to submit a block. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-7-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",
@@ -453,6 +544,15 @@
     },
     {
       "hasExercise": true,
+      "assignment": {
+        "slug": "bbr-week-8",
+        "templateOwner": "Bitshala-Classrooms",
+        "templateRepo": "RUST-week-8-assignment",
+        "graderTestPath": "tests/bbr-week-8",
+        "protectedPaths": [".github/**", "Cargo.toml", "Cargo.lock", "test.sh", "tests/**"],
+        "deadline": "GRADUATION",
+        "runTimeoutMinutes": 10
+      },
       "title": "Wallet CLI, Dispatch, and Design Patterns",
       "readingMaterial": [
         {
@@ -504,7 +604,7 @@
       "exercise": {
         "title": "CLI Wallet over btclib and the Node",
         "concepts": "UTXO selection, change outputs, fee handling, clap, trait-object dispatch, logging",
-        "problem": "Complete a CLI wallet that can track mock balances or UTXOs, create transactions, submit transactions to the node, show wallet balance, display transaction history, and log important actions. Keep the CLI layer thin over reusable wallet and library APIs. Complete the TODOs in the starter code: https://github.com/0xEgao/rust-lang-cohort-assignments/tree/main/weeks/week-08",
+        "problem": "Complete a CLI wallet that can track mock balances or UTXOs, create transactions, submit transactions to the node, show wallet balance, display transaction history, and log important actions. Keep the CLI layer thin over reusable wallet and library APIs. Complete the TODOs in the starter code: https://github.com/Bitshala-Classrooms/RUST-week-8-assignment",
         "expectedOutput": [
           "All visible tests pass with `cargo test`",
           "Code is formatted: `cargo fmt --check` reports no changes",

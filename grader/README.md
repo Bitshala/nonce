@@ -73,7 +73,7 @@ block of the cohort config (`apps/backend/assets/cohort-configs/<cohort>.json`).
 write a `report.json` matching `report.schema.json`. Language, test runner, and build
 steps are entirely the assignment's business.
 
-All 21 graded weeks have a suite. They come in five shapes:
+The graded weeks have the following suites:
 
 | Shape | Suites |
 | --- | --- |
@@ -82,6 +82,7 @@ All 21 graded weeks have a suite. They come in five shapes:
 | jest; bitcoind + Core Lightning, runes minted at run time | `ln-week-1`…`4` |
 | jest, fully offline | `bpd-week-2`, `bpd-week-3`, `bpd-week-4` |
 | python; notebooks plus a unittest suite | `pb-week-1`…`7` |
+| Rust; one Cargo integration test target per week | `bbr-week-1`…`8` |
 
 `bpd-week-5` is its own thing — an Esplora stack (bitcoind, electrs and the explorer
 in one container) served from a regtest chain the template ships, which takes minutes
@@ -91,6 +92,17 @@ The common jest flow is three helpers — `npm_ci`, `run_solution`, `jest_report
 suite's `grade.sh` carries only what is distinctive about it. The pb weeks are all
 driven by `lib/pb_grade.py`, so each of those is the same three lines over a different
 `checks.json`.
+
+Each BBR week uses `Bitshala-Classrooms/RUST-week-N-assignment`. The suite stages
+the submission's `src/` alongside the manifest, lockfile, and integration test in
+its own `crate/` directory. Grading checks the results against `test-names.txt`.
+
+Refresh the grader's copy from a trusted checkout of the weekly template. Add
+`--check` to compare the copies and test names without updating them.
+
+```shell
+bash grader/tools/sync-bbr-fixtures.sh 7 ~/RUST-week-7-assignment
+```
 
 The bpd capstone has no suite: it is a README with no tests and wants manual grading.
 
@@ -108,6 +120,7 @@ which fixes the credentials and ports the assertions assume.
 
 For `pb-*`, where the book puts each `TestCase` in the same file as the function it
 tests, `fixtures/` carries a separate module of authoritative assertions instead.
+The BBR suites stage a standalone crate from `crate/`.
 
 ### Pinned data
 
@@ -206,13 +219,10 @@ that is genuinely self-contained. Two things make it sharper than it looks:
 
 **It does** guarantee students cannot *modify* the tests. The suite lives here, students
 have no access to this repository, the commit endpoint refuses to write the harness
-paths, and `restore_fixtures` overwrites them anyway — which is what makes a passing
-score mean something.
+paths, and the grader uses its own copy of the tests.
 
-**It does not** hide the tests, and for the current 21 suites it never did: the template
-repositories under `Bitshala-Classrooms` are public, and they ship `test/*.spec.ts` so
-students can run the suite locally. Every assertion is already readable from a browser.
-The private grader repo protects `APP_KEY`, not the tests.
+**It does not** hide the tests. The public starter repositories ship them so students
+can run them locally. The private grader repo protects `APP_KEY`.
 
 Even for an assignment whose tests were only here, student code executes in the same job
 as the test files, so a determined student could print them to the run log.
